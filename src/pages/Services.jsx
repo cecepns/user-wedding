@@ -41,10 +41,10 @@ const Services = () => {
   return (
     <>
       <Helmet>
-        <title>Layanan Pernikahan - User Wedding</title>
+        <title>Wedding Package - User Wedding</title>
         <meta
           name="description"
-          content="Jelajahi layanan pernikahan komprehensif kami termasuk perencanaan, dekorasi, fotografi, dan lainnya."
+          content="Jelajahi paket pernikahan komprehensif kami termasuk perencanaan, dekorasi, fotografi, dan lainnya."
         />
       </Helmet>
 
@@ -53,10 +53,10 @@ const Services = () => {
         <section className="section-padding gradient-bg">
           <div className="container-custom text-center">
             <h1 className=" text-5xl lg:text-6xl font-bold text-gray-800 mb-6 animate-fade-in">
-              Layanan Pernikahan Kami
+              Wedding Package
             </h1>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto animate-slide-up">
-              Dari upacara intim hingga perayaan megah, kami menawarkan layanan
+              Dari upacara intim hingga perayaan megah, kami menawarkan paket
               pernikahan komprehensif yang disesuaikan untuk membuat hari
               spesial Anda sempurna.
             </p>
@@ -145,7 +145,7 @@ const ServiceCard = ({ service, index, onBook }) => {
         </h3>
         <p className="text-gray-600 mb-4">{service.description}</p>
 
-        {items.length > 0 && (
+        {/* {items.length > 0 && (
           <div className="mb-4">
             <h4 className="font-medium text-gray-800 mb-2">Paket Termasuk:</h4>
             <ul className="space-y-1">
@@ -167,12 +167,12 @@ const ServiceCard = ({ service, index, onBook }) => {
               )}
             </ul>
           </div>
-        )}
+        )} */}
 
         <div className="flex flex-col gap-3">
           <div className="flex justify-between items-center">
             <div>
-              <span className="text-sm text-gray-500">Mulai dari</span>
+              {/* <span className="text-sm text-gray-500">Mulai dari</span> */}
               <div className="text-2xl font-bold text-primary-600">
                 {formatPrice(service.base_price)}
               </div>

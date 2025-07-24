@@ -23,11 +23,11 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .gradient-bg {
-  background: linear-gradient(135deg, #fdf2f8 0%, #fce7f3 50%, #fbcfe8 100%);
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 50%, #bfdbfe 100%);
 }
 
 .hero-pattern {
-  background-image: radial-gradient(circle at 25px 25px, rgba(219, 39, 119, 0.1) 2px, transparent 0);
+  background-image: radial-gradient(circle at 25px 25px, rgba(59, 130, 246, 0.1) 2px, transparent 0);
   background-size: 50px 50px;
 }
 
@@ -66,7 +66,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .text-gradient {
-  background: linear-gradient(135deg, #ec4899 0%, #d97706 100%);
+  background: linear-gradient(135deg, #3b82f6 0%, #0ea5e9 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

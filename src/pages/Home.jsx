@@ -1,15 +1,11 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
 import AOS from "aos";
 import "aos/dist/aos.css";
-import CustomServiceModal from "../components/CustomServiceModal";
 import heroImage from "../assets/hero-banner.jpg";
 
 const Home = () => {
-  const [isCustomModalOpen, setIsCustomModalOpen] = useState(false);
-  const [services, setServices] = useState([]);
-
   useEffect(() => {
     AOS.init({
       duration: 1000,
@@ -17,18 +13,7 @@ const Home = () => {
       once: true,
       mirror: false,
     });
-    fetchServices();
   }, []);
-
-  const fetchServices = async () => {
-    try {
-      const response = await fetch("https://api-inventory.isavralabel.com/user-wedding/api/services");
-      const data = await response.json();
-      setServices(data.slice(0, 3)); // Show only first 3 services
-    } catch (error) {
-      console.error("Error fetching services:", error);
-    }
-  };
 
   return (
     <>
@@ -66,12 +51,9 @@ const Home = () => {
                 data-aos="fade-up"
                 data-aos-delay="400"
               >
-                <button
-                  onClick={() => setIsCustomModalOpen(true)}
-                  className="btn-primary"
-                >
+                <Link to="/custom-service" className="btn-primary text-center">
                   Rencanakan Pernikahan Saya
-                </button>
+                </Link>
                 <Link to="/services" className="btn-primary-outline text-center">
                   Lihat Layanan
                 </Link>
@@ -146,58 +128,60 @@ const Home = () => {
         <div className="container-custom">
           <div className="text-center mb-16" data-aos="fade-up">
             <h2 className=" text-4xl lg:text-5xl font-bold text-gray-800 mb-6">
-              Layanan Pernikahan Kami
+              Pilihan Layanan Pernikahan
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Dari pertemuan intim hingga perayaan megah, kami menawarkan solusi
-              pernikahan lengkap
+              Pilih paket pernikahan yang sudah kami siapkan atau buat layanan custom sesuai keinginan Anda
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8 mb-12">
-            {services.map((service, index) => (
-              <div
-                key={service.id}
-                className="bg-whitbg-slate-50-2xl shadow-lg overflow-hidden card-hover"
-                data-aos="fade-up"
-                data-aos-delay={300 + index * 200}
-              >
-                <img
-                  src={
-                    service.image ||
-                    `https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=400`
-                  }
-                  alt={service.name}
-                  className="w-full h-48 object-cover"
-                />
-                <div className="p-6 space-y-4">
-                  <h3 className=" text-xl font-semibold text-gray-800 mb-3">
-                    {service.name}
-                  </h3>
-                  <p className="text-gray-600 mb-4">{service.description}</p>
-                  <div className="flex justify-between items-center">
-                    <span className="text-2xl font-bold text-primary-600">
-                      Rp {Math.floor(service.base_price)?.toLocaleString('id-ID')}
-                    </span>
-                  </div>
-                  <div className="w-full">
-                    <Link
-                      to={`/services/${service.id}`}
-                      className="w-full text-center block btn-primary font-medium"
-                    >
-                      Lihat Detail →
-                    </Link>
-                  </div>
-                </div>
+          <div className="grid md:grid-cols-2 gap-8 mb-12 max-w-4xl mx-auto">
+            {/* Wedding Package Card */}
+            <div
+              className="bg-white rounded-2xl shadow-lg overflow-hidden card-hover border border-gray-100"
+              data-aos="fade-up"
+              data-aos-delay="300"
+            >
+              <div className="p-8 text-center">
+                <div className="text-6xl mb-6">💒</div>
+                <h3 className="text-2xl font-semibold text-gray-800 mb-4">
+                  Wedding Package
+                </h3>
+                <p className="text-gray-600 mb-6">
+                  Pilih dari berbagai paket pernikahan yang sudah kami siapkan dengan harga terjangkau dan layanan lengkap
+                </p>
+                <Link
+                  to="/services"
+                  className="w-full text-center block btn-primary font-medium"
+                >
+                  Lihat Paket →
+                </Link>
               </div>
-            ))}
-          </div>
+            </div>
 
-          {/* <div className="text-center" data-aos="fade-up" data-aos-delay="600">
-            <Link to="/services" className="btn-primary">
-              Lihat Semua Layanan
-            </Link>
-          </div> */}
+            {/* Custom Service Card */}
+            <div
+              className="bg-white rounded-2xl shadow-lg overflow-hidden card-hover border border-gray-100"
+              data-aos="fade-up"
+              data-aos-delay="500"
+            >
+              <div className="p-8 text-center">
+                <div className="text-6xl mb-6">✨</div>
+                <h3 className="text-2xl font-semibold text-gray-800 mb-4">
+                  Custom Service
+                </h3>
+                <p className="text-gray-600 mb-6">
+                  Buat layanan pernikahan sesuai dengan visi dan kebutuhan unik Anda dengan konsultasi langsung
+                </p>
+                <Link
+                  to="/custom-service"
+                  className="w-full text-center block btn-primary font-medium"
+                >
+                  Buat Custom →
+                </Link>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -218,12 +202,6 @@ const Home = () => {
               data-aos="fade-up"
               data-aos-delay="300"
             >
-              <button
-                onClick={() => setIsCustomModalOpen(true)}
-                className="bg-white text-gray-900 px-8 py-4 rounded-lg font-semibold text-lg hover:bg-gray-100 transition-all duration-300 hover:scale-105"
-              >
-                Custom Sesuai Keinginan Anda
-              </button>
               <Link
                 to="/contact"
                 className="border-2 border-white text-white px-8 py-4 rounded-lg font-semibold text-lg hover:bg-white hover:text-gray-900 transition-all duration-300"
@@ -235,11 +213,6 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Custom Service Modal */}
-      <CustomServiceModal
-        isOpen={isCustomModalOpen}
-        onClose={() => setIsCustomModalOpen(false)}
-      />
     </>
   );
 };

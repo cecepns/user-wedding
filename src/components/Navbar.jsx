@@ -17,18 +17,18 @@ const Navbar = () => {
 
   const navItems = [
     { name: 'Beranda', path: '/' },
-    { name: 'Layanan', path: '/services' },
+    { name: 'Wedding Package', path: '/services' },
     { name: 'Galeri', path: '/gallery' },
     { name: 'Tentang', path: '/about' },
-    { name: 'Artikel', path: '/articles' },
+    // { name: 'Artikel', path: '/articles' },
     { name: 'Kontak', path: '/contact' },
   ];
 
   return (
     <nav className={`fixed w-full z-50 transition-all duration-300 ${
       isScrolled 
-        ? 'bg-white/95 backdrop-blur-md shadow-lg' 
-        : 'bg-transparent'
+        ? 'bg-white/20 backdrop-blur-xl shadow-lg border-b border-white/20' 
+        : 'bg-white/10 backdrop-blur-sm'
     }`}>
       <div className="container-custom">
         <div className="p-4 md:px-8 flex items-center justify-between h-20">
@@ -78,7 +78,7 @@ const Navbar = () => {
 
         {/* Mobile Menu */}
         {isOpen && (
-          <div className="lg:hidden bg-white border-t border-gray-200 animate-slide-up">
+          <div className="lg:hidden bg-white/20 backdrop-blur-xl border-t border-white/20 animate-slide-up">
             <div className="py-4 space-y-4">
               {navItems.map((item) => (
                 <Link

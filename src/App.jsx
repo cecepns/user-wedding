@@ -8,6 +8,7 @@ import WhatsAppButton from './components/WhatsAppButton';
 import Home from './pages/Home';
 import Services from './pages/Services';
 import ServiceDetail from './pages/ServiceDetail';
+import CustomService from './pages/CustomService';
 import Gallery from './pages/Gallery';
 import About from './pages/About';
 import Articles from './pages/Articles';
@@ -77,6 +78,7 @@ function App() {
                     <Route path="/" element={<Home />} />
                     <Route path="/services" element={<Services />} />
                     <Route path="/services/:id" element={<ServiceDetail />} />
+                    <Route path="/custom-service" element={<CustomService />} />
                     <Route path="/gallery" element={<Gallery />} />
                     <Route path="/about" element={<About />} />
                     <Route path="/articles" element={<Articles />} />

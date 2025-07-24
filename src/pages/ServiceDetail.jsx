@@ -16,12 +16,18 @@ const formatPrice = (price) => {
 };
 
 // Helper function to calculate total price
-const calculateTotalPrice = (items) => {
-  return items.reduce((total, item) => {
+const calculateTotalPrice = (items, basePrice = 0) => {
+  // Convert basePrice to number if it's a string
+  const numBasePrice = typeof basePrice === 'string' ? parseFloat(basePrice) : basePrice;
+  
+  const itemsTotal = items.reduce((total, item) => {
     const price = item.final_price || item.item_price || item.price;
     const numPrice = typeof price === 'string' ? parseFloat(price) : price;
     return total + (isNaN(numPrice) ? 0 : numPrice);
   }, 0);
+  
+  // Fix floating point precision by rounding to nearest integer
+  return Math.round(numBasePrice + itemsTotal);
 };
 
 const ServiceDetail = () => {
@@ -143,13 +149,7 @@ const ServiceDetail = () => {
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4" data-aos="fade-up" data-aos-delay="200">
                   <button
-                    onClick={() => {
-                      if (selectedItems.length === 0) {
-                        toast.error('Silakan pilih minimal satu item layanan sebelum melakukan pemesanan.');
-                        return;
-                      }
-                      setShowBookingModal(true);
-                    }}
+                    onClick={() => setShowBookingModal(true)}
                     className="btn-primary text-lg px-8 py-4"
                   >
                     Pesan Layanan Ini
@@ -183,7 +183,7 @@ const ServiceDetail = () => {
                     Detail Layanan
                   </h2>
                   <div className="prose prose-lg max-w-none">
-                    <p className="text-gray-700 leading-relaxed mb-6">
+                    <p className="text-gray-700 leading-relaxed mb-6 whitespace-pre-line">
                       {service.description}
                     </p>
                     <p className="text-gray-700 leading-relaxed">
@@ -199,7 +199,7 @@ const ServiceDetail = () => {
                   <div data-aos="fade-up" data-aos-delay="200">
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6">
                       <h3 className="text-xl sm:text-2xl font-bold text-gray-800">
-                        Paket Layanan
+                        Tambahan Item
                       </h3>
                       <button
                         onClick={handleSelectAll}
@@ -252,13 +252,7 @@ const ServiceDetail = () => {
                     {/* Booking Button below service items */}
                     <div className="mt-8 text-center" data-aos="fade-up" data-aos-delay="400">
                       <button
-                        onClick={() => {
-                          if (selectedItems.length === 0) {
-                            toast.error('Silakan pilih minimal satu item layanan sebelum melakukan pemesanan.');
-                            return;
-                          }
-                          setShowBookingModal(true);
-                        }}
+                        onClick={() => setShowBookingModal(true)}
                         className="btn-primary text-lg px-8 py-4"
                       >
                         Pesan Layanan Ini
@@ -284,39 +278,33 @@ const ServiceDetail = () => {
                         </span>
                       </div>
                       
-                      {selectedItems.length > 0 ? (
-                        <>
-                          <div className="border-t pt-4">
-                            <div className="text-sm text-gray-600 mb-2">Item Terpilih:</div>
-                            {selectedItems.map((item) => (
+                      <div className="border-t pt-4">
+                        {selectedItems.length > 0 && (
+                          <>
+                            <div className="text-sm text-gray-600 mb-2">Item Tambahan:</div>
+                            {selectedItems.map((item, index) => (
                               <div key={item.id} className="flex justify-between items-center text-sm mb-1">
-                                <span className="text-gray-700">{item.name}</span>
+                                <span className="text-gray-700">{index + 1}. {item.name}</span>
                                 <span className="font-medium">{formatPrice(item.final_price || item.item_price || item.price)}</span>
                               </div>
                             ))}
-                            <div className="border-t pt-2 mt-2">
-                              <div className="flex justify-between items-center text-sm mb-2">
-                                <span>Total Harga Layanan:</span>
-                                <span className="font-medium text-gray-700">
-                                  {formatPrice(calculateTotalPrice(selectedItems))}
-                                </span>
-                              </div>
-                              <div className="flex flex-col font-bold text-lg">
-                                <span>Total Pembayaran Booking:</span>
-                                <span className="text-lg sm:text-xl text-primary-600">
-                                  {formatPrice(2000000)}
-                                </span>
-                              </div>
-                            </div>
+                          </>
+                        )}
+                        <div className="border-t pt-2 mt-2">
+                          <div className="flex justify-between items-center text-sm mb-2">
+                            <span>Total Harga Layanan:</span>
+                            <span className="font-medium text-gray-700">
+                              {formatPrice(calculateTotalPrice(selectedItems, service.base_price))}
+                            </span>
                           </div>
-                        </>
-                      ) : (
-                        <div className="border-t pt-4">
-                          <div className="text-sm text-gray-500 italic">
-                            Pilih item layanan untuk melihat total harga
+                          <div className="flex flex-col font-bold text-lg">
+                            <span>Total Pembayaran Booking:</span>
+                            <span className="text-lg sm:text-xl text-primary-600">
+                              {formatPrice(2000000)}
+                            </span>
                           </div>
                         </div>
-                      )}
+                      </div>
                     </div>
                   </div>
 
@@ -360,13 +348,7 @@ const ServiceDetail = () => {
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center" data-aos="fade-up" data-aos-delay="300">
                 <button
-                  onClick={() => {
-                    if (selectedItems.length === 0) {
-                      toast.error('Silakan pilih minimal satu item layanan sebelum melakukan pemesanan.');
-                      return;
-                    }
-                    setShowBookingModal(true);
-                  }}
+                  onClick={() => setShowBookingModal(true)}
                   className="bg-white text-gray-900 px-8 py-4 rounded-lg font-semibold text-lg hover:bg-gray-100 transition-all duration-300 hover:scale-105"
                 >
                   Pesan Sekarang
@@ -436,14 +418,14 @@ const PaymentInstructionsModal = ({ orderData, onClose }) => {
     
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Invoice No: ${orderData.id || 'N/A'}`, 150, 30);
-    doc.text(`Invoice Date: ${new Date().toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' })}`, 150, 37);
-    doc.text(`Due Date: ${new Date().toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' })}`, 150, 44);
+    doc.text(`No. Invoice: ${orderData.id || 'N/A'}`, 150, 30);
+    doc.text(`Tanggal Invoice: ${new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}`, 150, 37);
+    doc.text(`Jatuh Tempo: ${new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}`, 150, 44);
     
     // Bill To section
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
-    doc.text('Bill To:', 20, 70);
+    doc.text('Dibayar Kepada:', 20, 70);
     
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
@@ -451,7 +433,7 @@ const PaymentInstructionsModal = ({ orderData, onClose }) => {
     doc.text(orderData.email, 20, 84);
     doc.text(orderData.phone, 20, 91);
     doc.text(orderData.address, 20, 98);
-    doc.text(`Wedding Date: ${orderData.wedding_date}`, 20, 105);
+    doc.text(`Tanggal Pernikahan: ${orderData.wedding_date}`, 20, 105);
     
     // Service table header
     const startY = 120;
@@ -461,10 +443,10 @@ const PaymentInstructionsModal = ({ orderData, onClose }) => {
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(255, 255, 255); // White text
-    doc.text('Sl.', 25, startY + 6);
-    doc.text('Description', 40, startY + 6);
-    doc.text('Qty', 140, startY + 6);
-    doc.text('Amount', 170, startY + 6);
+    doc.text('No.', 25, startY + 6);
+    doc.text('Deskripsi', 40, startY + 6);
+    doc.text('Jml', 140, startY + 6);
+    doc.text('Harga', 170, startY + 6);
     
     // Reset text color
     doc.setTextColor(0, 0, 0);
@@ -473,13 +455,13 @@ const PaymentInstructionsModal = ({ orderData, onClose }) => {
     let currentY = startY + 15;
     let itemNumber = 1;
     
-    // Main service item
+    // Main service item (base price)
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.text(itemNumber.toString(), 25, currentY);
     doc.text(orderData.service_name, 40, currentY);
     doc.text('1', 140, currentY);
-    doc.text(formatPrice(calculateTotalPrice(orderData.selected_items)), 170, currentY);
+    doc.text(formatPrice(orderData.base_price || 0), 170, currentY);
     
     // Selected items as sub-items
     if (orderData.selected_items && orderData.selected_items.length > 0) {
@@ -497,34 +479,43 @@ const PaymentInstructionsModal = ({ orderData, onClose }) => {
       });
     }
     
+    // Add total service row
+    currentY += 8;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text('', 25, currentY); // Empty serial number
+    doc.text('Total Harga Layanan:', 40, currentY);
+    doc.text('', 140, currentY); // Empty quantity
+    doc.text(formatPrice(calculateTotalPrice(orderData.selected_items, orderData.base_price || 0)), 170, currentY);
+    
     // Add payment details
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.text('Payment Details:', 20, currentY + 10);
+    doc.text('Detail Pembayaran:', 20, currentY + 20);
     
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Total Service Price: ${formatPrice(calculateTotalPrice(orderData.selected_items))}`, 20, currentY + 20);
-    doc.text('Payment Method: Bank Transfer', 20, currentY + 27);
-    doc.text('Booking Fee: Rp 2.000.000', 20, currentY + 34);
-    doc.text(`Total Payment Required: ${formatPrice(2000000)}`, 20, currentY + 41);
+    doc.text(`Total Harga Layanan: ${formatPrice(calculateTotalPrice(orderData.selected_items, orderData.base_price || 0))}`, 20, currentY + 30);
+    doc.text('Metode Pembayaran: Transfer Bank', 20, currentY + 37);
+    doc.text('Biaya Booking: Rp 2.000.000', 20, currentY + 44);
+    doc.text(`Total Pembayaran Diperlukan: ${formatPrice(2000000)}`, 20, currentY + 51);
     
     // Add payment instructions
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.text('Payment Instructions:', 20, currentY + 50);
+    doc.text('Instruksi Pembayaran:', 20, currentY + 70);
     
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text('• Transfer Rp 2.000.000 untuk booking', 20, currentY + 60);
-    doc.text('• Simpan bukti transfer untuk konfirmasi', 20, currentY + 67);
-    doc.text('• Pembayaran akan dikonfirmasi dalam 1x24 jam', 20, currentY + 74);
-    doc.text('• Hubungi kami jika ada pertanyaan', 20, currentY + 81);
+    doc.text('• Transfer Rp 2.000.000 untuk booking', 20, currentY + 80);
+    doc.text('• Simpan bukti transfer untuk konfirmasi', 20, currentY + 87);
+    doc.text('• Pembayaran akan dikonfirmasi dalam 1x24 jam', 20, currentY + 94);
+    doc.text('• Hubungi kami jika ada pertanyaan', 20, currentY + 101);
     
     // Add footer
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
-    doc.text('Thank you for choosing our service!', 105, 280, { align: 'center' });
+    doc.text('Terima kasih telah memilih layanan kami!', 105, 280, { align: 'center' });
     
     // Save the PDF
     doc.save(`invoice-${orderData.id || 'order'}-${new Date().toISOString().split('T')[0]}.pdf`);
@@ -585,20 +576,15 @@ const BookingModal = ({ service, selectedItems, onClose, onOrderSuccess }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Check if any items are selected
-    if (selectedItems.length === 0) {
-      toast.error('Silakan pilih minimal satu item layanan sebelum melakukan pemesanan.');
-      return;
-    }
-    
     setIsSubmitting(true);
 
     try {
-      const totalAmount = calculateTotalPrice(selectedItems);
+      const totalAmount = calculateTotalPrice(selectedItems, service.base_price);
       const orderData = {
         ...formData,
         service_id: service.id,
         service_name: service.name,
+        base_price: service.base_price,
         selected_items: selectedItems,
         total_amount: totalAmount
       };
@@ -736,10 +722,10 @@ const BookingModal = ({ service, selectedItems, onClose, onOrderSuccess }) => {
                     
                     {selectedItems.length > 0 && (
                       <div className="space-y-2 mb-4">
-                        <h6 className="font-medium text-gray-700">Item Terpilih:</h6>
-                        {selectedItems.map((item) => (
+                        <h6 className="font-medium text-gray-700">Item Tambahan:</h6>
+                        {selectedItems.map((item, index) => (
                           <div key={item.id} className="flex justify-between items-center text-sm">
-                            <span className="text-gray-600">{item.name}</span>
+                            <span className="text-gray-600">{index + 1}. {item.name}</span>
                             <span className="font-medium">{formatPrice(item.final_price || item.item_price || item.price)}</span>
                           </div>
                         ))}
@@ -750,7 +736,7 @@ const BookingModal = ({ service, selectedItems, onClose, onOrderSuccess }) => {
                       <div className="flex justify-between items-center text-sm mb-2">
                         <span>Total Harga Layanan:</span>
                         <span className="font-medium text-gray-700">
-                          {formatPrice(calculateTotalPrice(selectedItems))}
+                          {formatPrice(calculateTotalPrice(selectedItems, service.base_price))}
                         </span>
                       </div>
                       <div className="flex justify-between items-center font-bold text-lg">
@@ -781,7 +767,8 @@ const BookingModal = ({ service, selectedItems, onClose, onOrderSuccess }) => {
                       Pembayaran akan dikonfirmasi dalam 1x24 jam setelah transfer dilakukan.
                     </p>
                     <p className="text-xs text-red-600">
-                      <strong>Catatan:</strong> Total harga layanan adalah {formatPrice(calculateTotalPrice(selectedItems))}. 
+                      <strong>Catatan:</strong> Total harga layanan adalah {formatPrice(calculateTotalPrice(selectedItems, service.base_price))}. 
+                      {selectedItems.length > 0 ? 'Paket lengkap dengan semua item terpilih.' : ''} 
                       Pembayaran Rp 2.000.000 adalah uang muka untuk booking. Sisa pembayaran dapat diselesaikan sesuai kesepakatan.
                     </p>
                   </div>
@@ -823,6 +810,7 @@ BookingModal.propTypes = {
     id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
     name: PropTypes.string.isRequired,
     description: PropTypes.string.isRequired,
+    base_price: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
   }).isRequired,
   selectedItems: PropTypes.arrayOf(
     PropTypes.shape({

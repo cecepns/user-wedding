@@ -4,6 +4,7 @@ import { Plus, Edit, Trash2 } from 'lucide-react';
 import PropTypes from 'prop-types';
 import toast, { Toaster } from 'react-hot-toast';
 import AdminLayout from '../../components/AdminLayout';
+import { formatRupiah } from '../../utils/formatters';
 
 const AdminItems = () => {
   const [items, setItems] = useState([]);
@@ -210,7 +211,7 @@ const AdminItems = () => {
                       
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-semibold text-primary-600">
-                        Rp {item.price?.toLocaleString()}
+                        {formatRupiah(item.price)}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -260,7 +261,6 @@ const AdminItems = () => {
         {showItemModal && (
           <ItemModal
             item={selectedItem}
-            categories={categories}
             onSubmit={handleItemSubmit}
             onClose={() => {
               setShowItemModal(false);
@@ -273,7 +273,7 @@ const AdminItems = () => {
   );
 };
 
-const ItemModal = ({ item, categories, onSubmit, onClose }) => {
+const ItemModal = ({ item, onSubmit, onClose }) => {
   const [formData, setFormData] = useState({
     name: item?.name || '',
     description: item?.description || '',
@@ -390,7 +390,6 @@ ItemModal.propTypes = {
     category: PropTypes.string,
     is_active: PropTypes.bool
   }),
-  categories: PropTypes.arrayOf(PropTypes.string).isRequired,
   onSubmit: PropTypes.func.isRequired,
   onClose: PropTypes.func.isRequired
 };
