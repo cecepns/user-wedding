@@ -72,7 +72,7 @@ const Home = () => {
                 >
                   Rencanakan Pernikahan Saya
                 </button>
-                <Link to="/services" className="btn-primary-outline">
+                <Link to="/services" className="btn-primary-outline text-center">
                   Lihat Layanan
                 </Link>
               </div>
