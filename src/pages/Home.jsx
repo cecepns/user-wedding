@@ -49,7 +49,7 @@ const Home = () => {
         <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent"></div>
 
         <div className="container-custom relative z-10 p-4 md:px-8 pt-24 md:pt-20">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+          <div className="flex flex-col-reverse lg:grid lg:grid-cols-2 gap-12 items-center">
             <div data-aos="fade-right" data-aos-delay="200">
               <h1 className=" text-5xl lg:text-7xl font-bold text-gray-800 mb-6 leading-tight">
                 Hari
