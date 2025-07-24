@@ -394,10 +394,13 @@ const ServiceDetail = () => {
 };
 
 const PaymentInstructionsModal = ({ orderData, onClose }) => {
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
+
   const downloadInvoice = () => {
     // Create PDF document
     const doc = new jsPDF();
     
+    // ===== PAGE 1 =====
     // Company header
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
@@ -467,10 +470,6 @@ const PaymentInstructionsModal = ({ orderData, onClose }) => {
     if (orderData.selected_items && orderData.selected_items.length > 0) {
       currentY += 8;
       orderData.selected_items.forEach((item) => {
-        if (currentY > 250) {
-          doc.addPage();
-          currentY = 20;
-        }
         doc.setFontSize(8);
         doc.text(`  ${item.name}`, 40, currentY);
         doc.text('1', 140, currentY);
@@ -496,27 +495,22 @@ const PaymentInstructionsModal = ({ orderData, onClose }) => {
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.text(`Total Harga Layanan: ${formatPrice(calculateTotalPrice(orderData.selected_items, orderData.base_price || 0))}`, 20, currentY + 30);
-    doc.text('Metode Pembayaran: Transfer Bank', 20, currentY + 37);
+    doc.text(`Metode Pembayaran: ${selectedPaymentMethod?.name || 'Transfer Bank'}`, 20, currentY + 37);
     doc.text('Biaya Booking: Rp 2.000.000', 20, currentY + 44);
     doc.text(`Total Pembayaran Diperlukan: ${formatPrice(2000000)}`, 20, currentY + 51);
     
-    // Add payment instructions
-    doc.setFontSize(14);
+    // Add bank account information
+    doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
-    doc.text('Instruksi Pembayaran:', 20, currentY + 70);
+    doc.text('Rekening Tujuan:', 20, currentY + 65);
     
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text('• Transfer Rp 2.000.000 untuk booking', 20, currentY + 80);
-    doc.text('• Simpan bukti transfer untuk konfirmasi', 20, currentY + 87);
-    doc.text('• Pembayaran akan dikonfirmasi dalam 1x24 jam', 20, currentY + 94);
-    doc.text('• Hubungi kami jika ada pertanyaan', 20, currentY + 101);
-    
-    // Add footer
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
+    doc.text(`Nomor Rekening: ${selectedPaymentMethod?.account_number || 'N/A'}`, 20, currentY + 75);
+    doc.text(`Atas Nama: ${selectedPaymentMethod?.details || 'N/A'}`, 20, currentY + 82);
+      
     doc.text('Terima kasih telah memilih layanan kami!', 105, 280, { align: 'center' });
-    
+
     // Save the PDF
     doc.save(`invoice-${orderData.id || 'order'}-${new Date().toISOString().split('T')[0]}.pdf`);
   };
@@ -542,10 +536,13 @@ const PaymentInstructionsModal = ({ orderData, onClose }) => {
                 Download Invoice
               </button>
             </div>
+            
+
             <PaymentInstructions
               totalAmount={orderData.total_amount}
               onComplete={onClose}
               onBack={onClose}
+              onPaymentMethodChange={setSelectedPaymentMethod}
             />
           </div>
         </div>
@@ -710,6 +707,8 @@ const BookingModal = ({ service, selectedItems, onClose, onOrderSuccess }) => {
                       placeholder="Berikan detail tambahan tentang kebutuhan Anda..."
                     ></textarea>
                   </div>
+
+
                 </div>
 
                 {/* Order Summary */}

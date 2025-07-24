@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 
-const PaymentInstructions = ({ totalAmount, onComplete, onBack }) => {
+const PaymentInstructions = ({ totalAmount, onComplete, onBack, onPaymentMethodChange }) => {
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [selectedMethod, setSelectedMethod] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -17,6 +17,9 @@ const PaymentInstructions = ({ totalAmount, onComplete, onBack }) => {
       setPaymentMethods(data);
       if (data.length > 0) {
         setSelectedMethod(data[0]);
+        if (onPaymentMethodChange) {
+          onPaymentMethodChange(data[0]);
+        }
       }
     } catch (error) {
       console.error('Error fetching payment methods:', error);
@@ -72,7 +75,12 @@ const PaymentInstructions = ({ totalAmount, onComplete, onBack }) => {
                       ? 'border-primary-500 bg-primary-50'
                       : 'border-gray-300 hover:border-primary-300'
                   }`}
-                  onClick={() => setSelectedMethod(method)}
+                  onClick={() => {
+                    setSelectedMethod(method);
+                    if (onPaymentMethodChange) {
+                      onPaymentMethodChange(method);
+                    }
+                  }}
                 >
                   <div className="flex items-center justify-between">
                     <div>
@@ -117,7 +125,7 @@ const PaymentInstructions = ({ totalAmount, onComplete, onBack }) => {
                 
                 {selectedMethod.details && (
                   <div>
-                    <span className="text-sm font-medium text-gray-600">Instruksi:</span>
+                    <span className="text-sm font-medium text-gray-600">Deskripsi:</span>
                     <div className="mt-1 text-sm text-gray-700 whitespace-pre-line">
                       {selectedMethod.details}
                     </div>
@@ -212,6 +220,7 @@ PaymentInstructions.propTypes = {
   totalAmount: PropTypes.number.isRequired,
   onComplete: PropTypes.func.isRequired,
   onBack: PropTypes.func.isRequired,
+  onPaymentMethodChange: PropTypes.func,
 };
 
 export default PaymentInstructions; 

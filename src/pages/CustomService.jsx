@@ -23,11 +23,17 @@ const CustomService = () => {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [showPaymentInstructions, setShowPaymentInstructions] = useState(false);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
   useEffect(() => {
     fetchServiceOptions();
     fetchPaymentMethods();
   }, []);
+
+  // Scroll to top when switching between tabs
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [showForm]);
 
   const fetchServiceOptions = async () => {
     try {
@@ -112,14 +118,20 @@ const CustomService = () => {
       return;
     }
     setShowForm(true);
+    // Scroll to top when switching to form
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleBackToServices = () => {
     setShowForm(false);
+    // Scroll to top when switching back to services
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleBackToForm = () => {
     setShowPaymentInstructions(false);
+    // Scroll to top when going back to form
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handlePaymentComplete = () => {
@@ -134,139 +146,199 @@ const CustomService = () => {
     window.open(whatsappUrl, '_blank');
   };
 
-  const handleDownloadInvoice = () => {
-    const doc = new jsPDF();
-    
-    // Company header
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.text('User Wedding Organizer', 20, 20);
-    
-    // Company details
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text('Jl. Raya panongan Kec. Panongan Kab. Tangerang Provinsi Banten', 20, 30);
-    doc.text('Telephone: 089646829459', 20, 37);
-    doc.text('Email: edo19priyatno@gmail.com', 20, 44);
-    doc.text('Website: https://sites.google.com/view/userwedding/beranda', 20, 51);
-    
-    // Invoice details (right side)
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('INVOICE', 140, 20);
-    
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`No. Invoice: CUSTOM-${new Date().getTime()}`, 140, 30);
-    doc.text(`Tanggal Invoice: ${new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}`, 140, 37);
-    doc.text(`Jatuh Tempo: ${new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}`, 140, 44);
-    
-    // Bill To section
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Dibayar Kepada:', 20, 70);
-    
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(formData.name, 20, 77);
-    doc.text(formData.email, 20, 84);
-    doc.text(formData.phone, 20, 91);
-    doc.text(`Tanggal Pernikahan: ${formData.wedding_date}`, 20, 98);
-    doc.text(`Jumlah Tamu: ${formData.guest_count}`, 20, 105);
-    doc.text(`Rentang Budget: ${formData.budget}`, 20, 112);
-    
-    // Service table header
-    const startY = 125;
-    doc.setFillColor(52, 152, 219); // Blue background
-    doc.rect(20, startY, 170, 8, 'F');
-    
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(255, 255, 255); // White text
-    doc.text('No.', 25, startY + 6);
-    doc.text('Deskripsi', 40, startY + 6);
-    doc.text('Jml', 140, startY + 6);
-    doc.text('Harga', 170, startY + 6);
-    
-    // Reset text color
-    doc.setTextColor(0, 0, 0);
-    
-    // Service items
-    let currentY = startY + 15;
-    formData.services.forEach((serviceName, idx) => {
-      const service = serviceOptions.find(s => s.name === serviceName);
-      let price = service ? service.price : 0;
-      if (typeof price === 'string') price = parseFloat(price);
-      
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      doc.text((idx + 1).toString(), 25, currentY);
-      doc.text(serviceName, 40, currentY);
-      doc.text('1', 140, currentY);
-      doc.text(formatRupiah(isNaN(price) ? 0 : price), 170, currentY);
-      currentY += 7;
-      
-      if (currentY > 250) {
-        doc.addPage();
-        currentY = 20;
-      }
-    });
-    
-    // Add total service row
-    currentY += 8;
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.text('', 25, currentY); // Empty serial number
-    doc.text('Total Harga Layanan:', 40, currentY);
-    doc.text('', 140, currentY); // Empty quantity
-    doc.text(formatRupiah(calculateTotalPrice()), 170, currentY);
-    
-    // Add payment details
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Detail Pembayaran:', 20, currentY + 20);
-    
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Total Harga Layanan: ${formatRupiah(calculateTotalPrice())}`, 20, currentY + 30);
-    doc.text('Metode Pembayaran: Transfer Bank', 20, currentY + 37);
-    doc.text('Biaya Booking: Rp 2.000.000', 20, currentY + 44);
-    doc.text(`Total Pembayaran Diperlukan: ${formatRupiah(2000000)}`, 20, currentY + 51);
-    
-    // Add selected payment method details
-    if (selectedPaymentMethod) {
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Rekening Tujuan:', 20, currentY + 65);
-      
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Bank: ${selectedPaymentMethod.name}`, 20, currentY + 72);
-      doc.text(`Nomor Rekening: ${selectedPaymentMethod.account_number}`, 20, currentY + 79);
-      if (selectedPaymentMethod.details) {
-        doc.text(`Detail: ${selectedPaymentMethod.details}`, 20, currentY + 86);
-      }
+    const handleDownloadInvoice = () => {
+    if (!formData.name || !formData.services.length) {
+      toast.error('Silakan lengkapi data terlebih dahulu');
+      return;
     }
     
-    // Add payment instructions
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Instruksi Pembayaran:', 20, currentY + 105);
+    setIsGeneratingPDF(true);
     
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text('• Transfer Rp 2.000.000 untuk booking', 20, currentY + 115);
-    doc.text('• Simpan bukti transfer untuk konfirmasi', 20, currentY + 122);
-    doc.text('• Pembayaran akan dikonfirmasi dalam 1x24 jam', 20, currentY + 129);
-    doc.text('• Hubungi kami jika ada pertanyaan', 20, currentY + 136);
-    
-    // Add footer
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Terima kasih telah memilih layanan kami!', 105, 280, { align: 'center' });
-    
-    // Save the PDF
-    doc.save(`invoice-custom-${formData.name || 'order'}-${new Date().toISOString().split('T')[0]}.pdf`);
+    try {
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.width;
+      const pageHeight = doc.internal.pageSize.height;
+      const margin = 20;
+      const contentWidth = pageWidth - (margin * 2);
+      
+      // Helper function to add text with automatic line wrapping
+      const addWrappedText = (text, x, y, maxWidth, fontSize = 10) => {
+        doc.setFontSize(fontSize);
+        const lines = doc.splitTextToSize(text, maxWidth);
+        lines.forEach((line, index) => {
+          doc.text(line, x, y + (index * (fontSize * 0.4)));
+        });
+        return lines.length * (fontSize * 0.4);
+      };
+
+      // Generate invoice number
+      const invoiceNumber = `CUSTOM-${Math.floor(Math.random() * 1000000)}`;
+      const currentDate = new Date().toLocaleDateString('id-ID', { 
+        day: '2-digit', 
+        month: 'long', 
+        year: 'numeric' 
+      });
+      
+      // Page 1: Header and Company Info
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text('User Wedding Organizer', margin, 20);
+      
+      // Company details
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Jl. Raya panongan Kec. Panongan Kab. Tangerang Provinsi Banten', margin, 30);
+      doc.text('Telephone: 089646829459', margin, 37);
+      doc.text('Email: edo19priyatno@gmail.com', margin, 44);
+      doc.text('Website: https://sites.google.com/view/userwedding/beranda', margin, 51);
+      
+      // Invoice details (right side)
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text('INVOICE', pageWidth - margin - 30, 20);
+      
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`No. Invoice: ${invoiceNumber}`, pageWidth - margin - 30, 30);
+      doc.text(`Tanggal Invoice: ${currentDate}`, pageWidth - margin - 30, 37);
+      doc.text(`Jatuh Tempo: ${currentDate}`, pageWidth - margin - 30, 44);
+      
+      // Bill To section
+      let currentY = 70;
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Dibayar Kepada:', margin, currentY);
+      currentY += 10;
+      
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(formData.name, margin, currentY);
+      currentY += 7;
+      doc.text(formData.email, margin, currentY);
+      currentY += 7;
+      doc.text(formData.phone, margin, currentY);
+      currentY += 7;
+      doc.text(`Tanggal Pernikahan: ${formData.wedding_date}`, margin, currentY);
+      currentY += 7;
+      doc.text(`Jumlah Tamu: ${formData.guest_count}`, margin, currentY);
+      currentY += 7;
+      doc.text(`Rentang Budget: ${formData.budget}`, margin, currentY);
+      currentY += 15;
+      
+      // Service table header
+      doc.setFillColor(52, 152, 219); // Blue background
+      doc.rect(margin, currentY, contentWidth, 8, 'F');
+      
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(255, 255, 255); // White text
+      doc.text('No.', margin + 5, currentY + 6);
+      doc.text('Deskripsi', margin + 20, currentY + 6);
+      doc.text('Jml', margin + 120, currentY + 6);
+      doc.text('Harga', margin + 150, currentY + 6);
+      
+      // Reset text color
+      doc.setTextColor(0, 0, 0);
+      currentY += 15;
+      
+      // Service items
+      formData.services.forEach((serviceName, idx) => {
+        const service = serviceOptions.find(s => s.name === serviceName);
+        let price = service ? service.price : 0;
+        if (typeof price === 'string') price = parseFloat(price);
+        
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text((idx + 1).toString(), margin + 5, currentY);
+        
+        // Handle long service names with wrapping
+        const serviceNameLines = doc.splitTextToSize(serviceName, 80);
+        serviceNameLines.forEach((line, lineIndex) => {
+          doc.text(line, margin + 20, currentY + (lineIndex * 4));
+        });
+        
+        doc.text('1', margin + 120, currentY);
+        doc.text(formatRupiah(isNaN(price) ? 0 : price), margin + 150, currentY);
+        currentY += Math.max(7, serviceNameLines.length * 4);
+      });
+      
+      // Add total service row
+      currentY += 8;
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text('', margin + 5, currentY); // Empty serial number
+      doc.text('Total Harga Layanan:', margin + 20, currentY);
+      doc.text('', margin + 120, currentY); // Empty quantity
+      doc.text(formatRupiah(calculateTotalPrice()), margin + 150, currentY);
+      currentY += 20;
+      
+      
+      // Payment details section
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Detail Pembayaran:', margin, currentY);
+      currentY += 15;
+      
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Total Harga Layanan: ${formatRupiah(calculateTotalPrice())}`, margin, currentY);
+      currentY += 7;
+      doc.text('Metode Pembayaran: Transfer Bank', margin, currentY);
+      currentY += 7;
+      doc.text('Biaya Booking: Rp 2.000.000', margin, currentY);
+      currentY += 7;
+      doc.text(`Total Pembayaran Diperlukan: ${formatRupiah(2000000)}`, margin, currentY);
+      currentY += 15;
+      
+      // Add selected payment method details
+      if (selectedPaymentMethod) {
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Rekening Tujuan:', margin, currentY);
+        currentY += 10;
+        
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Bank: ${selectedPaymentMethod.name}`, margin, currentY);
+        currentY += 7;
+        doc.text(`Nomor Rekening: ${selectedPaymentMethod.account_number}`, margin, currentY);
+        currentY += 7;
+        if (selectedPaymentMethod.details) {
+          doc.text(`Detail: ${selectedPaymentMethod.details}`, margin, currentY);
+          currentY += 7;
+        }
+        currentY += 10;
+      } else {
+        // Default payment method if none selected
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Rekening Tujuan:', margin, currentY);
+        currentY += 10;
+        
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Bank: BSI', margin, currentY);
+        currentY += 7;
+        doc.text('Nomor Rekening: 4321', margin, currentY);
+        currentY += 7;
+        doc.text('Detail: Atas Nama User Wedding', margin, currentY);
+        currentY += 10;
+      }
+      
+      // Footer
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Terima kasih telah memilih layanan kami!', pageWidth / 2, pageHeight - 20, { align: 'center' });
+      
+      // Save the PDF
+      doc.save(`invoice-custom-${formData.name || 'order'}-${new Date().toISOString().split('T')[0]}.pdf`);
+      toast.success('Invoice berhasil diunduh!');
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast.error('Gagal mengunduh invoice. Silakan coba lagi.');
+    } finally {
+      setIsGeneratingPDF(false);
+    }
   };
 
   // Payment Instructions Component
@@ -275,8 +347,8 @@ const CustomService = () => {
 
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-          <div className="p-6">
+        <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto mx-4">
+          <div className="p-4 sm:p-6">
             <div className="text-center mb-6">
               <h3 className="text-2xl font-bold text-gray-800 mb-2">
                 Instruksi Pembayaran
@@ -367,7 +439,7 @@ const CustomService = () => {
                       </span>
                     </div>
                     <div className="border-t pt-2">
-                      <div className="flex justify-between items-center">
+                      <div className="flex flex-wrap justify-between items-center">
                         <span className="font-medium text-gray-800">Total Pembayaran Booking:</span>
                         <span className="text-2xl font-bold text-primary-600">
                           {formatRupiah(2000000)}
@@ -407,27 +479,44 @@ const CustomService = () => {
             )}
 
             {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-3 pt-6 border-t">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-6 border-t">
               <button
                 onClick={handleBackToForm}
-                className="flex-1 px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                className="w-full px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
               >
                 Kembali
               </button>
               
               <button
                 onClick={handleDownloadInvoice}
-                className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                disabled={isGeneratingPDF}
+                className={`w-full px-6 py-3 rounded-lg transition-colors flex items-center justify-center gap-2 ${
+                  isGeneratingPDF 
+                    ? 'bg-gray-400 text-white cursor-not-allowed' 
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                Download Invoice
+                {isGeneratingPDF ? (
+                  <>
+                    <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Menghasilkan PDF...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Download Invoice
+                  </>
+                )}
               </button>
               
               <button
                 onClick={handleWhatsAppContact}
-                className="flex-1 px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center justify-center gap-2"
+                className="w-full px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center justify-center gap-2"
               >
                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488"/>
@@ -438,7 +527,7 @@ const CustomService = () => {
               {paymentMethods.length > 0 && (
                 <button
                   onClick={handlePaymentComplete}
-                  className="flex-1 px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                  className="w-full px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
                 >
                   Selesai
                 </button>
@@ -461,13 +550,13 @@ const CustomService = () => {
       </Helmet>
 
       <div className="min-h-screen bg-gradient-to-br from-primary-50 to-secondary-50 py-32">
-        <div className="container-custom">
+        <div className="container-custom px-4">
           {/* Header */}
           <div className="text-center mb-12">
-            <h1 className="text-4xl lg:text-5xl font-bold text-gray-800 mb-6">
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-800 mb-6">
               Layanan Pernikahan Kustom
             </h1>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            <p className="text-lg sm:text-xl text-gray-600 max-w-3xl mx-auto px-4">
               Buat layanan pernikahan yang sesuai dengan kebutuhan dan budget Anda. 
               Pilih layanan yang Anda inginkan dan kami akan menyesuaikan dengan preferensi Anda.
             </p>
@@ -478,8 +567,8 @@ const CustomService = () => {
             <div className="max-w-6xl mx-auto">
               {/* Service Selection Header */}
               <div className="mb-8">
-                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6">
-                  <h2 className="text-3xl font-bold text-gray-800 mb-4 sm:mb-0">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-4">
+                  <h2 className="text-2xl sm:text-3xl font-bold text-gray-800">
                     Pilih Layanan
                   </h2>
                   <button
@@ -493,7 +582,7 @@ const CustomService = () => {
                         }));
                       }
                     }}
-                    className={`px-6 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    className={`w-full sm:w-auto px-6 py-2 rounded-lg text-sm font-medium transition-colors ${
                       formData.services.length === serviceOptions.length && serviceOptions.length > 0
                         ? 'bg-red-600 text-white hover:bg-red-700'
                         : 'bg-primary-600 text-white hover:bg-primary-700'
@@ -506,7 +595,7 @@ const CustomService = () => {
                 {/* Selected Services Summary */}
                 {formData.services.length > 0 && (
                   <div className="bg-white rounded-lg p-4 mb-6 border border-green-200">
-                    <div className="flex justify-between items-center">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                       <span className="text-gray-700">
                         <span className="font-medium">{formData.services.length}</span> layanan dipilih
                       </span>
@@ -529,14 +618,14 @@ const CustomService = () => {
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
                   >
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                       <div className="flex-1">
-                        <div className="flex items-center gap-4 mb-2">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mb-2">
                           <h3 className="text-xl font-semibold text-gray-800">
                             {service.name}
                           </h3>
                           {service.category && (
-                            <span className="px-3 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
+                            <span className="px-3 py-1 text-xs bg-blue-100 text-blue-800 rounded-full self-start">
                               {service.category}
                             </span>
                           )}
@@ -545,15 +634,15 @@ const CustomService = () => {
                           {service.description}
                         </p>
                       </div>
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
+                        <div className="text-left sm:text-right">
                           <div className="text-2xl font-bold text-primary-600">
                             {formatRupiah(service.price)}
                           </div>
                         </div>
                         <button
                           onClick={() => handleServiceToggle(service)}
-                          className={`px-6 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          className={`w-full sm:w-auto px-6 py-2 rounded-lg text-sm font-medium transition-colors ${
                             formData.services.includes(service.name)
                               ? 'bg-primary-600 text-white hover:bg-primary-700'
                               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -595,11 +684,11 @@ const CustomService = () => {
                     ← Kembali ke Pilihan Layanan
                   </button>
                 </div>
-                <h2 className="text-3xl font-bold text-gray-800 mb-4">
+                <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-4">
                   Informasi Pribadi
                 </h2>
                 <div className="bg-white rounded-lg p-4 border border-green-200">
-                  <div className="flex justify-between items-center">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                     <span className="text-gray-700">
                       <span className="font-medium">{formData.services.length}</span> layanan dipilih
                     </span>
@@ -706,13 +795,13 @@ const CustomService = () => {
                     <button
                       type="button"
                       onClick={() => navigate('/')}
-                      className="px-8 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors font-medium"
+                      className="w-full sm:w-auto px-8 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors font-medium"
                     >
                       Kembali ke Beranda
                     </button>
                     <button
                       type="submit"
-                      className="btn-primary"
+                      className="w-full sm:w-auto btn-primary"
                     >
                       Kirim Permintaan
                     </button>
