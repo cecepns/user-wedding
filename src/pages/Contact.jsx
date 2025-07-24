@@ -141,7 +141,7 @@ const Contact = () => {
                     </div>
                     <div>
                       <h3 className="font-semibold text-gray-800 mb-1">Alamat</h3>
-                      <p className="text-gray-600">123 Jalan Pernikahan<br />Jakarta, Indonesia 12345</p>
+                      <p className="text-gray-600">Jl. Raya panongan Kec. Panongan Kab. Tangerang<br />Provinsi Banten</p>
                     </div>
                   </div>
                   
@@ -153,7 +153,7 @@ const Contact = () => {
                     </div>
                     <div>
                       <h3 className="font-semibold text-gray-800 mb-1">Telepon</h3>
-                      <p className="text-gray-600">+62 123 456 7890</p>
+                      <p className="text-gray-600">089646829459</p>
                     </div>
                   </div>
                   
@@ -165,7 +165,7 @@ const Contact = () => {
                     </div>
                     <div>
                       <h3 className="font-semibold text-gray-800 mb-1">Email</h3>
-                      <p className="text-gray-600">hello@userwedding.com</p>
+                      <p className="text-gray-600">edo19priyatno@gmail.com</p>
                     </div>
                   </div>
                   

@@ -51,10 +51,10 @@ const Footer = () => {
           <div>
             <h3 className=" text-lg font-semibold mb-4">Informasi Kontak</h3>
             <div className="space-y-2 text-gray-400">
-              <p>123 Jalan Pernikahan</p>
-              <p>Jakarta, Indonesia</p>
-              <p>Telepon: +62 123 456 7890</p>
-              <p>Email: hello@userwedding.com</p>
+              <p>Jl. Raya panongan Kec. Panongan Kab. Tangerang</p>
+              <p>Provinsi Banten</p>
+              <p>Telepon: 089646829459</p>
+              <p>Email: edo19priyatno@gmail.com</p>
             </div>
           </div>
         </div>

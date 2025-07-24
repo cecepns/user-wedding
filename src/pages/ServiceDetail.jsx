@@ -55,7 +55,7 @@ const ServiceDetail = () => {
       const itemsResponse = await fetch(`https://api-inventory.isavralabel.com/user-wedding/api/services/${id}/items`);
       const itemsData = await itemsResponse.json();
       setItems(itemsData);
-      setSelectedItems(itemsData); // Auto-select all items on first load
+      // Don't auto-select items - start with empty selection
     } catch (error) {
       console.error('Error fetching service data:', error);
     } finally {
@@ -143,7 +143,13 @@ const ServiceDetail = () => {
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4" data-aos="fade-up" data-aos-delay="200">
                   <button
-                    onClick={() => setShowBookingModal(true)}
+                    onClick={() => {
+                      if (selectedItems.length === 0) {
+                        toast.error('Silakan pilih minimal satu item layanan sebelum melakukan pemesanan.');
+                        return;
+                      }
+                      setShowBookingModal(true);
+                    }}
                     className="btn-primary text-lg px-8 py-4"
                   >
                     Pesan Layanan Ini
@@ -246,7 +252,13 @@ const ServiceDetail = () => {
                     {/* Booking Button below service items */}
                     <div className="mt-8 text-center" data-aos="fade-up" data-aos-delay="400">
                       <button
-                        onClick={() => setShowBookingModal(true)}
+                        onClick={() => {
+                          if (selectedItems.length === 0) {
+                            toast.error('Silakan pilih minimal satu item layanan sebelum melakukan pemesanan.');
+                            return;
+                          }
+                          setShowBookingModal(true);
+                        }}
                         className="btn-primary text-lg px-8 py-4"
                       >
                         Pesan Layanan Ini
@@ -272,15 +284,15 @@ const ServiceDetail = () => {
                         </span>
                       </div>
                       
-                      {selectedItems.length > 0 && (
+                      {selectedItems.length > 0 ? (
                         <>
                           <div className="border-t pt-4">
                             <div className="text-sm text-gray-600 mb-2">Item Terpilih:</div>
                             {selectedItems.map((item) => (
-                                                          <div key={item.id} className="flex justify-between items-center text-sm mb-1">
-                              <span className="text-gray-700">{item.name}</span>
-                              <span className="font-medium">{formatPrice(item.final_price || item.item_price || item.price)}</span>
-                            </div>
+                              <div key={item.id} className="flex justify-between items-center text-sm mb-1">
+                                <span className="text-gray-700">{item.name}</span>
+                                <span className="font-medium">{formatPrice(item.final_price || item.item_price || item.price)}</span>
+                              </div>
                             ))}
                             <div className="border-t pt-2 mt-2">
                               <div className="flex justify-between items-center text-sm mb-2">
@@ -298,6 +310,12 @@ const ServiceDetail = () => {
                             </div>
                           </div>
                         </>
+                      ) : (
+                        <div className="border-t pt-4">
+                          <div className="text-sm text-gray-500 italic">
+                            Pilih item layanan untuk melihat total harga
+                          </div>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -342,7 +360,13 @@ const ServiceDetail = () => {
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center" data-aos="fade-up" data-aos-delay="300">
                 <button
-                  onClick={() => setShowBookingModal(true)}
+                  onClick={() => {
+                    if (selectedItems.length === 0) {
+                      toast.error('Silakan pilih minimal satu item layanan sebelum melakukan pemesanan.');
+                      return;
+                    }
+                    setShowBookingModal(true);
+                  }}
                   className="bg-white text-gray-900 px-8 py-4 rounded-lg font-semibold text-lg hover:bg-gray-100 transition-all duration-300 hover:scale-105"
                 >
                   Pesan Sekarang
@@ -560,6 +584,13 @@ const BookingModal = ({ service, selectedItems, onClose, onOrderSuccess }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Check if any items are selected
+    if (selectedItems.length === 0) {
+      toast.error('Silakan pilih minimal satu item layanan sebelum melakukan pemesanan.');
+      return;
+    }
+    
     setIsSubmitting(true);
 
     try {
