@@ -36,7 +36,7 @@ const Home = () => {
         <div className="container-custom relative z-10 p-4 md:px-8 pt-24 md:pt-20">
           <div className="flex flex-col-reverse lg:grid lg:grid-cols-2 gap-12 items-center">
             <div data-aos="fade-right" data-aos-delay="200">
-              <h1 className="text-xl md:text-5xl lg:text-7xl font-bold text-gray-800 mb-6 leading-tight">
+              <h1 className="text-3xl md:text-5xl lg:text-7xl font-bold text-gray-800 mb-6 leading-tight">
                 Hari
                 <span className="text-gradient block">Pernikahan</span>
                 Sempurna Anda
@@ -70,7 +70,7 @@ const Home = () => {
       </section>
 
       {/* Features Section */}
-      <section className="section-padding bg-slate-50">
+      {/* <section className="section-padding bg-slate-50">
         <div className="container-custom">
           <div className="text-center mb-16" data-aos="fade-up">
             <h2 className=" text-4xl lg:text-5xl font-bold text-gray-800 mb-6">
@@ -118,7 +118,7 @@ const Home = () => {
             ))}
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* Services Preview */}
       <section className="section-padding">
