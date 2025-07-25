@@ -12,10 +12,9 @@ const CustomService = () => {
     email: '',
     phone: '',
     wedding_date: '',
-    guest_count: '',
-    budget: '',
     services: [],
-    additional_requests: ''
+    additional_requests: '',
+    booking_amount: 300000 // Default minimum booking amount
   });
 
   const [serviceOptions, setServiceOptions] = useState([]);
@@ -24,6 +23,7 @@ const CustomService = () => {
   const [showForm, setShowForm] = useState(false);
   const [showPaymentInstructions, setShowPaymentInstructions] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [customRequestId, setCustomRequestId] = useState(null);
 
   useEffect(() => {
     fetchServiceOptions();
@@ -101,6 +101,8 @@ const CustomService = () => {
       });
 
       if (response.ok) {
+        const result = await response.json();
+        setCustomRequestId(result.id);
         setShowPaymentInstructions(true);
         toast.success('Permintaan layanan kustom berhasil dikirim! Silakan pilih metode pembayaran.');
       } else {
@@ -146,7 +148,7 @@ const CustomService = () => {
     window.open(whatsappUrl, '_blank');
   };
 
-    const handleDownloadInvoice = () => {
+  const handleDownloadInvoice = () => {
     if (!formData.name || !formData.services.length) {
       toast.error('Silakan lengkapi data terlebih dahulu');
       return;
@@ -161,23 +163,20 @@ const CustomService = () => {
       const margin = 20;
       const contentWidth = pageWidth - (margin * 2);
       
-      // Helper function to add text with automatic line wrapping
-      const addWrappedText = (text, x, y, maxWidth, fontSize = 10) => {
-        doc.setFontSize(fontSize);
-        const lines = doc.splitTextToSize(text, maxWidth);
-        lines.forEach((line, index) => {
-          doc.text(line, x, y + (index * (fontSize * 0.4)));
-        });
-        return lines.length * (fontSize * 0.4);
-      };
-
-      // Generate invoice number
-      const invoiceNumber = `CUSTOM-${Math.floor(Math.random() * 1000000)}`;
+      // Generate invoice number using custom request ID
+      const invoiceNumber = `CUSTOM-${customRequestId || '000'}`;
       const currentDate = new Date().toLocaleDateString('id-ID', { 
         day: '2-digit', 
         month: 'long', 
         year: 'numeric' 
       });
+      
+      // Format wedding date for due date
+      const weddingDate = formData.wedding_date ? new Date(formData.wedding_date).toLocaleDateString('id-ID', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric'
+      }) : currentDate;
       
       // Page 1: Header and Company Info
       doc.setFontSize(16);
@@ -201,7 +200,7 @@ const CustomService = () => {
       doc.setFont('helvetica', 'normal');
       doc.text(`No. Invoice: ${invoiceNumber}`, pageWidth - margin - 30, 30);
       doc.text(`Tanggal Invoice: ${currentDate}`, pageWidth - margin - 30, 37);
-      doc.text(`Jatuh Tempo: ${currentDate}`, pageWidth - margin - 30, 44);
+      doc.text(`Jatuh Tempo: ${weddingDate}`, pageWidth - margin - 30, 44);
       
       // Bill To section
       let currentY = 70;
@@ -218,11 +217,7 @@ const CustomService = () => {
       currentY += 7;
       doc.text(formData.phone, margin, currentY);
       currentY += 7;
-      doc.text(`Tanggal Pernikahan: ${formData.wedding_date}`, margin, currentY);
-      currentY += 7;
-      doc.text(`Jumlah Tamu: ${formData.guest_count}`, margin, currentY);
-      currentY += 7;
-      doc.text(`Rentang Budget: ${formData.budget}`, margin, currentY);
+      doc.text(`Tanggal Pernikahan: ${weddingDate}`, margin, currentY);
       currentY += 15;
       
       // Service table header
@@ -272,7 +267,6 @@ const CustomService = () => {
       doc.text(formatRupiah(calculateTotalPrice()), margin + 150, currentY);
       currentY += 20;
       
-      
       // Payment details section
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
@@ -285,9 +279,9 @@ const CustomService = () => {
       currentY += 7;
       doc.text('Metode Pembayaran: Transfer Bank', margin, currentY);
       currentY += 7;
-      doc.text('Biaya Booking: Rp 2.000.000', margin, currentY);
+      doc.text(`Biaya Booking: ${formatRupiah(formData.booking_amount)}`, margin, currentY);
       currentY += 7;
-      doc.text(`Total Pembayaran Diperlukan: ${formatRupiah(2000000)}`, margin, currentY);
+      doc.text(`Total Pembayaran Diperlukan: ${formatRupiah(formData.booking_amount)}`, margin, currentY);
       currentY += 15;
       
       // Add selected payment method details
@@ -442,7 +436,7 @@ const CustomService = () => {
                       <div className="flex flex-wrap justify-between items-center">
                         <span className="font-medium text-gray-800">Total Pembayaran Booking:</span>
                         <span className="text-2xl font-bold text-primary-600">
-                          {formatRupiah(2000000)}
+                          {formatRupiah(formData.booking_amount)}
                         </span>
                       </div>
                     </div>
@@ -453,7 +447,7 @@ const CustomService = () => {
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                   <h5 className="font-semibold text-yellow-800 mb-2">Penting!</h5>
                   <ul className="text-sm text-yellow-700 space-y-1">
-                    <li>• Transfer Rp 2.000.000 untuk booking (uang muka)</li>
+                    <li>• Transfer {formatRupiah(formData.booking_amount)} untuk booking (uang muka)</li>
                     <li>• Simpan bukti transfer untuk konfirmasi</li>
                     <li>• Pembayaran akan dikonfirmasi dalam 1x24 jam</li>
                     <li>• Hubungi kami jika ada pertanyaan</li>
@@ -461,7 +455,7 @@ const CustomService = () => {
                   <div className="mt-3 pt-3 border-t border-yellow-200">
                     <p className="text-xs text-yellow-600">
                       <strong>Catatan:</strong> Total harga layanan adalah {formatRupiah(calculateTotalPrice())}. 
-                      Pembayaran Rp 2.000.000 adalah uang muka untuk booking. Sisa pembayaran dapat diselesaikan sesuai kesepakatan.
+                      Pembayaran {formatRupiah(formData.booking_amount)} adalah uang muka untuk booking. Sisa pembayaran dapat diselesaikan sesuai kesepakatan.
                     </p>
                   </div>
                 </div>
@@ -748,33 +742,26 @@ const CustomService = () => {
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                       />
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Jumlah Tamu</label>
-                      <input
-                        type="number"
-                        name="guest_count"
-                        value={formData.guest_count}
-                        onChange={handleInputChange}
-                        required
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Rentang Budget</label>
-                      <select
-                        name="budget"
-                        value={formData.budget}
-                        onChange={handleInputChange}
-                        required
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      >
-                        <option value="">Pilih rentang budget</option>
-                        <option value="10-25">Rp 10.000.000 - Rp 25.000.000</option>
-                        <option value="25-50">Rp 25.000.000 - Rp 50.000.000</option>
-                        <option value="50-100">Rp 50.000.000 - Rp 100.000.000</option>
-                        <option value="100+">Rp 100.000.000+</option>
-                      </select>
-                    </div>
+                  </div>
+
+                  {/* Booking Amount */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Jumlah Booking (Minimal Rp 300.000)
+                    </label>
+                    <input
+                      type="number"
+                      name="booking_amount"
+                      value={formData.booking_amount}
+                      onChange={handleInputChange}
+                      min="300000"
+                      step="100000"
+                      required
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    />
+                    <p className="text-sm text-gray-500 mt-1">
+                      Minimal booking Rp 300.000. Anda dapat menyesuaikan jumlah sesuai kebutuhan.
+                    </p>
                   </div>
 
                   {/* Additional Requests */}
@@ -812,6 +799,7 @@ const CustomService = () => {
           )}
         </div>
       </div>
+
 
       {/* Payment Instructions Modal */}
       <PaymentInstructionsModal />

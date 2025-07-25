@@ -22,6 +22,7 @@ import AdminPayments from './pages/admin/AdminPayments';
 import AdminOrders from './pages/admin/AdminOrders';
 import AdminGallery from './pages/admin/AdminGallery';
 import AdminArticles from './pages/admin/AdminArticles';
+import AdminContactMessages from './pages/admin/AdminContactMessages';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -66,6 +67,11 @@ function App() {
             <Route path="/admin/gallery" element={
               <ProtectedRoute>
                 <AdminGallery />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/contact-messages" element={
+              <ProtectedRoute>
+                <AdminContactMessages />
               </ProtectedRoute>
             } />
             

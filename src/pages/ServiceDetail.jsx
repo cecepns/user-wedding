@@ -147,16 +147,16 @@ const ServiceDetail = () => {
                 <p className="text-lg sm:text-xl text-gray-600 mb-8 leading-relaxed">
                   {service.description}
                 </p>
-                <div className="flex flex-col sm:flex-row gap-4" data-aos="fade-up" data-aos-delay="200">
+                <div className="flex flex-col gap-5" data-aos="fade-up" data-aos-delay="200">
+                  <p className="text-2xl md:text-4xl text-primary-600 font-bold leading-relaxed">
+                    {formatPrice(service.base_price)}
+                  </p>
                   <button
                     onClick={() => setShowBookingModal(true)}
-                    className="btn-primary text-lg px-8 py-4"
+                    className="btn-primary text-lg px-8 py-4 max-w-fit"
                   >
                     Pesan Layanan Ini
                   </button>
-                  <Link to="/contact" className="btn-primary-outline text-lg px-8 py-4">
-                    Konsultasi Gratis
-                  </Link>
                 </div>
               </div>
 
@@ -250,16 +250,28 @@ const ServiceDetail = () => {
                     </div>
                     
                     {/* Booking Button below service items */}
-                    <div className="mt-8 text-center" data-aos="fade-up" data-aos-delay="400">
+                    {/* <div className="mt-8 text-center" data-aos="fade-up" data-aos-delay="400">
                       <button
                         onClick={() => setShowBookingModal(true)}
                         className="btn-primary text-lg px-8 py-4"
                       >
                         Pesan Layanan Ini
                       </button>
-                    </div>
+                    </div> */}
                   </div>
                 )}
+              </div>
+
+              {/* Floating Booking Button */}
+              <div className="fixed bottom-6 left-6 z-40">
+                <button
+                  onClick={() => setShowBookingModal(true)}
+                  className="bg-primary-600 hover:bg-primary-700 text-white rounded-lg p-4 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-110"
+                  data-aos="fade-up"
+                  data-aos-delay="500"
+                >
+                  Pesan Layanan Ini
+                </button>
               </div>
 
               {/* Sidebar */}

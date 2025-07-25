@@ -84,8 +84,7 @@ CREATE TABLE IF NOT EXISTS custom_requests (
   email VARCHAR(255) NOT NULL,
   phone VARCHAR(50),
   wedding_date DATE,
-  guest_count INT,
-  budget VARCHAR(50),
+  booking_amount DECIMAL(10,2) DEFAULT 300000,
   services TEXT,
   additional_requests TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -110,6 +109,9 @@ CREATE TABLE IF NOT EXISTS contact_messages (
   name VARCHAR(255) NOT NULL,
   email VARCHAR(255) NOT NULL,
   phone VARCHAR(50),
+  address TEXT,
+  instagram VARCHAR(255),
+  consultation_date DATE,
   message TEXT NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

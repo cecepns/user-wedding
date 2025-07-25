@@ -18,6 +18,7 @@ const Navbar = () => {
   const navItems = [
     { name: 'Beranda', path: '/' },
     { name: 'Wedding Package', path: '/services' },
+    { name: 'Custom Service', path: '/custom-service' },
     { name: 'Galeri', path: '/gallery' },
     { name: 'Tentang', path: '/about' },
     // { name: 'Artikel', path: '/articles' },

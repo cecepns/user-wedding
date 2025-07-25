@@ -567,12 +567,45 @@ app.delete('/api/orders/:id', authenticateToken, async (req, res) => {
 
 // Custom requests routes
 app.post('/api/custom-requests', async (req, res) => {
-  const { name, email, phone, wedding_date, guest_count, budget, services, additional_requests } = req.body;
+  const { name, email, phone, wedding_date, booking_amount, services, additional_requests } = req.body;
+  
+  // Debug: Log the received data
+  console.log('Received custom request data:', {
+    name, email, phone, wedding_date, booking_amount, services, additional_requests
+  });
+  
+  // Debug: Check for undefined values
+  const fields = { name, email, phone, wedding_date, booking_amount, services, additional_requests };
+  Object.keys(fields).forEach(key => {
+    if (fields[key] === undefined) {
+      console.log(`WARNING: ${key} is undefined`);
+    }
+  });
+  
+  // Validate required fields
+  if (!name || !email || !phone || !wedding_date || 
+      name.trim() === '' || email.trim() === '' || phone.trim() === '' || wedding_date.trim() === '') {
+    return res.status(400).json({ message: 'Missing required fields: name, email, phone, wedding_date' });
+  }
+  
+  // Ensure no undefined values are passed to the database
+  const params = [
+    name || null,
+    email || null,
+    phone || null,
+    wedding_date || null,
+    booking_amount ? parseFloat(booking_amount) : null,
+    services || null,
+    additional_requests || null
+  ];
+  
+  // Debug: Log the parameters being sent to database
+  console.log('Database parameters:', params);
   
   try {
     const [result] = await db.execute(
-      'INSERT INTO custom_requests (name, email, phone, wedding_date, guest_count, budget, services, additional_requests) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [name, email, phone, wedding_date, guest_count, budget, services, additional_requests]
+      'INSERT INTO custom_requests (name, email, phone, wedding_date, booking_amount, services, additional_requests) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      params
     );
     res.json({ id: result.insertId, message: 'Custom request submitted successfully' });
   } catch (error) {
@@ -892,16 +925,66 @@ app.delete('/api/gallery/images/:id', authenticateToken, async (req, res) => {
 
 // Contact form
 app.post('/api/contact', async (req, res) => {
-  const { name, email, phone, message } = req.body;
+  const { name, email, phone, address, instagram, consultation_date, message } = req.body;
   
   try {
     const [result] = await db.execute(
-      'INSERT INTO contact_messages (name, email, phone, message) VALUES (?, ?, ?, ?)',
-      [name, email, phone, message]
+      'INSERT INTO contact_messages (name, email, phone, address, instagram, consultation_date, message) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [name, email, phone, address, instagram, consultation_date, message]
     );
     res.json({ id: result.insertId, message: 'Message sent successfully' });
   } catch (error) {
     console.error('Contact message error:', error);
+    res.status(500).json({ message: 'Database error' });
+  }
+});
+
+// Get contact messages with pagination
+app.get('/api/contact-messages', authenticateToken, async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+    
+    // Get total count
+    const [countResult] = await db.execute('SELECT COUNT(*) as total FROM contact_messages');
+    const total = countResult[0].total;
+    
+    // Get paginated contact messages
+    const [messages] = await db.execute(
+      'SELECT * FROM contact_messages ORDER BY created_at DESC LIMIT ? OFFSET ?',
+      [limit, offset]
+    );
+    
+    res.json({
+      messages,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    console.error('Contact messages error:', error);
+    res.status(500).json({ message: 'Database error' });
+  }
+});
+
+// Delete contact message
+app.delete('/api/contact-messages/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  
+  try {
+    const [result] = await db.execute('DELETE FROM contact_messages WHERE id = ?', [id]);
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Contact message not found' });
+    }
+    
+    res.json({ message: 'Contact message deleted successfully' });
+  } catch (error) {
+    console.error('Delete contact message error:', error);
     res.status(500).json({ message: 'Database error' });
   }
 });

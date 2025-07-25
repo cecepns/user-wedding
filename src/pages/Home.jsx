@@ -36,26 +36,23 @@ const Home = () => {
         <div className="container-custom relative z-10 p-4 md:px-8 pt-24 md:pt-20">
           <div className="flex flex-col-reverse lg:grid lg:grid-cols-2 gap-12 items-center">
             <div data-aos="fade-right" data-aos-delay="200">
-              <h1 className=" text-5xl lg:text-7xl font-bold text-gray-800 mb-6 leading-tight">
+              <h1 className="text-xl md:text-5xl lg:text-7xl font-bold text-gray-800 mb-6 leading-tight">
                 Hari
                 <span className="text-gradient block">Pernikahan</span>
                 Sempurna Anda
               </h1>
               <p className="text-xl text-gray-600 mb-8 leading-relaxed">
-                Wujudkan impian Anda menjadi kenyataan dengan layanan
-                perencanaan pernikahan profesional kami. Dari upacara intim
-                hingga perayaan megah, kami menciptakan momen magis yang abadi.
+                Buatlah Kesan Indah di Moment Pernikahanmu, dan Abadikan Setiap
+                Moment di Hari Bahagia Mu, Libatkan Kami Untuk Mengatur Acara
+                Bahagiamu.
               </p>
               <div
                 className="flex flex-col sm:flex-row gap-4"
                 data-aos="fade-up"
                 data-aos-delay="400"
               >
-                <Link to="/custom-service" className="btn-primary text-center">
-                  Rencanakan Pernikahan Saya
-                </Link>
-                <Link to="/services" className="btn-primary-outline text-center">
-                  Lihat Layanan
+                <Link to="/contact" className="btn-primary-outline text-center">
+                  Konsultasi Gratis
                 </Link>
               </div>
             </div>
@@ -131,7 +128,8 @@ const Home = () => {
               Pilihan Layanan Pernikahan
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Pilih paket pernikahan yang sudah kami siapkan atau buat layanan custom sesuai keinginan Anda
+              Pilih paket pernikahan yang sudah kami siapkan atau buat layanan
+              custom sesuai keinginan Anda
             </p>
           </div>
 
@@ -148,7 +146,8 @@ const Home = () => {
                   Wedding Package
                 </h3>
                 <p className="text-gray-600 mb-6">
-                  Pilih dari berbagai paket pernikahan yang sudah kami siapkan dengan harga terjangkau dan layanan lengkap
+                  Pilih dari berbagai paket pernikahan yang sudah kami siapkan
+                  dengan harga terjangkau dan layanan lengkap
                 </p>
                 <Link
                   to="/services"
@@ -171,7 +170,8 @@ const Home = () => {
                   Custom Service
                 </h3>
                 <p className="text-gray-600 mb-6">
-                  Buat layanan pernikahan sesuai dengan visi dan kebutuhan unik Anda dengan konsultasi langsung
+                  Buat layanan pernikahan sesuai dengan visi dan kebutuhan unik
+                  Anda dengan konsultasi langsung
                 </p>
                 <Link
                   to="/custom-service"
@@ -212,7 +212,6 @@ const Home = () => {
           </div>
         </div>
       </section>
-
     </>
   );
 };

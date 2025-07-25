@@ -7,6 +7,9 @@ const Contact = () => {
     name: '',
     email: '',
     phone: '',
+    address: '',
+    instagram: '',
+    consultation_date: '',
     message: ''
   });
 
@@ -31,7 +34,7 @@ const Contact = () => {
 
       if (response.ok) {
         toast.success('Pesan berhasil dikirim! Kami akan menghubungi Anda segera.');
-        setFormData({ name: '', email: '', phone: '', message: '' });
+        setFormData({ name: '', email: '', phone: '', address: '', instagram: '', consultation_date: '', message: '' });
       } else {
         toast.error('Error mengirim pesan. Silakan coba lagi.');
       }
@@ -101,6 +104,41 @@ const Contact = () => {
                       type="tel"
                       name="phone"
                       value={formData.phone}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Alamat</label>
+                    <textarea
+                      name="address"
+                      value={formData.address}
+                      onChange={handleInputChange}
+                      rows={3}
+                      placeholder="Masukkan alamat lengkap Anda..."
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    ></textarea>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Instagram</label>
+                    <input
+                      type="text"
+                      name="instagram"
+                      value={formData.instagram}
+                      onChange={handleInputChange}
+                      placeholder="@username atau username Instagram"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Tanggal Konsultasi</label>
+                    <input
+                      type="date"
+                      name="consultation_date"
+                      value={formData.consultation_date}
                       onChange={handleInputChange}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     />
