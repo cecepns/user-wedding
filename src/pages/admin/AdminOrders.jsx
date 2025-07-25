@@ -230,6 +230,8 @@ const AdminOrders = () => {
     setShowRequestDetailModal(true);
   };
 
+
+
   const handleDeleteCustomRequest = async (requestId) => {
     const confirmed = await new Promise((resolve) => {
       toast((t) => (
@@ -284,23 +286,7 @@ const AdminOrders = () => {
     }
   };
 
-  const formatBudget = (budget) => {
-    if (!budget) return '-';
-    
-    // If budget is already a string with "Juta", return as is
-    if (typeof budget === 'string' && budget.includes('Juta')) {
-      return budget;
-    }
-    
-    // If budget is a number or string number, add "Juta"
-    const budgetValue = parseFloat(budget);
-    if (!isNaN(budgetValue)) {
-      return `${budgetValue} Juta`;
-    }
-    
-    // If it's already a formatted string, return as is
-    return budget;
-  };
+
 
   return (
     <>
@@ -525,10 +511,7 @@ const AdminOrders = () => {
                         Tanggal Pernikahan
                       </th>
                       <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Jumlah Tamu
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Anggaran
+                        Booking Amount
                       </th>
                       <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Aksi
@@ -570,13 +553,8 @@ const AdminOrders = () => {
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">
-                              {request.guest_count} tamu
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm font-bold text-primary-600">
-                              {request.budget}
+                              {formatRupiah(request.booking_amount)}
                             </div>
                           </td>
                         
@@ -864,12 +842,8 @@ const AdminOrders = () => {
                         <p className="text-gray-900">{formatDate(selectedRequest.wedding_date)}</p>
                       </div>
                       <div>
-                        <span className="font-medium text-gray-700">Jumlah Tamu:</span>
-                        <p className="text-gray-900">{selectedRequest.guest_count} tamu</p>
-                      </div>
-                      <div>
-                        <span className="font-medium text-gray-700">Anggaran:</span>
-                        <p className="text-2xl font-bold text-primary-600">{selectedRequest.budget} Jt</p>
+                        <span className="font-medium text-gray-700">Booking Amount:</span>
+                        <p className="text-2xl font-bold text-primary-600">{formatRupiah(selectedRequest.booking_amount)}</p>
                       </div>
                       <div>
                         <span className="font-medium text-gray-700">Tanggal Permintaan:</span>
