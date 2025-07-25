@@ -164,7 +164,7 @@ const CustomService = () => {
       const contentWidth = pageWidth - (margin * 2);
       
       // Generate invoice number using custom request ID
-      const invoiceNumber = `CUSTOM-${customRequestId || '000'}`;
+      const invoiceNumber = `${customRequestId || '000'}`;
       const currentDate = new Date().toLocaleDateString('id-ID', { 
         day: '2-digit', 
         month: 'long', 
