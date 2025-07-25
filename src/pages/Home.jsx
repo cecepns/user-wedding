@@ -127,17 +127,9 @@ const Home = () => {
             <h2 className=" text-4xl lg:text-5xl font-bold text-gray-800 mb-6">
               Pilihan Layanan Pernikahan
             </h2>
-            <p className="text-xl text-gray-600 max-w-4xl mx-auto leading-relaxed">
-              <span className="font-semibold text-primary-600">Wedding Package</span> | 
-              <span className="font-semibold text-secondary-600"> Dekorasi</span> | 
-              <span className="font-semibold text-primary-600">MUA</span> | 
-              <span className="font-semibold text-secondary-600">Dokumentasi</span> | 
-              <span className="font-semibold text-primary-600">Studio</span> | 
-              <span className="font-semibold text-secondary-600">Entertainment</span> | 
-              <span className="font-semibold text-primary-600">Sound System</span> | 
-              <span className="font-semibold text-secondary-600">MC</span> | 
-              <span className="font-semibold text-primary-600">Prosesi Adat</span> | 
-              <span className="font-semibold text-secondary-600">Crew WO</span>
+            <p className="font-bold text-gray-600 max-w-4xl mx-auto leading-relaxed">
+              WEDDING PACKAGE | DEKORASI | MUA | DOKUMENTASI | STUDIO |
+              ENTERTAINMENT | SOUNDSYSTEM | MC | RPOSESI ADAT | CREW WO
             </p>
           </div>
 
