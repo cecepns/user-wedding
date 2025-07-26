@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
-import { Helmet } from 'react-helmet-async';
-import toast from 'react-hot-toast';
-import AdminLayout from '../../components/AdminLayout';
+import { useState, useEffect } from "react";
+import { Helmet } from "react-helmet-async";
+import toast from "react-hot-toast";
+import AdminLayout from "../../components/AdminLayout";
+import { Edit, Trash2 } from "lucide-react";
 
 const AdminServiceFeatures = () => {
   const [features, setFeatures] = useState([]);
@@ -9,10 +10,10 @@ const AdminServiceFeatures = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingFeature, setEditingFeature] = useState(null);
   const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    icon: '',
-    sort_order: 0
+    title: "",
+    description: "",
+    icon: "",
+    sort_order: 0,
   });
 
   useEffect(() => {
@@ -21,22 +22,25 @@ const AdminServiceFeatures = () => {
 
   const fetchFeatures = async () => {
     try {
-      const token = localStorage.getItem('adminToken');
-      const response = await fetch('https://api-inventory.isavralabel.com/user-wedding/api/service-features', {
-        headers: {
-          'Authorization': `Bearer ${token}`
+      const token = localStorage.getItem("adminToken");
+      const response = await fetch(
+        "https://api-inventory.isavralabel.com/user-wedding/api/service-features",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         }
-      });
-      
+      );
+
       if (response.ok) {
         const data = await response.json();
         setFeatures(data);
       } else {
-        toast.error('Gagal memuat data fitur layanan');
+        toast.error("Gagal memuat data fitur layanan");
       }
     } catch (error) {
-      console.error('Error fetching features:', error);
-      toast.error('Error memuat data fitur layanan');
+      console.error("Error fetching features:", error);
+      toast.error("Error memuat data fitur layanan");
     } finally {
       setLoading(false);
     }
@@ -44,39 +48,41 @@ const AdminServiceFeatures = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     try {
-      const token = localStorage.getItem('adminToken');
-      const url = editingFeature 
+      const token = localStorage.getItem("adminToken");
+      const url = editingFeature
         ? `https://api-inventory.isavralabel.com/user-wedding/api/service-features/${editingFeature.id}`
-        : 'https://api-inventory.isavralabel.com/user-wedding/api/service-features';
-      
-      const method = editingFeature ? 'PUT' : 'POST';
-      const body = editingFeature 
-        ? { ...formData, is_active: true }
-        : formData;
+        : "https://api-inventory.isavralabel.com/user-wedding/api/service-features";
+
+      const method = editingFeature ? "PUT" : "POST";
+      const body = editingFeature ? { ...formData, is_active: true } : formData;
 
       const response = await fetch(url, {
         method,
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(body)
+        body: JSON.stringify(body),
       });
 
       if (response.ok) {
-        toast.success(editingFeature ? 'Fitur layanan berhasil diperbarui' : 'Fitur layanan berhasil ditambahkan');
+        toast.success(
+          editingFeature
+            ? "Fitur layanan berhasil diperbarui"
+            : "Fitur layanan berhasil ditambahkan"
+        );
         setShowModal(false);
         setEditingFeature(null);
-        setFormData({ title: '', description: '', icon: '', sort_order: 0 });
+        setFormData({ title: "", description: "", icon: "", sort_order: 0 });
         fetchFeatures();
       } else {
-        toast.error('Gagal menyimpan fitur layanan');
+        toast.error("Gagal menyimpan fitur layanan");
       }
     } catch (error) {
-      console.error('Error saving feature:', error);
-      toast.error('Error menyimpan fitur layanan');
+      console.error("Error saving feature:", error);
+      toast.error("Error menyimpan fitur layanan");
     }
   };
 
@@ -84,42 +90,47 @@ const AdminServiceFeatures = () => {
     setEditingFeature(feature);
     setFormData({
       title: feature.title,
-      description: feature.description || '',
-      icon: feature.icon || '',
-      sort_order: feature.sort_order || 0
+      description: feature.description || "",
+      icon: feature.icon || "",
+      sort_order: feature.sort_order || 0,
     });
     setShowModal(true);
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Apakah Anda yakin ingin menghapus fitur layanan ini?')) {
+    if (
+      !window.confirm("Apakah Anda yakin ingin menghapus fitur layanan ini?")
+    ) {
       return;
     }
 
     try {
-      const token = localStorage.getItem('adminToken');
-      const response = await fetch(`https://api-inventory.isavralabel.com/user-wedding/api/service-features/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
+      const token = localStorage.getItem("adminToken");
+      const response = await fetch(
+        `https://api-inventory.isavralabel.com/user-wedding/api/service-features/${id}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         }
-      });
+      );
 
       if (response.ok) {
-        toast.success('Fitur layanan berhasil dihapus');
+        toast.success("Fitur layanan berhasil dihapus");
         fetchFeatures();
       } else {
-        toast.error('Gagal menghapus fitur layanan');
+        toast.error("Gagal menghapus fitur layanan");
       }
     } catch (error) {
-      console.error('Error deleting feature:', error);
-      toast.error('Error menghapus fitur layanan');
+      console.error("Error deleting feature:", error);
+      toast.error("Error menghapus fitur layanan");
     }
   };
 
   const handleAddNew = () => {
     setEditingFeature(null);
-    setFormData({ title: '', description: '', icon: '', sort_order: 0 });
+    setFormData({ title: "", description: "", icon: "", sort_order: 0 });
     setShowModal(true);
   };
 
@@ -142,7 +153,9 @@ const AdminServiceFeatures = () => {
       <AdminLayout>
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-bold text-gray-800">Kelola Fitur Layanan</h1>
+            <h1 className="text-2xl font-bold text-gray-800">
+              Kelola Fitur Layanan
+            </h1>
             <button
               onClick={handleAddNew}
               className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors"
@@ -190,7 +203,10 @@ const AdminServiceFeatures = () => {
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500">
                         {feature.description ? (
-                          <span className="truncate max-w-xs block" title={feature.description}>
+                          <span
+                            className="truncate max-w-xs block"
+                            title={feature.description}
+                          >
                             {feature.description}
                           </span>
                         ) : (
@@ -198,12 +214,14 @@ const AdminServiceFeatures = () => {
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          feature.is_active 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {feature.is_active ? 'Aktif' : 'Nonaktif'}
+                        <span
+                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            feature.is_active
+                              ? "bg-green-100 text-green-800"
+                              : "bg-red-100 text-red-800"
+                          }`}
+                        >
+                          {feature.is_active ? "Aktif" : "Nonaktif"}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -211,13 +229,13 @@ const AdminServiceFeatures = () => {
                           onClick={() => handleEdit(feature)}
                           className="text-primary-600 hover:text-primary-900 mr-3"
                         >
-                          Edit
+                          <Edit size={16} />
                         </button>
                         <button
                           onClick={() => handleDelete(feature.id)}
                           className="text-red-600 hover:text-red-900"
                         >
-                          Hapus
+                          <Trash2 size={16} />
                         </button>
                       </td>
                     </tr>
@@ -232,20 +250,35 @@ const AdminServiceFeatures = () => {
         {showModal && (
           <div className="fixed inset-0 z-50 overflow-y-auto">
             <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-              <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={() => setShowModal(false)}></div>
+              <div
+                className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75"
+                onClick={() => setShowModal(false)}
+              ></div>
 
               <div className="inline-block w-full max-w-md my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-2xl">
                 <div className="px-6 py-6">
                   <div className="flex items-center justify-between mb-6">
                     <h3 className="text-lg font-medium text-gray-900">
-                      {editingFeature ? 'Edit Fitur Layanan' : 'Tambah Fitur Layanan'}
+                      {editingFeature
+                        ? "Edit Fitur Layanan"
+                        : "Tambah Fitur Layanan"}
                     </h3>
                     <button
                       onClick={() => setShowModal(false)}
                       className="text-gray-400 hover:text-gray-600"
                     >
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      <svg
+                        className="w-6 h-6"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
                       </svg>
                     </button>
                   </div>
@@ -258,7 +291,9 @@ const AdminServiceFeatures = () => {
                       <input
                         type="text"
                         value={formData.title}
-                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                        onChange={(e) =>
+                          setFormData({ ...formData, title: e.target.value })
+                        }
                         required
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                       />
@@ -270,7 +305,12 @@ const AdminServiceFeatures = () => {
                       </label>
                       <textarea
                         value={formData.description}
-                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            description: e.target.value,
+                          })
+                        }
                         rows={3}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                       />
@@ -283,7 +323,9 @@ const AdminServiceFeatures = () => {
                       <input
                         type="text"
                         value={formData.icon}
-                        onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
+                        onChange={(e) =>
+                          setFormData({ ...formData, icon: e.target.value })
+                        }
                         placeholder="📋"
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                       />
@@ -296,7 +338,12 @@ const AdminServiceFeatures = () => {
                       <input
                         type="number"
                         value={formData.sort_order}
-                        onChange={(e) => setFormData({ ...formData, sort_order: parseInt(e.target.value) || 0 })}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            sort_order: parseInt(e.target.value) || 0,
+                          })
+                        }
                         min="0"
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                       />
@@ -314,7 +361,7 @@ const AdminServiceFeatures = () => {
                         type="submit"
                         className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
                       >
-                        {editingFeature ? 'Update' : 'Simpan'}
+                        {editingFeature ? "Update" : "Simpan"}
                       </button>
                     </div>
                   </form>
@@ -328,4 +375,4 @@ const AdminServiceFeatures = () => {
   );
 };
 
-export default AdminServiceFeatures; 
+export default AdminServiceFeatures;

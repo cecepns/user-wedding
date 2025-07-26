@@ -352,14 +352,12 @@ const AdminServices = () => {
                           className="text-primary-600 hover:text-primary-700 flex items-center gap-1"
                         >
                           <Edit size={16} />
-                          Edit
                         </button>
                         <button
                           onClick={() => handleDeleteService(service.id)}
                           className="text-red-600 hover:text-red-700 flex items-center gap-1"
                         >
                           <Trash2 size={16} />
-                          Hapus
                         </button>
                       </div>
                     </td>
