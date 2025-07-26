@@ -27,7 +27,7 @@ const AdminContent = () => {
 
   const fetchSections = async () => {
     try {
-      const response = await fetch('https://api-inventory.isavralabel.com/user-wedding/api/content-sections', {
+      const response = await fetch('https://api-inventory.isavralabel.com/user-wedding/api/content-sections?is_active=false', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
         }

@@ -926,7 +926,20 @@ app.delete('/api/gallery/images/:id', authenticateToken, async (req, res) => {
 // Content sections routes
 app.get('/api/content-sections', async (req, res) => {
   try {
-    const [sections] = await db.execute('SELECT * FROM content_sections WHERE is_active = true ORDER BY sort_order, created_at DESC');
+    const { is_active } = req.query;
+    const filterActive = is_active === undefined ? true : is_active === 'true';
+    
+    let query = 'SELECT * FROM content_sections';
+    const params = [];
+    
+    if (filterActive !== null) {
+      query += ' WHERE is_active = ?';
+      params.push(filterActive);
+    }
+    
+    query += ' ORDER BY sort_order, created_at DESC';
+    
+    const [sections] = await db.execute(query, params);
     res.json(sections);
   } catch (error) {
     console.error('Content sections error:', error);
