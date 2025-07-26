@@ -23,11 +23,12 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .gradient-bg {
-  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 50%, #bfdbfe 100%);
+  background: #f0f8ff;
 }
 
 .hero-pattern {
-  background-image: radial-gradient(circle at 25px 25px, rgba(59, 130, 246, 0.1) 2px, transparent 0);
+  /* background-image: radial-gradient(circle at 25px 25px, rgba(198, 230, 241, 0.1) 2px, transparent 0); */
+  background-image: radial-gradient(circle at 25px 25px, rgba(47, 66, 116, 0.1) 2px, transparent 0);
   background-size: 50px 50px;
 }
 
@@ -38,11 +39,11 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .btn-primary {
-  @apply bg-gradient-to-r from-primary-500 to-primary-600 text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 hover:from-primary-600 hover:to-primary-700 hover:shadow-lg hover:scale-105;
+  @apply bg-[#2f4274] text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 hover:bg-[#2a3b68] hover:shadow-lg hover:scale-105;
 }
 
 .btn-primary-outline {
-  @apply bg-transparent border-2 border-primary-500 text-primary-500 px-6 py-3 rounded-lg font-medium transition-all duration-300 hover:bg-primary-500 hover:text-white hover:shadow-lg hover:scale-105;
+  @apply bg-transparent border-2 border-[#2f4274] text-[#2f4274] px-6 py-3 rounded-lg font-medium transition-all duration-300 hover:bg-[#2f4274] hover:text-white hover:shadow-lg hover:scale-105;
 }
 
 .btn-secondary {
@@ -66,10 +67,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .text-gradient {
-  background: linear-gradient(135deg, #3b82f6 0%, #0ea5e9 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #2f4274;
 }
 
 /* Custom scrollbar */

@@ -34,6 +34,7 @@ const ServiceDetail = () => {
   const { id } = useParams();
   const [service, setService] = useState(null);
   const [items, setItems] = useState([]);
+  const [features, setFeatures] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [showPaymentInstructions, setShowPaymentInstructions] = useState(false);
@@ -61,6 +62,11 @@ const ServiceDetail = () => {
       const itemsResponse = await fetch(`https://api-inventory.isavralabel.com/user-wedding/api/services/${id}/items`);
       const itemsData = await itemsResponse.json();
       setItems(itemsData);
+
+      // Fetch service features
+      const featuresResponse = await fetch(`https://api-inventory.isavralabel.com/user-wedding/api/service-features`);
+      const featuresData = await featuresResponse.json();
+      setFeatures(featuresData);
       // Don't auto-select items - start with empty selection
     } catch (error) {
       console.error('Error fetching service data:', error);
@@ -326,16 +332,10 @@ const ServiceDetail = () => {
                       Keunggulan Layanan
                     </h3>
                     <div className="space-y-3">
-                      {[
-                        'Perencanaan profesional',
-                        'Tim berpengalaman',
-                        'Kualitas terjamin',
-                        'Pelayanan 24/7',
-                        'Garansi kepuasan'
-                      ].map((feature, index) => (
-                        <div key={index} className="flex items-center">
+                      {features.map((feature) => (
+                        <div key={feature.id} className="flex items-center">
                           <div className="w-2 h-2 bg-primary-600 rounded-full mr-3"></div>
-                          <span className="text-gray-700">{feature}</span>
+                          <span className="text-gray-700">{feature.title}</span>
                         </div>
                       ))}
                     </div>

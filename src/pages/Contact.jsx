@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import toast from 'react-hot-toast';
 
@@ -12,6 +12,23 @@ const Contact = () => {
     consultation_date: '',
     message: ''
   });
+  const [heroContent, setHeroContent] = useState(null);
+
+  useEffect(() => {
+    fetchHeroContent();
+  }, []);
+
+  const fetchHeroContent = async () => {
+    try {
+      const response = await fetch('https://api-inventory.isavralabel.com/user-wedding/api/content-sections/contact_hero_section');
+      if (response.ok) {
+        const data = await response.json();
+        setHeroContent(data);
+      }
+    } catch (error) {
+      console.error('Error fetching hero content:', error);
+    }
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -56,10 +73,10 @@ const Contact = () => {
         <section className="section-padding gradient-bg">
           <div className="container-custom text-center">
             <h1 className=" text-5xl lg:text-6xl font-bold text-gray-800 mb-6 animate-fade-in">
-              Hubungi Kami
+              {heroContent ? heroContent.title : 'Hubungi Kami'}
             </h1>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto animate-slide-up">
-              Siap merencanakan pernikahan impian Anda? Hubungi kami untuk konsultasi gratis.
+              {heroContent ? heroContent.description : 'Siap merencanakan pernikahan impian Anda? Hubungi kami untuk konsultasi gratis.'}
             </p>
           </div>
         </section>

@@ -380,7 +380,7 @@ const AdminGallery = () => {
                       alt={image.title}
                       className="w-full h-48 object-cover"
                     />
-                    {image.is_featured && (
+                    {!!image.is_featured && (
                       <div className="absolute top-2 right-2 bg-yellow-500 text-white px-2 py-1 rounded-full text-xs font-medium">
                         <Star size={12} className="inline mr-1" />
                         Featured
@@ -401,7 +401,6 @@ const AdminGallery = () => {
                     )}
                     <div className="flex items-center justify-between text-sm text-gray-500 mb-3">
                       <span>{image.category_name || 'Tanpa Kategori'}</span>
-                      <span>Urutan: {image.sort_order}</span>
                     </div>
                     <div className="flex gap-2">
                       <button

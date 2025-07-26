@@ -23,6 +23,9 @@ import AdminOrders from './pages/admin/AdminOrders';
 import AdminGallery from './pages/admin/AdminGallery';
 import AdminArticles from './pages/admin/AdminArticles';
 import AdminContactMessages from './pages/admin/AdminContactMessages';
+import AdminContent from './pages/admin/AdminContent';
+import AdminServiceCards from './pages/admin/AdminServiceCards';
+import AdminServiceFeatures from './pages/admin/AdminServiceFeatures';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -74,6 +77,22 @@ function App() {
                 <AdminContactMessages />
               </ProtectedRoute>
             } />
+            <Route path="/admin/content" element={
+              <ProtectedRoute>
+                <AdminContent />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/service-cards" element={
+              <ProtectedRoute>
+                <AdminServiceCards />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/service-features" element={
+              <ProtectedRoute>
+                <AdminServiceFeatures />
+              </ProtectedRoute>
+            } />
+
             
             {/* Public Routes */}
             <Route path="/*" element={

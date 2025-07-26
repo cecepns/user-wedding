@@ -24,10 +24,12 @@ const CustomService = () => {
   const [showPaymentInstructions, setShowPaymentInstructions] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [customRequestId, setCustomRequestId] = useState(null);
+  const [customServiceContent, setCustomServiceContent] = useState(null);
 
   useEffect(() => {
     fetchServiceOptions();
     fetchPaymentMethods();
+    fetchCustomServiceContent();
   }, []);
 
   // Scroll to top when switching between tabs
@@ -56,6 +58,18 @@ const CustomService = () => {
       }
     } catch (error) {
       console.error('Error fetching payment methods:', error);
+    }
+  };
+
+  const fetchCustomServiceContent = async () => {
+    try {
+      const response = await fetch('https://api-inventory.isavralabel.com/user-wedding/api/content-sections/custom_service_section');
+      if (response.ok) {
+        const data = await response.json();
+        setCustomServiceContent(data);
+      }
+    } catch (error) {
+      console.error('Error fetching custom service content:', error);
     }
   };
 
@@ -548,11 +562,15 @@ const CustomService = () => {
           {/* Header */}
           <div className="text-center mb-12">
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-800 mb-6">
-              Layanan Pernikahan Kustom
+              {customServiceContent ? customServiceContent.title : 'Layanan Pernikahan Kustom'}
             </h1>
+            {customServiceContent?.subtitle && (
+              <h2 className="text-xl sm:text-2xl font-semibold text-primary-600 mb-4">
+                {customServiceContent.subtitle}
+              </h2>
+            )}
             <p className="text-lg sm:text-xl text-gray-600 max-w-3xl mx-auto px-4">
-              Buat layanan pernikahan yang sesuai dengan kebutuhan dan budget Anda. 
-              Pilih layanan yang Anda inginkan dan kami akan menyesuaikan dengan preferensi Anda.
+              {customServiceContent ? customServiceContent.description : 'Buat layanan pernikahan yang sesuai dengan kebutuhan dan budget Anda. Pilih layanan yang Anda inginkan dan kami akan menyesuaikan dengan preferensi Anda.'}
             </p>
           </div>
 

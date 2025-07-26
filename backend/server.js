@@ -923,6 +923,271 @@ app.delete('/api/gallery/images/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// Content sections routes
+app.get('/api/content-sections', async (req, res) => {
+  try {
+    const [sections] = await db.execute('SELECT * FROM content_sections WHERE is_active = true ORDER BY sort_order, created_at DESC');
+    res.json(sections);
+  } catch (error) {
+    console.error('Content sections error:', error);
+    res.status(500).json({ message: 'Database error' });
+  }
+});
+
+app.get('/api/content-sections/:sectionName', async (req, res) => {
+  const { sectionName } = req.params;
+  
+  try {
+    const [rows] = await db.execute('SELECT * FROM content_sections WHERE section_name = ? AND is_active = true', [sectionName]);
+    const section = rows[0];
+    
+    if (!section) {
+      return res.status(404).json({ message: 'Content section not found' });
+    }
+    
+    res.json(section);
+  } catch (error) {
+    console.error('Content section error:', error);
+    res.status(500).json({ message: 'Database error' });
+  }
+});
+
+app.post('/api/content-sections', authenticateToken, async (req, res) => {
+  const { section_name, title, subtitle, description, image_url, button_text, button_url, sort_order } = req.body;
+  
+  try {
+    const [result] = await db.execute(
+      'INSERT INTO content_sections (section_name, title, subtitle, description, image_url, button_text, button_url, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [section_name, title, subtitle, description, image_url, button_text, button_url, sort_order]
+    );
+    res.json({ id: result.insertId, message: 'Content section created successfully' });
+  } catch (error) {
+    console.error('Create content section error:', error);
+    if (error.code === 'ER_DUP_ENTRY') {
+      res.status(400).json({ message: 'Section name already exists' });
+    } else {
+      res.status(500).json({ message: 'Database error' });
+    }
+  }
+});
+
+app.put('/api/content-sections/:id', authenticateToken, async (req, res) => {
+  const { title, subtitle, description, image_url, button_text, button_url, is_active, sort_order } = req.body;
+  const { id } = req.params;
+  
+  try {
+    const [result] = await db.execute(
+      'UPDATE content_sections SET title = ?, subtitle = ?, description = ?, image_url = ?, button_text = ?, button_url = ?, is_active = ?, sort_order = ? WHERE id = ?',
+      [title, subtitle, description, image_url, button_text, button_url, is_active, sort_order, id]
+    );
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Content section not found' });
+    }
+    
+    res.json({ message: 'Content section updated successfully' });
+  } catch (error) {
+    console.error('Update content section error:', error);
+    res.status(500).json({ message: 'Database error' });
+  }
+});
+
+app.delete('/api/content-sections/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  
+  try {
+    const [result] = await db.execute('DELETE FROM content_sections WHERE id = ?', [id]);
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Content section not found' });
+    }
+    
+    res.json({ message: 'Content section deleted successfully' });
+  } catch (error) {
+    console.error('Delete content section error:', error);
+    res.status(500).json({ message: 'Database error' });
+  }
+});
+
+// Service cards routes (unified endpoint for all cards)
+app.get('/api/service-cards', async (req, res) => {
+  try {
+    const { card_type } = req.query;
+    
+    let query = 'SELECT * FROM service_cards WHERE is_active = true';
+    const params = [];
+    
+    // Filter by card_type if provided
+    if (card_type) {
+      query += ' AND card_type = ?';
+      params.push(card_type);
+    }
+    
+    query += ' ORDER BY card_type, sort_order, created_at DESC';
+    
+    const [cards] = await db.execute(query, params);
+    res.json(cards);
+  } catch (error) {
+    console.error('Service cards error:', error);
+    res.status(500).json({ message: 'Database error' });
+  }
+});
+
+app.get('/api/service-cards/:id', async (req, res) => {
+  const { id } = req.params;
+  
+  try {
+    const [rows] = await db.execute('SELECT * FROM service_cards WHERE id = ?', [id]);
+    const card = rows[0];
+    
+    if (!card) {
+      return res.status(404).json({ message: 'Service card not found' });
+    }
+    
+    res.json(card);
+  } catch (error) {
+    console.error('Service card error:', error);
+    res.status(500).json({ message: 'Database error' });
+  }
+});
+
+app.post('/api/service-cards', authenticateToken, async (req, res) => {
+  const { title, description, icon, image_url, button_text, button_url, card_type, sort_order } = req.body;
+  
+  try {
+    const [result] = await db.execute(
+      'INSERT INTO service_cards (title, description, icon, image_url, button_text, button_url, card_type, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [title, description, icon, image_url, button_text, button_url, card_type || 'service', sort_order]
+    );
+    res.json({ id: result.insertId, message: 'Card created successfully' });
+  } catch (error) {
+    console.error('Create card error:', error);
+    res.status(500).json({ message: 'Database error' });
+  }
+});
+
+app.put('/api/service-cards/:id', authenticateToken, async (req, res) => {
+  const { title, description, icon, image_url, button_text, button_url, card_type, is_active, sort_order } = req.body;
+  const { id } = req.params;
+  
+  try {
+    const [result] = await db.execute(
+      'UPDATE service_cards SET title = ?, description = ?, icon = ?, image_url = ?, button_text = ?, button_url = ?, card_type = ?, is_active = ?, sort_order = ? WHERE id = ?',
+      [title, description, icon, image_url, button_text, button_url, card_type, is_active, sort_order, id]
+    );
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Card not found' });
+    }
+    
+    res.json({ message: 'Card updated successfully' });
+  } catch (error) {
+    console.error('Update card error:', error);
+    res.status(500).json({ message: 'Database error' });
+  }
+});
+
+app.delete('/api/service-cards/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  
+  try {
+    const [result] = await db.execute('DELETE FROM service_cards WHERE id = ?', [id]);
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Service card not found' });
+    }
+    
+    res.json({ message: 'Service card deleted successfully' });
+  } catch (error) {
+    console.error('Delete service card error:', error);
+    res.status(500).json({ message: 'Database error' });
+  }
+});
+
+// Service features routes
+app.get('/api/service-features', async (req, res) => {
+  try {
+    const [features] = await db.execute('SELECT * FROM service_features WHERE is_active = true ORDER BY sort_order, created_at DESC');
+    res.json(features);
+  } catch (error) {
+    console.error('Service features error:', error);
+    res.status(500).json({ message: 'Database error' });
+  }
+});
+
+app.get('/api/service-features/:id', async (req, res) => {
+  const { id } = req.params;
+  
+  try {
+    const [rows] = await db.execute('SELECT * FROM service_features WHERE id = ?', [id]);
+    const feature = rows[0];
+    
+    if (!feature) {
+      return res.status(404).json({ message: 'Service feature not found' });
+    }
+    
+    res.json(feature);
+  } catch (error) {
+    console.error('Service feature error:', error);
+    res.status(500).json({ message: 'Database error' });
+  }
+});
+
+app.post('/api/service-features', authenticateToken, async (req, res) => {
+  const { title, description, icon, sort_order } = req.body;
+  
+  try {
+    const [result] = await db.execute(
+      'INSERT INTO service_features (title, description, icon, sort_order) VALUES (?, ?, ?, ?)',
+      [title, description, icon, sort_order]
+    );
+    res.json({ id: result.insertId, message: 'Service feature created successfully' });
+  } catch (error) {
+    console.error('Create service feature error:', error);
+    res.status(500).json({ message: 'Database error' });
+  }
+});
+
+app.put('/api/service-features/:id', authenticateToken, async (req, res) => {
+  const { title, description, icon, is_active, sort_order } = req.body;
+  const { id } = req.params;
+  
+  try {
+    const [result] = await db.execute(
+      'UPDATE service_features SET title = ?, description = ?, icon = ?, is_active = ?, sort_order = ? WHERE id = ?',
+      [title, description, icon, is_active, sort_order, id]
+    );
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Service feature not found' });
+    }
+    
+    res.json({ message: 'Service feature updated successfully' });
+  } catch (error) {
+    console.error('Update service feature error:', error);
+    res.status(500).json({ message: 'Database error' });
+  }
+});
+
+app.delete('/api/service-features/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  
+  try {
+    const [result] = await db.execute('DELETE FROM service_features WHERE id = ?', [id]);
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Service feature not found' });
+    }
+    
+    res.json({ message: 'Service feature deleted successfully' });
+  } catch (error) {
+    console.error('Delete service feature error:', error);
+    res.status(500).json({ message: 'Database error' });
+  }
+});
+
+// About cards routes - REMOVED (now handled by unified service-cards endpoint)
+
 // Contact form
 app.post('/api/contact', async (req, res) => {
   const { name, email, phone, address, instagram, consultation_date, message } = req.body;

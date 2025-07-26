@@ -9,6 +9,50 @@ CREATE TABLE IF NOT EXISTS admins (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
+-- Content sections table for dynamic content management
+CREATE TABLE IF NOT EXISTS content_sections (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  section_name VARCHAR(100) NOT NULL UNIQUE,
+  title VARCHAR(255),
+  subtitle VARCHAR(500),
+  description TEXT,
+  image_url VARCHAR(500),
+  button_text VARCHAR(100),
+  button_url VARCHAR(255),
+  is_active BOOLEAN DEFAULT true,
+  sort_order INT DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Service features table for dynamic service features
+CREATE TABLE IF NOT EXISTS service_features (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  description TEXT,
+  icon VARCHAR(100),
+  is_active BOOLEAN DEFAULT true,
+  sort_order INT DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Service cards table for dynamic cards (service cards, about cards, etc.)
+CREATE TABLE IF NOT EXISTS service_cards (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  description TEXT,
+  icon VARCHAR(100),
+  image_url VARCHAR(500),
+  button_text VARCHAR(100),
+  button_url VARCHAR(255),
+  card_type ENUM('service', 'about', 'feature') DEFAULT 'service',
+  is_active BOOLEAN DEFAULT true,
+  sort_order INT DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
 -- Items table (master items that can be used across services)
 CREATE TABLE IF NOT EXISTS items (
   id INT AUTO_INCREMENT PRIMARY KEY,
@@ -144,6 +188,38 @@ CREATE TABLE IF NOT EXISTS gallery_images (
 
 -- Insert sample data
 
+-- Sample content sections
+INSERT IGNORE INTO content_sections (id, section_name, title, subtitle, description, image_url, button_text, button_url, sort_order) VALUES 
+(1, 'hero_section', 'Hari', 'Pernikahan', 'Buatlah Kesan Indah di Moment Pernikahanmu, dan Abadikan Setiap Moment di Hari Bahagia Mu, Libatkan Kami Untuk Mengatur Acara Bahagiamu.', 'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=800', 'Konsultasi Gratis', '/contact', 1),
+(2, 'services_preview_section', 'Pilihan Layanan Pernikahan', 'WEDDING PACKAGE | DEKORASI | MUA | DOKUMENTASI | STUDIO | ENTERTAINMENT | SOUNDSYSTEM | MC | RPOSESI ADAT | CREW WO', '', '', '', '', 2),
+(3, 'services_hero_section', 'Wedding Package', '', 'Dari upacara intim hingga perayaan megah, kami menawarkan paket pernikahan komprehensif yang disesuaikan untuk membuat hari spesial Anda sempurna.', '', 'Konsultasi Gratis', '/contact', 3),
+(4, 'custom_service_section', 'Layanan Pernikahan Kustom', 'Buat Sesuai Kebutuhan Anda', 'Buat layanan pernikahan yang sesuai dengan kebutuhan dan budget Anda. Pilih layanan yang Anda inginkan dan kami akan menyesuaikan dengan preferensi Anda untuk menciptakan pernikahan impian yang sempurna.', '', 'Mulai Sekarang', '/custom-service', 4),
+(5, 'gallery_hero_section', 'Galeri Pernikahan', '', 'Jelajahi koleksi pernikahan indah kami dan dapatkan inspirasi untuk hari spesial Anda.', '', 'Lihat Galeri', '/gallery', 5),
+(6, 'about_hero_section', 'Tentang User Wedding', '', 'Kami bersemangat menciptakan momen magis dan mewujudkan impian pernikahan Anda menjadi kenyataan. Dengan pengalaman bertahun-tahun dan perhatian pada detail, kami memastikan hari spesial Anda sempurna.', 'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=800', '', '', 6),
+(7, 'about_mission_section', 'Misi Kami', '', 'Menciptakan pengalaman pernikahan luar biasa yang melampaui ekspektasi dan menciptakan kenangan abadi. Kami percaya setiap pasangan layak mendapat perayaan yang unik seperti kisah cinta mereka.', '', '', '', 7),
+(8, 'about_cta_section', 'Siap Mulai Merencanakan?', '', 'Mari ciptakan pernikahan impian Anda bersama. Hubungi kami untuk konsultasi gratis.', '', 'Mulai Hari Ini', '/contact', 8),
+(9, 'home_cta_section', 'Siap Merencanakan Pernikahan Impian Anda?', '', 'Mari mulai menciptakan hari sempurna yang selalu Anda impikan. Hubungi kami untuk konsultasi gratis.', '', 'Booking Konsultasi', '/contact', 9),
+(10, 'contact_hero_section', 'Hubungi Kami', '', 'Siap merencanakan pernikahan impian Anda? Hubungi kami untuk konsultasi gratis.', '', '', '', 10);
+
+-- Sample service features
+INSERT IGNORE INTO service_features (id, title, description, icon, sort_order) VALUES 
+(1, 'Perencanaan profesional', 'Tim perencana berpengalaman yang akan mengatur setiap detail pernikahan Anda', '📋', 1),
+(2, 'Tim berpengalaman', 'Tim ahli dengan pengalaman bertahun-tahun dalam industri pernikahan', '👥', 2),
+(3, 'Kualitas terjamin', 'Komitmen kami untuk memberikan layanan berkualitas tinggi', '⭐', 3),
+(4, 'Pelayanan 24/7', 'Dukungan penuh selama proses perencanaan hingga hari pernikahan', '🕐', 4),
+(5, 'Garansi kepuasan', 'Jaminan kepuasan 100% untuk setiap layanan yang kami berikan', '✅', 5);
+
+-- Sample service cards (service type)
+INSERT IGNORE INTO service_cards (id, title, description, icon, button_text, button_url, card_type, sort_order) VALUES 
+(1, 'Wedding Package', 'Pilih dari berbagai paket pernikahan yang sudah kami siapkan dengan harga terjangkau dan layanan lengkap', '💒', 'Lihat Paket →', '/services', 'service', 1),
+(2, 'Custom Service', 'Buat layanan pernikahan sesuai dengan visi dan kebutuhan unik Anda dengan konsultasi langsung', '✨', 'Buat Custom →', '/custom-service', 'service', 2);
+
+-- Sample about cards (about type)
+INSERT IGNORE INTO service_cards (id, title, description, icon, button_text, button_url, card_type, sort_order) VALUES 
+(3, 'Layanan Personal', 'Setiap pernikahan unik, dan kami menyesuaikan layanan kami dengan visi dan preferensi Anda.', '💖', '', '', 'about', 1),
+(4, 'Perhatian pada Detail', 'Dari dekorasi terkecil hingga gestur terbesar, kami memastikan kesempurnaan dalam setiap elemen.', '✨', '', '', 'about', 2),
+(5, 'Perencanaan Bebas Stres', 'Kami menangani semua logistik sehingga Anda bisa fokus menikmati masa tunangan dan hari spesial.', '🎯', '', '', 'about', 3);
+
 -- Sample items
 INSERT IGNORE INTO items (id, name, description, price, category) VALUES 
 (1, 'Venue Decoration', 'Complete venue setup with floral arrangements and lighting', 5000, 'Decoration'),
@@ -169,30 +245,42 @@ INSERT IGNORE INTO services (id, name, description, base_price, image) VALUES
 INSERT IGNORE INTO service_items (service_id, item_id, custom_price, is_required, sort_order) VALUES 
 (1, 1, NULL, true, 1),
 (1, 2, NULL, true, 2),
-(1, 3, NULL, false, 3),
+(1, 3, NULL, true, 3),
 (1, 4, NULL, true, 4),
 (1, 5, NULL, false, 5),
 (2, 6, NULL, true, 1),
-(2, 7, NULL, false, 2),
+(2, 7, NULL, true, 2),
 (2, 8, NULL, true, 3),
 (3, 9, NULL, true, 1),
 (3, 10, NULL, true, 2),
 (3, 11, NULL, true, 3),
 (3, 12, NULL, false, 4);
 
+-- Sample payment methods
+INSERT IGNORE INTO payment_methods (type, name, account_number, details) VALUES 
+('bank', 'Bank Central Asia (BCA)', '1234567890', 'Account name: WeddingBliss Indonesia'),
+('bank', 'Bank Mandiri', '0987654321', 'Account name: WeddingBliss Indonesia'),
+('qris', 'QRIS', '', 'Scan QRIS untuk pembayaran cepat dan aman'),
+('ewallet', 'GoPay', '', 'Pembayaran melalui GoPay'),
+('ewallet', 'OVO', '', 'Pembayaran melalui OVO'),
+('ewallet', 'DANA', '', 'Pembayaran melalui DANA');
+
+-- Sample articles
+INSERT IGNORE INTO articles (title, content, excerpt, image, category) VALUES 
+('Tips Memilih Venue Pernikahan', 'Artikel lengkap tentang cara memilih venue pernikahan yang tepat...', 'Panduan lengkap memilih venue pernikahan sesuai budget dan kebutuhan', 'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=800', 'Tips'),
+('Dekorasi Pernikahan Minimalis', 'Inspirasi dekorasi pernikahan dengan tema minimalis modern...', 'Ide dekorasi pernikahan minimalis yang elegan dan terjangkau', 'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800', 'Dekorasi'),
+('Fotografi Pernikahan Terbaik', 'Tips memilih fotografer pernikahan dan paket fotografi...', 'Panduan memilih fotografer dan paket fotografi pernikahan', 'https://images.pexels.com/photos/1616113/pexels-photo-1616113.jpeg?auto=compress&cs=tinysrgb&w=800', 'Fotografi');
+
 -- Sample gallery categories
-INSERT IGNORE INTO gallery_categories (id, name, description, sort_order) VALUES 
-(1, 'Upacara', 'Foto-foto upacara pernikahan yang indah', 1),
-(2, 'Resepsi', 'Dokumentasi resepsi pernikahan', 2),
-(3, 'Dekorasi', 'Koleksi dekorasi pernikahan', 3),
-(4, 'Pasangan', 'Foto-foto pasangan pengantin', 4),
-(5, 'Detail', 'Detail-detail pernikahan yang menarik', 5);
+INSERT IGNORE INTO gallery_categories (name, description, sort_order) VALUES 
+('Dekorasi', 'Koleksi dekorasi pernikahan indah', 1),
+('Fotografi', 'Hasil fotografi pernikahan profesional', 2),
+('Venue', 'Pilihan venue pernikahan eksklusif', 3),
+('Catering', 'Hidangan pernikahan lezat', 4);
 
 -- Sample gallery images
-INSERT IGNORE INTO gallery_images (id, title, description, image_url, category_id, is_featured, sort_order) VALUES 
-(1, 'Upacara Luar Ruangan yang Indah', 'Upacara pernikahan di taman yang indah', 'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=800', 1, true, 1),
-(2, 'Setup Resepsi yang Elegan', 'Dekorasi resepsi yang mewah dan elegan', 'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800', 2, true, 1),
-(3, 'Rangkaian Bunga', 'Rangkaian bunga yang cantik untuk dekorasi', 'https://images.pexels.com/photos/1616113/pexels-photo-1616113.jpeg?auto=compress&cs=tinysrgb&w=800', 3, false, 1),
-(4, 'Pasangan Bahagia', 'Foto pasangan pengantin yang bahagia', 'https://images.pexels.com/photos/1729931/pexels-photo-1729931.jpeg?auto=compress&cs=tinysrgb&w=800', 4, true, 1),
-(5, 'Kue Pernikahan', 'Kue pernikahan yang indah dan lezat', 'https://images.pexels.com/photos/1128797/pexels-photo-1128797.jpeg?auto=compress&cs=tinysrgb&w=800', 3, false, 2),
-(6, 'Pernikahan Pantai', 'Upacara pernikahan di pantai yang romantis', 'https://images.pexels.com/photos/1024960/pexels-photo-1024960.jpeg?auto=compress&cs=tinysrgb&w=800', 1, false, 2); 
+INSERT IGNORE INTO gallery_images (title, description, image_url, category_id, is_featured, sort_order) VALUES 
+('Dekorasi Outdoor', 'Dekorasi pernikahan outdoor yang romantis', 'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=800', 1, true, 1),
+('Fotografi Prewedding', 'Sesi fotografi prewedding di alam', 'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800', 2, true, 1),
+('Venue Indoor', 'Venue pernikahan indoor yang elegan', 'https://images.pexels.com/photos/1616113/pexels-photo-1616113.jpeg?auto=compress&cs=tinysrgb&w=800', 3, false, 1),
+('Hidangan Utama', 'Hidangan utama pernikahan yang lezat', 'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=800', 4, false, 1); 

@@ -7,9 +7,11 @@ const Gallery = () => {
   const [categories, setCategories] = useState([]);
   const [activeCategory, setActiveCategory] = useState('all');
   const [loading, setLoading] = useState(true);
+  const [heroContent, setHeroContent] = useState(null);
 
   useEffect(() => {
     fetchGalleryData();
+    fetchHeroContent();
   }, []);
 
   const fetchGalleryData = async () => {
@@ -29,6 +31,18 @@ const Gallery = () => {
       console.error('Error fetching gallery data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchHeroContent = async () => {
+    try {
+      const response = await fetch('https://api-inventory.isavralabel.com/user-wedding/api/content-sections/gallery_hero_section');
+      if (response.ok) {
+        const data = await response.json();
+        setHeroContent(data);
+      }
+    } catch (error) {
+      console.error('Error fetching hero content:', error);
     }
   };
 
@@ -61,11 +75,21 @@ const Gallery = () => {
         <section className="section-padding gradient-bg">
           <div className="container-custom text-center">
             <h1 className="text-5xl lg:text-6xl font-bold text-gray-800 mb-6 animate-fade-in">
-              Galeri Pernikahan
+              {heroContent ? heroContent.title : 'Galeri Pernikahan'}
             </h1>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto animate-slide-up">
-              Jelajahi koleksi pernikahan indah kami dan dapatkan inspirasi untuk hari spesial Anda.
+              {heroContent ? heroContent.description : 'Jelajahi koleksi pernikahan indah kami dan dapatkan inspirasi untuk hari spesial Anda.'}
             </p>
+            {heroContent && heroContent.button_text && (
+              <div className="mt-8 animate-slide-up" style={{ animationDelay: '0.2s' }}>
+                <a
+                  href={heroContent.button_url || '/gallery'}
+                  className="btn-primary-outline inline-flex items-center gap-2"
+                >
+                  {heroContent.button_text}
+                </a>
+              </div>
+            )}
           </div>
         </section>
 
