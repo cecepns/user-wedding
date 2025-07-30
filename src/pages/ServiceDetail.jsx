@@ -40,6 +40,7 @@ const ServiceDetail = () => {
   const [showPaymentInstructions, setShowPaymentInstructions] = useState(false);
   const [selectedItems, setSelectedItems] = useState([]);
   const [orderData, setOrderData] = useState(null);
+  const [buttonContent, setButtonContent] = useState(null);
 
   useEffect(() => {
     AOS.init({
@@ -49,6 +50,7 @@ const ServiceDetail = () => {
       mirror: false,
     });
     fetchServiceData();
+    fetchButtonContent();
   }, [id]);
 
   const fetchServiceData = async () => {
@@ -72,6 +74,18 @@ const ServiceDetail = () => {
       console.error('Error fetching service data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchButtonContent = async () => {
+    try {
+      const response = await fetch('https://api-inventory.isavralabel.com/user-wedding/api/content-sections/button_item_detail');
+      if (response.ok) {
+        const data = await response.json();
+        setButtonContent(data);
+      }
+    } catch (error) {
+      console.error('Error fetching button content:', error);
     }
   };
 
@@ -158,7 +172,7 @@ const ServiceDetail = () => {
                     onClick={() => setShowBookingModal(true)}
                     className="btn-primary text-lg px-8 py-4 max-w-fit"
                   >
-                    Pesan Layanan Ini
+                    {buttonContent ? buttonContent.button_text : 'Pesan Layanan Ini'}
                   </button>
                 </div>
               </div>
@@ -273,7 +287,7 @@ const ServiceDetail = () => {
                   data-aos="fade-up"
                   data-aos-delay="500"
                 >
-                  Pesan Layanan Ini
+                  {buttonContent ? buttonContent.button_text : 'Pesan Layanan Ini'}
                 </button>
               </div>
 
@@ -360,7 +374,7 @@ const ServiceDetail = () => {
                   onClick={() => setShowBookingModal(true)}
                   className="bg-white text-gray-900 px-8 py-4 rounded-lg font-semibold text-lg hover:bg-gray-100 transition-all duration-300 hover:scale-105"
                 >
-                  Pesan Sekarang
+                  {buttonContent ? buttonContent.button_text : 'Pesan Sekarang'}
                 </button>
                 <Link
                   to="/contact"
