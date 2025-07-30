@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Helmet } from "react-helmet-async";
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { formatRupiah } from '../utils/formatters';
 import jsPDF from 'jspdf';
 
 const CustomService = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -29,11 +30,20 @@ const CustomService = () => {
   const [selectedCategory, setSelectedCategory] = useState('');
 
   useEffect(() => {
+    // Get category from query parameters
+    const categoryFromParams = searchParams.get('category') || '';
+    setSelectedCategory(categoryFromParams);
+    
     fetchServiceOptions();
     fetchPaymentMethods();
     fetchCustomServiceContent();
     fetchCategories();
-  }, []);
+    
+    // If category is provided in URL, fetch services for that category
+    if (categoryFromParams) {
+      fetchServiceOptions(categoryFromParams);
+    }
+  }, [searchParams]);
 
   // Scroll to top when switching between tabs
   useEffect(() => {
@@ -111,6 +121,13 @@ const CustomService = () => {
     fetchServiceOptions(category);
     // Clear selected services when changing category
     setFormData(prev => ({ ...prev, services: [] }));
+    
+    // Update URL query parameters
+    if (category) {
+      setSearchParams({ category });
+    } else {
+      setSearchParams({});
+    }
   };
 
   const calculateTotalPrice = () => {
