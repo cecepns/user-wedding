@@ -58,7 +58,7 @@ const Services = () => {
             <h1 className=" text-5xl lg:text-6xl font-bold text-gray-800 mb-6 animate-fade-in">
               {heroContent ? heroContent.title : ''}
             </h1>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto animate-slide-up">
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto animate-slide-up whitespace-pre-line">
               {heroContent ? heroContent.description : ''}
             </p>
             {heroContent && heroContent.button_text && (

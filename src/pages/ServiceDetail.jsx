@@ -150,7 +150,7 @@ const ServiceDetail = () => {
                 <h1 className="text-3xl sm:text-4xl lg:text-6xl font-bold text-gray-800 mb-6 leading-tight">
                   {service.name}
                 </h1>
-                <p className="text-lg sm:text-xl text-gray-600 mb-8 leading-relaxed">
+                <p className="text-lg sm:text-xl text-gray-600 mb-8 leading-relaxed whitespace-pre-line">
                   {service.description}
                 </p>
                 <div className="flex flex-col gap-5" data-aos="fade-up" data-aos-delay="200">
