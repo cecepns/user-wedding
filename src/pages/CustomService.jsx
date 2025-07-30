@@ -37,7 +37,7 @@ const CustomService = () => {
     fetchServiceOptions();
     fetchPaymentMethods();
     fetchCustomServiceContent();
-    fetchCategories();
+    // fetchCategories();
     
     // If category is provided in URL, fetch services for that category
     if (categoryFromParams) {
@@ -50,15 +50,15 @@ const CustomService = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [showForm]);
 
-  const fetchCategories = async () => {
-    try {
-      const response = await fetch('https://api-inventory.isavralabel.com/user-wedding/api/items/categories');
-      const data = await response.json();
-      setCategories(data);
-    } catch (error) {
-      console.error('Error fetching categories:', error);
-    }
-  };
+  // const fetchCategories = async () => {
+  //   try {
+  //     const response = await fetch('https://api-inventory.isavralabel.com/user-wedding/api/items/categories');
+  //     const data = await response.json();
+  //     setCategories(data);
+  //   } catch (error) {
+  //     console.error('Error fetching categories:', error);
+  //   }
+  // };
 
   const fetchServiceOptions = async (category = '') => {
     try {
@@ -645,7 +645,7 @@ const CustomService = () => {
                 </div>
 
                 {/* Category Filter */}
-                {categories.length > 0 && (
+                {/* {categories.length > 0 && (
                   <div className="mb-6">
                     <label className="block text-sm font-medium text-gray-700 mb-3">
                       Filter berdasarkan kategori:
@@ -676,7 +676,7 @@ const CustomService = () => {
                       ))}
                     </div>
                   </div>
-                )}
+                )} */}
                 
                 {/* Selected Services Summary */}
                 {formData.services.length > 0 && (
