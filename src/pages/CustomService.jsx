@@ -25,11 +25,14 @@ const CustomService = () => {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [customRequestId, setCustomRequestId] = useState(null);
   const [customServiceContent, setCustomServiceContent] = useState(null);
+  const [categories, setCategories] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState('');
 
   useEffect(() => {
     fetchServiceOptions();
     fetchPaymentMethods();
     fetchCustomServiceContent();
+    fetchCategories();
   }, []);
 
   // Scroll to top when switching between tabs
@@ -37,9 +40,22 @@ const CustomService = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [showForm]);
 
-  const fetchServiceOptions = async () => {
+  const fetchCategories = async () => {
     try {
-      const response = await fetch('https://api-inventory.isavralabel.com/user-wedding/api/items');
+      const response = await fetch('https://api-inventory.isavralabel.com/user-wedding/api/items/categories');
+      const data = await response.json();
+      setCategories(data);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
+
+  const fetchServiceOptions = async (category = '') => {
+    try {
+      const url = category 
+        ? `https://api-inventory.isavralabel.com/user-wedding/api/items?category=${encodeURIComponent(category)}`
+        : 'https://api-inventory.isavralabel.com/user-wedding/api/items';
+      const response = await fetch(url);
       const data = await response.json();
       setServiceOptions(data);
     } catch (error) {
@@ -88,6 +104,13 @@ const CustomService = () => {
         ? prev.services.filter(s => s !== service.name)
         : [...prev.services, service.name]
     }));
+  };
+
+  const handleCategoryChange = (category) => {
+    setSelectedCategory(category);
+    fetchServiceOptions(category);
+    // Clear selected services when changing category
+    setFormData(prev => ({ ...prev, services: [] }));
   };
 
   const calculateTotalPrice = () => {
@@ -603,6 +626,40 @@ const CustomService = () => {
                     {formData.services.length === serviceOptions.length && serviceOptions.length > 0 ? 'Hapus Semua' : 'Pilih Semua'}
                   </button>
                 </div>
+
+                {/* Category Filter */}
+                {categories.length > 0 && (
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-3">
+                      Filter berdasarkan kategori:
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => handleCategoryChange('')}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          selectedCategory === ''
+                            ? 'bg-primary-600 text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        Semua Kategori
+                      </button>
+                      {categories.map((category) => (
+                        <button
+                          key={category}
+                          onClick={() => handleCategoryChange(category)}
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            selectedCategory === category
+                              ? 'bg-primary-600 text-white'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
+                          {category}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 
                 {/* Selected Services Summary */}
                 {formData.services.length > 0 && (
@@ -668,18 +725,23 @@ const CustomService = () => {
                 ))}
               </div>
 
-              {/* Continue Button */}
-              <div className="mt-8 flex justify-center">
+              {/* Floating Continue Button */}
+              <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-40">
                 <button
                   onClick={handleContinueToForm}
                   disabled={formData.services.length === 0}
-                  className={`px-8 py-3 rounded-lg text-lg font-medium transition-colors ${
+                  className={`px-4 md:px-8 py-3 md:py-4 rounded-lg text-lg font-medium transition-all duration-300 shadow-lg ${
                     formData.services.length === 0
-                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      : 'bg-green-600 text-white hover:bg-green-700'
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-md'
+                      : 'bg-green-600 text-white hover:bg-green-700 hover:shadow-xl transform hover:scale-105'
                   }`}
                 >
-                  Lanjutkan ({formData.services.length} dipilih)
+                  <div className="flex items-center gap-2">
+                    <span>Lanjutkan</span>
+                    <span className="bg-white bg-opacity-20 px-2 py-1 rounded-lg text-sm">
+                      {formData.services.length} dipilih
+                    </span>
+                  </div>
                 </button>
               </div>
             </div>

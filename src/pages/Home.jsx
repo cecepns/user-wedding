@@ -190,21 +190,19 @@ const Home = () => {
         <div className="container-custom">
           <div className="text-center mb-16" data-aos="fade-up">
             <h2 className=" text-4xl lg:text-5xl font-bold text-gray-800 mb-6">
-              {servicesContent ? servicesContent.title : 'Pilihan Layanan Pernikahan'}
+              {servicesContent ? servicesContent.title : ''}
             </h2>
             <p className="font-bold text-gray-600 max-w-4xl mx-auto leading-relaxed">
-              {servicesContent ? servicesContent.subtitle : 'WEDDING PACKAGE | DEKORASI | MUA | DOKUMENTASI | STUDIO | ENTERTAINMENT | SOUNDSYSTEM | MC | RPOSESI ADAT | CREW WO'}
+              {servicesContent ? servicesContent.subtitle : ''}
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8 mb-12 max-w-4xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-8 mb-12 max-w-4xl mx-auto" data-aos="fade-up">
             {serviceCards.length > 0 ? (
-              serviceCards.map((card, index) => (
+              serviceCards.map((card) => (
                 <div
                   key={card.id}
                   className="bg-[#f0f8ff] rounded-2xl shadow-lg overflow-hidden card-hover border border-gray-100"
-                  data-aos="fade-up"
-                  data-aos-delay={300 + (index * 200)}
                 >
                   <div className="p-8 text-center">
                     <div className="text-6xl mb-6">{card.icon}</div>
@@ -284,10 +282,10 @@ const Home = () => {
         <div className="container-custom relative z-10">
           <div className="text-center max-w-4xl mx-auto" data-aos="fade-up">
             <h2 className=" text-4xl lg:text-5xl font-bold mb-6">
-              {ctaContent ? ctaContent.title : 'Siap Merencanakan Pernikahan Impian Anda?'}
+              {ctaContent ? ctaContent.title : ''}
             </h2>
             <p className="text-xl text-gray-300 mb-8">
-              {ctaContent ? ctaContent.description : 'Mari mulai menciptakan hari sempurna yang selalu Anda impikan. Hubungi kami untuk konsultasi gratis.'}
+              {ctaContent ? ctaContent.description : ''}
             </p>
             <div
               className="flex flex-col sm:flex-row gap-4 justify-center"

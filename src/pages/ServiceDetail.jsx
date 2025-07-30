@@ -192,11 +192,11 @@ const ServiceDetail = () => {
                     <p className="text-gray-700 leading-relaxed mb-6 whitespace-pre-line">
                       {service.description}
                     </p>
-                    <p className="text-gray-700 leading-relaxed">
+                    {/* <p className="text-gray-700 leading-relaxed">
                       Kami berkomitmen untuk memberikan layanan terbaik dengan standar kualitas tinggi. 
                       Setiap detail akan ditangani dengan profesionalisme dan perhatian khusus untuk 
                       memastikan hari pernikahan Anda berjalan sempurna.
-                    </p>
+                    </p> */}
                   </div>
                 </div>
 

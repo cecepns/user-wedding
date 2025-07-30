@@ -65,10 +65,10 @@ const About = () => {
             <div className="grid lg:grid-cols-2 gap-12 items-center">
               <div className="animate-fade-in">
                 <h1 className=" text-5xl lg:text-6xl font-bold text-gray-800 mb-6">
-                  {heroContent ? heroContent.title : 'Tentang User Wedding'}
+                  {heroContent ? heroContent.title : ''}
                 </h1>
                 <p className="text-xl text-gray-600 mb-8 leading-relaxed">
-                  {heroContent ? heroContent.description : 'Kami bersemangat menciptakan momen magis dan mewujudkan impian pernikahan Anda menjadi kenyataan. Dengan pengalaman bertahun-tahun dan perhatian pada detail, kami memastikan hari spesial Anda sempurna.'}
+                  {heroContent ? heroContent.description : ''}
                 </p>
                 <div className="grid grid-cols-3 gap-6">
                   <div className="text-center">
@@ -126,21 +126,21 @@ const About = () => {
               ) : (
                 // Fallback cards if no data from API
                 [
-                  {
-                    title: "Layanan Personal",
-                    description: "Setiap pernikahan unik, dan kami menyesuaikan layanan kami dengan visi dan preferensi Anda.",
-                    icon: "💖"
-                  },
-                  {
-                    title: "Perhatian pada Detail",
-                    description: "Dari dekorasi terkecil hingga gestur terbesar, kami memastikan kesempurnaan dalam setiap elemen.",
-                    icon: "✨"
-                  },
-                  {
-                    title: "Perencanaan Bebas Stres",
-                    description: "Kami menangani semua logistik sehingga Anda bisa fokus menikmati masa tunangan dan hari spesial.",
-                    icon: "🎯"
-                  }
+                  // {
+                  //   title: "Layanan Personal",
+                  //   description: "Setiap pernikahan unik, dan kami menyesuaikan layanan kami dengan visi dan preferensi Anda.",
+                  //   icon: "💖"
+                  // },
+                  // {
+                  //   title: "Perhatian pada Detail",
+                  //   description: "Dari dekorasi terkecil hingga gestur terbesar, kami memastikan kesempurnaan dalam setiap elemen.",
+                  //   icon: "✨"
+                  // },
+                  // {
+                  //   title: "Perencanaan Bebas Stres",
+                  //   description: "Kami menangani semua logistik sehingga Anda bisa fokus menikmati masa tunangan dan hari spesial.",
+                  //   icon: "🎯"
+                  // }
                 ].map((value, index) => (
                   <div
                     key={index}

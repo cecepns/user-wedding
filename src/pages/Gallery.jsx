@@ -75,10 +75,10 @@ const Gallery = () => {
         <section className="section-padding gradient-bg">
           <div className="container-custom text-center">
             <h1 className="text-5xl lg:text-6xl font-bold text-gray-800 mb-6 animate-fade-in">
-              {heroContent ? heroContent.title : 'Galeri Pernikahan'}
+              {heroContent ? heroContent.title : ''}
             </h1>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto animate-slide-up">
-              {heroContent ? heroContent.description : 'Jelajahi koleksi pernikahan indah kami dan dapatkan inspirasi untuk hari spesial Anda.'}
+              {heroContent ? heroContent.description : ''}
             </p>
             {heroContent && heroContent.button_text && (
               <div className="mt-8 animate-slide-up" style={{ animationDelay: '0.2s' }}>

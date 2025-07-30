@@ -229,7 +229,20 @@ app.delete('/api/services/:id', authenticateToken, async (req, res) => {
 // Items routes (master items management)
 app.get('/api/items', async (req, res) => {
   try {
-    const [items] = await db.execute('SELECT * FROM items WHERE is_active = true ORDER BY category, name');
+    const { category } = req.query;
+    
+    let query = 'SELECT * FROM items WHERE is_active = true';
+    const params = [];
+    
+    // Add category filter if provided
+    if (category) {
+      query += ' AND category = ?';
+      params.push(category);
+    }
+    
+    query += ' ORDER BY category, name';
+    
+    const [items] = await db.execute(query, params);
     res.json(items);
   } catch (error) {
     console.error('Items error:', error);
