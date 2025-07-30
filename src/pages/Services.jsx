@@ -55,12 +55,12 @@ const Services = () => {
         {/* Hero Section */}
         <section className="section-padding gradient-bg">
           <div className="container-custom text-center">
-            <h1 className=" text-5xl lg:text-6xl font-bold text-gray-800 mb-6 animate-fade-in">
+            <h1 className="text-3xl lg:text-5xl font-bold text-gray-800 mb-6 animate-fade-in">
               {heroContent ? heroContent.title : ''}
             </h1>
-            {/* <p className="text-xl text-gray-600 max-w-3xl mx-auto animate-slide-up whitespace-pre-line">
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto animate-slide-up whitespace-pre-line">
               {heroContent ? heroContent.description : ''}
-            </p> */}
+            </p>
             {heroContent && heroContent.button_text && (
               <div className="mt-8">
                 <Link
@@ -114,7 +114,7 @@ const ServiceCard = ({ service, index }) => {
         <h3 className=" text-2xl font-semibold text-gray-800 mb-3">
           {service.name}
         </h3>
-        <p className="text-gray-600 mb-4">{service.description}</p>
+        {/* <p className="text-gray-600 mb-4">{service.description}</p> */}
 
         {/* {items.length > 0 && (
           <div className="mb-4">
@@ -141,14 +141,14 @@ const ServiceCard = ({ service, index }) => {
         )} */}
 
         <div className="flex flex-col gap-3">
-          <div className="flex justify-between items-center">
+          {/* <div className="flex justify-between items-center">
             <div>
-              {/* <span className="text-sm text-gray-500">Mulai dari</span> */}
+              <span className="text-sm text-gray-500">Mulai dari</span>
               <div className="text-2xl font-bold text-primary-600">
                 {formatPrice(service.base_price)}
               </div>
             </div>
-          </div>
+          </div> */}
           {/* <button onClick={onBook} className="btn-primary">
             Pesan Sekarang
           </button> */}

@@ -602,7 +602,7 @@ const CustomService = () => {
           {/* Header */}
           <div className="text-center mb-12">
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-800 mb-6">
-              {customServiceContent ? customServiceContent.title : 'Layanan Pernikahan Kustom'}
+              {customServiceContent ? customServiceContent.title : ''}
             </h1>
             {customServiceContent?.subtitle && (
               <h2 className="text-xl sm:text-2xl font-semibold text-primary-600 mb-4">
