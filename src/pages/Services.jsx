@@ -5,9 +5,9 @@ import PropTypes from "prop-types";
 
 // Helper function to format price in Indonesian Rupiah format
 const formatPrice = (price) => {
-  const numPrice = typeof price === 'string' ? parseFloat(price) : price;
-  if (isNaN(numPrice)) return 'Rp 0';
-  return `Rp ${numPrice.toLocaleString('id-ID')}`;
+  const numPrice = typeof price === "string" ? parseFloat(price) : price;
+  if (isNaN(numPrice)) return "Rp 0";
+  return `Rp ${numPrice.toLocaleString("id-ID")}`;
 };
 
 const Services = () => {
@@ -21,7 +21,9 @@ const Services = () => {
 
   const fetchServices = async () => {
     try {
-      const response = await fetch("https://api-inventory.isavralabel.com/user-wedding/api/services");
+      const response = await fetch(
+        "https://api-inventory.isavralabel.com/user-wedding/api/services"
+      );
       const data = await response.json();
       setServices(data);
     } catch (error) {
@@ -31,13 +33,15 @@ const Services = () => {
 
   const fetchHeroContent = async () => {
     try {
-      const response = await fetch('https://api-inventory.isavralabel.com/user-wedding/api/content-sections/services_hero_section');
+      const response = await fetch(
+        "https://api-inventory.isavralabel.com/user-wedding/api/content-sections/services_hero_section"
+      );
       if (response.ok) {
         const data = await response.json();
         setHeroContent(data);
       }
     } catch (error) {
-      console.error('Error fetching hero content:', error);
+      console.error("Error fetching hero content:", error);
     }
   };
 
@@ -56,15 +60,15 @@ const Services = () => {
         <section className="section-padding gradient-bg">
           <div className="container-custom text-center">
             <h1 className="text-3xl lg:text-5xl font-bold text-gray-800 mb-6 animate-fade-in">
-              {heroContent ? heroContent.title : ''}
+              {heroContent ? heroContent.title : ""}
             </h1>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto animate-slide-up whitespace-pre-line">
-              {heroContent ? heroContent.description : ''}
+              {heroContent ? heroContent.description : ""}
             </p>
             {heroContent && heroContent.button_text && (
               <div className="mt-8">
                 <Link
-                  to={heroContent.button_url || '/contact'}
+                  to={heroContent.button_url || "/contact"}
                   className="btn-primary-outline"
                 >
                   {heroContent.button_text}
@@ -79,37 +83,35 @@ const Services = () => {
           <div className="container-custom">
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
               {services.map((service, index) => (
-                <ServiceCard
-                  key={service.id}
-                  service={service}
-                  index={index}
-                />
+                <ServiceCard key={service.id} service={service} index={index} />
               ))}
             </div>
           </div>
         </section>
-
-
       </div>
     </>
   );
 };
 
 const ServiceCard = ({ service, index }) => {
-
   return (
     <div
       className="bg-white rounded-2xl shadow-lg overflow-hidden card-hover animate-slide-up"
       style={{ animationDelay: `${index * 0.1}s` }}
     >
-      <img
-        src={
-          service.image ||
-          `https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=400`
-        }
-        alt={service.name}
-        className="w-full h-48 object-cover"
-      />
+      <div className="relative">
+        <img
+          src={
+            service.image ||
+            `https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=400`
+          }
+          alt={service.name}
+          className="w-full h-48 object-cover"
+        />
+        <div className="absolute bottom-2 text-sm left-2 px-4 py-1 rounded-full bg-white text-blue-600">
+          All Package <b>{formatPrice(service.base_price)}</b>
+        </div>
+      </div>
       <div className="p-6">
         <h3 className=" text-2xl font-semibold text-gray-800 mb-3">
           {service.name}
