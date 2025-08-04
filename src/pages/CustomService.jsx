@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { Helmet } from "react-helmet-async";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
 import { formatRupiah } from "../utils/formatters";
 
 const CustomService = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -22,27 +23,54 @@ const CustomService = () => {
   const [showForm, setShowForm] = useState(false);
   const [showPaymentInstructions, setShowPaymentInstructions] = useState(false);
   const [customServiceContent, setCustomServiceContent] = useState(null);
+  const [categories, setCategories] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState("");
+
+  // Get category from URL query parameter
+  // useEffect(() => {
+  //   const searchParams = new URLSearchParams(location.search);
+  //   const categoryFromUrl = searchParams.get('category');
+  //   console.log(categoryFromUrl);
+  //   if (categoryFromUrl) {
+  //     setSelectedCategory(decodeURIComponent(categoryFromUrl));
+  //   }
+  // }, [location.search]);
 
   useEffect(() => {
-    fetchServiceOptions();
+    const searchParams = new URLSearchParams(location.search);
+    const categoryFromUrl = searchParams.get("category");
+
+    setTimeout(() => {
+      fetchServiceOptions(categoryFromUrl);
+    }, 200);
+
+
     fetchPaymentMethods();
     fetchCustomServiceContent();
-  }, []);
+    fetchCategories();
+  }, [location.search]);
+
+  // Fetch service options when category changes
+  useEffect(() => {
+    fetchServiceOptions(selectedCategory);
+  }, [selectedCategory]);
 
   // Scroll to top when switching between tabs
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [showForm]);
 
-  // const fetchCategories = async () => {
-  //   try {
-  //     const response = await fetch('https://api-inventory.isavralabel.com/user-wedding/api/items/categories');
-  //     const data = await response.json();
-  //     setCategories(data);
-  //   } catch (error) {
-  //     console.error('Error fetching categories:', error);
-  //   }
-  // };
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch(
+        "https://api-inventory.isavralabel.com/user-wedding/api/items/categories"
+      );
+      const data = await response.json();
+      setCategories(data);
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+    }
+  };
 
   const fetchServiceOptions = async (category = "") => {
     try {
@@ -89,6 +117,10 @@ const CustomService = () => {
     }
   };
 
+  const handleCategoryChange = (category) => {
+    setSelectedCategory(category);
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -105,8 +137,6 @@ const CustomService = () => {
         : [...prev.services, service.id],
     }));
   };
-
-
 
   const calculateTotalPrice = () => {
     if (!Array.isArray(formData.services) || !Array.isArray(serviceOptions))
@@ -131,10 +161,12 @@ const CustomService = () => {
           },
           body: JSON.stringify({
             ...formData,
-            services: formData.services.map(serviceId => {
-              const service = serviceOptions.find(s => s.id === serviceId);
-              return service ? service.name : serviceId;
-            }).join(", "),
+            services: formData.services
+              .map((serviceId) => {
+                const service = serviceOptions.find((s) => s.id === serviceId);
+                return service ? service.name : serviceId;
+              })
+              .join(", "),
           }),
         }
       );
@@ -193,8 +225,6 @@ const CustomService = () => {
     )}`;
     window.open(whatsappUrl, "_blank");
   };
-
-
 
   // Payment Instructions Component
   const PaymentInstructionsModal = () => {
@@ -339,12 +369,24 @@ const CustomService = () => {
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                   <div className="flex items-center gap-3">
                     <div className="flex-shrink-0">
-                      <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      <svg
+                        className="w-6 h-6 text-yellow-600"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
                       </svg>
                     </div>
                     <div>
-                      <h5 className="font-semibold text-yellow-800">Status: Menunggu Konfirmasi</h5>
+                      <h5 className="font-semibold text-yellow-800">
+                        Status: Menunggu Konfirmasi
+                      </h5>
                       {/* <p className="text-sm text-yellow-700">Pembayaran Anda akan dikonfirmasi dalam 1x24 jam</p> */}
                     </div>
                   </div>
@@ -410,10 +452,6 @@ const CustomService = () => {
                 Kembali
               </button>
 
-
-
-
-
               {paymentMethods.length > 0 && (
                 <button
                   onClick={handlePaymentComplete}
@@ -452,9 +490,7 @@ const CustomService = () => {
               </h2>
             )}
             <p className="text-lg sm:text-xl max-w-3xl mx-auto px-4">
-              {customServiceContent
-                ? customServiceContent.description
-                : ""}
+              {customServiceContent ? customServiceContent.description : ""}
             </p>
           </div>
         </div>
@@ -475,9 +511,7 @@ const CustomService = () => {
                       } else {
                         setFormData((prev) => ({
                           ...prev,
-                          services: serviceOptions.map(
-                            (service) => service.id
-                          ),
+                          services: serviceOptions.map((service) => service.id),
                         }));
                       }
                     }}
@@ -496,18 +530,18 @@ const CustomService = () => {
                 </div>
 
                 {/* Category Filter */}
-                {/* {categories.length > 0 && (
+                {categories.length > 0 && (
                   <div className="mb-6">
                     <label className="block text-sm font-medium text-gray-700 mb-3">
                       Filter berdasarkan kategori:
                     </label>
                     <div className="flex flex-wrap gap-2">
                       <button
-                        onClick={() => handleCategoryChange('')}
+                        onClick={() => handleCategoryChange("")}
                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                          selectedCategory === ''
-                            ? 'bg-primary-600 text-white'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          selectedCategory === ""
+                            ? "bg-primary-600 text-white"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                         }`}
                       >
                         Semua Kategori
@@ -518,8 +552,8 @@ const CustomService = () => {
                           onClick={() => handleCategoryChange(category)}
                           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                             selectedCategory === category
-                              ? 'bg-primary-600 text-white'
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                              ? "bg-primary-600 text-white"
+                              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                           }`}
                         >
                           {category}
@@ -527,7 +561,7 @@ const CustomService = () => {
                       ))}
                     </div>
                   </div>
-                )} */}
+                )}
 
                 {/* Selected Services Summary */}
                 {formData.services.length > 0 && (
@@ -570,9 +604,7 @@ const CustomService = () => {
                             </span>
                           )}
                         </div>
-                        <p className="text-white mb-3">
-                          {service.description}
-                        </p>
+                        <p className="text-white mb-3">{service.description}</p>
                       </div>
                       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
                         <div className="text-left sm:text-right">

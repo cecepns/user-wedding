@@ -400,7 +400,7 @@ const AdminOrders = () => {
     // Bill To section
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
-    doc.text('Dibayar Kepada:', 20, 70);
+    doc.text('Kepada :', 20, 70);
     
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
