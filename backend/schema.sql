@@ -115,6 +115,7 @@ CREATE TABLE IF NOT EXISTS orders (
   service_name VARCHAR(255),
   selected_items JSON,
   total_amount DECIMAL(10,2) NOT NULL,
+  booking_amount DECIMAL(10,2) DEFAULT 2000000,
   status ENUM('pending', 'confirmed', 'completed', 'cancelled') DEFAULT 'pending',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -131,6 +132,7 @@ CREATE TABLE IF NOT EXISTS custom_requests (
   booking_amount DECIMAL(10,2) DEFAULT 300000,
   services TEXT,
   additional_requests TEXT,
+  status ENUM('pending', 'confirmed', 'completed', 'cancelled') DEFAULT 'pending',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );

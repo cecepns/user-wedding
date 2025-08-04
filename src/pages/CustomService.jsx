@@ -1,13 +1,11 @@
 import { useState, useEffect } from "react";
 import { Helmet } from "react-helmet-async";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { formatRupiah } from "../utils/formatters";
-import jsPDF from "jspdf";
 
 const CustomService = () => {
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -23,27 +21,13 @@ const CustomService = () => {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [showPaymentInstructions, setShowPaymentInstructions] = useState(false);
-  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
-  const [customRequestId, setCustomRequestId] = useState(null);
   const [customServiceContent, setCustomServiceContent] = useState(null);
-  const [categories, setCategories] = useState([]);
-  const [selectedCategory, setSelectedCategory] = useState("");
 
   useEffect(() => {
-    // Get category from query parameters
-    const categoryFromParams = searchParams.get("category") || "";
-    setSelectedCategory(categoryFromParams);
-
     fetchServiceOptions();
     fetchPaymentMethods();
     fetchCustomServiceContent();
-    // fetchCategories();
-
-    // If category is provided in URL, fetch services for that category
-    if (categoryFromParams) {
-      fetchServiceOptions(categoryFromParams);
-    }
-  }, [searchParams]);
+  }, []);
 
   // Scroll to top when switching between tabs
   useEffect(() => {
@@ -116,31 +100,19 @@ const CustomService = () => {
   const handleServiceToggle = (service) => {
     setFormData((prev) => ({
       ...prev,
-      services: prev.services.includes(service.name)
-        ? prev.services.filter((s) => s !== service.name)
-        : [...prev.services, service.name],
+      services: prev.services.includes(service.id)
+        ? prev.services.filter((s) => s !== service.id)
+        : [...prev.services, service.id],
     }));
   };
 
-  const handleCategoryChange = (category) => {
-    setSelectedCategory(category);
-    fetchServiceOptions(category);
-    // Clear selected services when changing category
-    setFormData((prev) => ({ ...prev, services: [] }));
 
-    // Update URL query parameters
-    if (category) {
-      setSearchParams({ category });
-    } else {
-      setSearchParams({});
-    }
-  };
 
   const calculateTotalPrice = () => {
     if (!Array.isArray(formData.services) || !Array.isArray(serviceOptions))
       return 0;
-    return formData.services.reduce((total, serviceName) => {
-      const service = serviceOptions.find((s) => s.name === serviceName);
+    return formData.services.reduce((total, serviceId) => {
+      const service = serviceOptions.find((s) => s.id === serviceId);
       let price = service ? service.price : 0;
       if (typeof price === "string") price = parseFloat(price);
       return total + (isNaN(price) ? 0 : price);
@@ -159,14 +131,16 @@ const CustomService = () => {
           },
           body: JSON.stringify({
             ...formData,
-            services: formData.services.join(", "),
+            services: formData.services.map(serviceId => {
+              const service = serviceOptions.find(s => s.id === serviceId);
+              return service ? service.name : serviceId;
+            }).join(", "),
           }),
         }
       );
 
       if (response.ok) {
-        const result = await response.json();
-        setCustomRequestId(result.id);
+        await response.json();
         setShowPaymentInstructions(true);
         toast.success(
           "Permintaan layanan kustom berhasil dikirim! Silakan pilih metode pembayaran."
@@ -220,235 +194,7 @@ const CustomService = () => {
     window.open(whatsappUrl, "_blank");
   };
 
-  const handleDownloadInvoice = () => {
-    if (!formData.name || !formData.services.length) {
-      toast.error("Silakan lengkapi data terlebih dahulu");
-      return;
-    }
 
-    setIsGeneratingPDF(true);
-
-    try {
-      const doc = new jsPDF();
-      const pageWidth = doc.internal.pageSize.width;
-      const pageHeight = doc.internal.pageSize.height;
-      const margin = 20;
-      const contentWidth = pageWidth - margin * 2;
-
-      // Generate invoice number using custom request ID
-      const invoiceNumber = `${customRequestId || "000"}`;
-      const currentDate = new Date().toLocaleDateString("id-ID", {
-        day: "2-digit",
-        month: "long",
-        year: "numeric",
-      });
-
-      // Format wedding date for due date
-      const weddingDate = formData.wedding_date
-        ? new Date(formData.wedding_date).toLocaleDateString("id-ID", {
-            day: "2-digit",
-            month: "long",
-            year: "numeric",
-          })
-        : currentDate;
-
-      // Page 1: Header and Company Info
-      doc.setFontSize(16);
-      doc.setFont("helvetica", "bold");
-      doc.text("User Wedding Organizer", margin, 20);
-
-      // Company details
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "normal");
-      doc.text(
-        "Jl. Raya panongan Kec. Panongan Kab. Tangerang Provinsi Banten",
-        margin,
-        30
-      );
-      doc.text("Telephone: 089646829459", margin, 37);
-      doc.text("Email: edo19priyatno@gmail.com", margin, 44);
-      doc.text(
-        "Website: https://sites.google.com/view/userwedding/beranda",
-        margin,
-        51
-      );
-
-      // Invoice details (right side)
-      doc.setFontSize(12);
-      doc.setFont("helvetica", "bold");
-      doc.text("INVOICE", pageWidth - margin - 30, 20);
-
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "normal");
-      doc.text(`No. Invoice: ${invoiceNumber}`, pageWidth - margin - 30, 30);
-      doc.text(`Tanggal Invoice: ${currentDate}`, pageWidth - margin - 30, 37);
-      doc.text(`Jatuh Tempo: ${weddingDate}`, pageWidth - margin - 30, 44);
-
-      // Bill To section
-      let currentY = 70;
-      doc.setFontSize(12);
-      doc.setFont("helvetica", "bold");
-      doc.text("Dibayar Kepada:", margin, currentY);
-      currentY += 10;
-
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "normal");
-      doc.text(formData.name, margin, currentY);
-      currentY += 7;
-      doc.text(formData.email, margin, currentY);
-      currentY += 7;
-      doc.text(formData.phone, margin, currentY);
-      currentY += 7;
-      doc.text(`Tanggal Pernikahan: ${weddingDate}`, margin, currentY);
-      currentY += 15;
-
-      // Service table header
-      doc.setFillColor(52, 152, 219); // Blue background
-      doc.rect(margin, currentY, contentWidth, 8, "F");
-
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(255, 255, 255); // White text
-      doc.text("No.", margin + 5, currentY + 6);
-      doc.text("Deskripsi", margin + 20, currentY + 6);
-      doc.text("Jml", margin + 120, currentY + 6);
-      doc.text("Harga", margin + 150, currentY + 6);
-
-      // Reset text color
-      doc.setTextColor(0, 0, 0);
-      currentY += 15;
-
-      // Service items
-      formData.services.forEach((serviceName, idx) => {
-        const service = serviceOptions.find((s) => s.name === serviceName);
-        let price = service ? service.price : 0;
-        if (typeof price === "string") price = parseFloat(price);
-
-        doc.setFontSize(10);
-        doc.setFont("helvetica", "normal");
-        doc.text((idx + 1).toString(), margin + 5, currentY);
-
-        // Handle long service names with wrapping
-        const serviceNameLines = doc.splitTextToSize(serviceName, 80);
-        serviceNameLines.forEach((line, lineIndex) => {
-          doc.text(line, margin + 20, currentY + lineIndex * 4);
-        });
-
-        doc.text("1", margin + 120, currentY);
-        doc.text(
-          formatRupiah(isNaN(price) ? 0 : price),
-          margin + 150,
-          currentY
-        );
-        currentY += Math.max(7, serviceNameLines.length * 4);
-      });
-
-      // Add total service row
-      currentY += 8;
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "bold");
-      doc.text("", margin + 5, currentY); // Empty serial number
-      doc.text("Total Harga Layanan:", margin + 20, currentY);
-      doc.text("", margin + 120, currentY); // Empty quantity
-      doc.text(formatRupiah(calculateTotalPrice()), margin + 150, currentY);
-      currentY += 20;
-
-      // Payment details section
-      doc.setFontSize(14);
-      doc.setFont("helvetica", "bold");
-      doc.text("Detail Pembayaran:", margin, currentY);
-      currentY += 15;
-
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "normal");
-      doc.text(
-        `Total Harga Layanan: ${formatRupiah(calculateTotalPrice())}`,
-        margin,
-        currentY
-      );
-      currentY += 7;
-      doc.text("Metode Pembayaran: Transfer Bank", margin, currentY);
-      currentY += 7;
-      doc.text(
-        `Biaya Booking: ${formatRupiah(formData.booking_amount)}`,
-        margin,
-        currentY
-      );
-      currentY += 7;
-      doc.text(
-        `Total Pembayaran Diperlukan: ${formatRupiah(formData.booking_amount)}`,
-        margin,
-        currentY
-      );
-      currentY += 15;
-
-      // Add selected payment method details
-      if (selectedPaymentMethod) {
-        doc.setFontSize(12);
-        doc.setFont("helvetica", "bold");
-        doc.text("Rekening Tujuan:", margin, currentY);
-        currentY += 10;
-
-        doc.setFontSize(10);
-        doc.setFont("helvetica", "normal");
-        doc.text(`Bank: ${selectedPaymentMethod.name}`, margin, currentY);
-        currentY += 7;
-        doc.text(
-          `Nomor Rekening: ${selectedPaymentMethod.account_number}`,
-          margin,
-          currentY
-        );
-        currentY += 7;
-        if (selectedPaymentMethod.details) {
-          doc.text(
-            `Detail: ${selectedPaymentMethod.details}`,
-            margin,
-            currentY
-          );
-          currentY += 7;
-        }
-        currentY += 10;
-      } else {
-        // Default payment method if none selected
-        doc.setFontSize(12);
-        doc.setFont("helvetica", "bold");
-        doc.text("Rekening Tujuan:", margin, currentY);
-        currentY += 10;
-
-        doc.setFontSize(10);
-        doc.setFont("helvetica", "normal");
-        doc.text("Bank: BSI", margin, currentY);
-        currentY += 7;
-        doc.text("Nomor Rekening: 4321", margin, currentY);
-        currentY += 7;
-        doc.text("Detail: Atas Nama User Wedding", margin, currentY);
-        currentY += 10;
-      }
-
-      // Footer
-      doc.setFontSize(12);
-      doc.setFont("helvetica", "bold");
-      doc.text(
-        "Terima kasih telah memilih layanan kami!",
-        pageWidth / 2,
-        pageHeight - 20,
-        { align: "center" }
-      );
-
-      // Save the PDF
-      doc.save(
-        `invoice-custom-${formData.name || "order"}-${
-          new Date().toISOString().split("T")[0]
-        }.pdf`
-      );
-      toast.success("Invoice berhasil diunduh!");
-    } catch (error) {
-      console.error("Error generating PDF:", error);
-      toast.error("Gagal mengunduh invoice. Silakan coba lagi.");
-    } finally {
-      setIsGeneratingPDF(false);
-    }
-  };
 
   // Payment Instructions Component
   const PaymentInstructionsModal = () => {
@@ -574,6 +320,36 @@ const CustomService = () => {
                   </div>
                 </div>
 
+                {/* Konfirmasi Pembayaran Button */}
+                <button
+                  onClick={handleWhatsAppContact}
+                  className="w-full px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center justify-center gap-2"
+                >
+                  <svg
+                    className="w-5 h-5"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488" />
+                  </svg>
+                  Konfirmasi Pembayaran
+                </button>
+
+                {/* Status Menunggu Konfirmasi */}
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex-shrink-0">
+                      <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h5 className="font-semibold text-yellow-800">Status: Menunggu Konfirmasi</h5>
+                      {/* <p className="text-sm text-yellow-700">Pembayaran Anda akan dikonfirmasi dalam 1x24 jam</p> */}
+                    </div>
+                  </div>
+                </div>
+
                 {/* Important Notes */}
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                   <h5 className="font-semibold text-yellow-800 mb-2">
@@ -634,71 +410,9 @@ const CustomService = () => {
                 Kembali
               </button>
 
-              <button
-                onClick={handleDownloadInvoice}
-                disabled={isGeneratingPDF}
-                className={`w-full px-6 py-3 rounded-lg transition-colors flex items-center justify-center gap-2 ${
-                  isGeneratingPDF
-                    ? "bg-gray-400 text-white cursor-not-allowed"
-                    : "bg-blue-600 text-white hover:bg-blue-700"
-                }`}
-              >
-                {isGeneratingPDF ? (
-                  <>
-                    <svg
-                      className="animate-spin w-5 h-5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      ></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
-                    Menghasilkan PDF...
-                  </>
-                ) : (
-                  <>
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                      />
-                    </svg>
-                    Download Invoice
-                  </>
-                )}
-              </button>
 
-              <button
-                onClick={handleWhatsAppContact}
-                className="w-full px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center justify-center gap-2"
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488" />
-                </svg>
-                Hubungi WhatsApp
-              </button>
+
+
 
               {paymentMethods.length > 0 && (
                 <button
@@ -762,7 +476,7 @@ const CustomService = () => {
                         setFormData((prev) => ({
                           ...prev,
                           services: serviceOptions.map(
-                            (service) => service.name
+                            (service) => service.id
                           ),
                         }));
                       }
@@ -839,7 +553,7 @@ const CustomService = () => {
                   <div
                     key={service.id}
                     className={`bg-white rounded-lg p-6 border-2 bg-gradient-to-r from-primary-600 to-secondary-600 transition-all duration-200 ${
-                      formData.services.includes(service.name)
+                      formData.services.includes(service.id)
                         ? "border-primary-500 bg-primary-50"
                         : "border-gray-200 hover:border-gray-300"
                     }`}
@@ -869,12 +583,12 @@ const CustomService = () => {
                         <button
                           onClick={() => handleServiceToggle(service)}
                           className={`w-full sm:w-auto px-6 py-2 rounded-lg text-sm font-medium transition-colors ${
-                            formData.services.includes(service.name)
+                            formData.services.includes(service.id)
                               ? "bg-primary-600 text-white hover:bg-primary-700"
                               : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                           }`}
                         >
-                          {formData.services.includes(service.name)
+                          {formData.services.includes(service.id)
                             ? "Dipilih"
                             : "Pilih"}
                         </button>

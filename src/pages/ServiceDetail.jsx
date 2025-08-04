@@ -6,7 +6,6 @@ import toast from 'react-hot-toast';
 import AOS from 'aos';
 import 'aos/dist/aos.css';
 import PaymentInstructions from '../components/PaymentInstructions';
-import jsPDF from 'jspdf';
 
 // Helper function to format price in Indonesian Rupiah format
 const formatPrice = (price) => {
@@ -213,7 +212,7 @@ const ServiceDetail = () => {
 
                 {/* Service Items */}
                 {items.length > 0 && (
-                  <div data-aos="fade-up" data-aos-delay="200">
+                  <div data-aos="fade-up">
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6">
                       <h3 className="text-xl sm:text-2xl font-bold text-gray-800">
                         Tambahan Item
@@ -329,6 +328,9 @@ const ServiceDetail = () => {
                             <span className="text-lg sm:text-xl text-primary-600">
                               {formatPrice(2000000)}
                             </span>
+                            <p className="text-xs text-gray-500 mt-1">
+                              Minimal Rp 2.000.000, bisa lebih
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -415,126 +417,125 @@ const ServiceDetail = () => {
 };
 
 const PaymentInstructionsModal = ({ orderData, onClose }) => {
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
 
-  const downloadInvoice = () => {
-    // Create PDF document
-    const doc = new jsPDF();
+  // const downloadInvoice = () => {
+  //   // Create PDF document
+  //   const doc = new jsPDF();
     
-    // ===== PAGE 1 =====
-    // Company header
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.text('User Wedding Organizer', 20, 20);
+  //   // ===== PAGE 1 =====
+  //   // Company header
+  //   doc.setFontSize(16);
+  //   doc.setFont('helvetica', 'bold');
+  //   doc.text('User Wedding Organizer', 20, 20);
     
-    // Company details
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text('Jl. Raya panongan Kec. Panongan Kab. Tangerang Provinsi Banten', 20, 30);
-    doc.text('Telephone: 089646829459', 20, 37);
-    doc.text('Email: edo19priyatno@gmail.com', 20, 44);
-    doc.text('Website: https://sites.google.com/view/userwedding/beranda', 20, 51);
+  //   // Company details
+  //   doc.setFontSize(10);
+  //   doc.setFont('helvetica', 'normal');
+  //   doc.text('Jl. Raya panongan Kec. Panongan Kab. Tangerang Provinsi Banten', 20, 30);
+  //   doc.text('Telephone: 089646829459', 20, 37);
+  //   doc.text('Email: edo19priyatno@gmail.com', 20, 44);
+  //   doc.text('Website: https://sites.google.com/view/userwedding/beranda', 20, 51);
     
-    // Invoice details (right side)
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('INVOICE', 150, 20);
+  //   // Invoice details (right side)
+  //   doc.setFontSize(12);
+  //   doc.setFont('helvetica', 'bold');
+  //   doc.text('INVOICE', 150, 20);
     
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`No. Invoice: ${orderData.id || 'N/A'}`, 150, 30);
-    doc.text(`Tanggal Invoice: ${new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}`, 150, 37);
-    doc.text(`Jatuh Tempo: ${new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}`, 150, 44);
+  //   doc.setFontSize(10);
+  //   doc.setFont('helvetica', 'normal');
+  //   doc.text(`No. Invoice: ${orderData.id || 'N/A'}`, 150, 30);
+  //   doc.text(`Tanggal Invoice: ${new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}`, 150, 37);
+  //   doc.text(`Jatuh Tempo: ${new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}`, 150, 44);
     
-    // Bill To section
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Dibayar Kepada:', 20, 70);
+  //   // Bill To section
+  //   doc.setFontSize(12);
+  //   doc.setFont('helvetica', 'bold');
+  //   doc.text('Dibayar Kepada:', 20, 70);
     
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(orderData.name, 20, 77);
-    doc.text(orderData.email, 20, 84);
-    doc.text(orderData.phone, 20, 91);
-    doc.text(orderData.address, 20, 98);
-    doc.text(`Tanggal Pernikahan: ${orderData.wedding_date}`, 20, 105);
+  //   doc.setFontSize(10);
+  //   doc.setFont('helvetica', 'normal');
+  //   doc.text(orderData.name, 20, 77);
+  //   doc.text(orderData.email, 20, 84);
+  //   doc.text(orderData.phone, 20, 91);
+  //   doc.text(orderData.address, 20, 98);
+  //   doc.text(`Tanggal Pernikahan: ${orderData.wedding_date}`, 20, 105);
     
-    // Service table header
-    const startY = 120;
-    doc.setFillColor(52, 152, 219); // Blue background
-    doc.rect(20, startY, 170, 8, 'F');
+  //   // Service table header
+  //   const startY = 120;
+  //   doc.setFillColor(52, 152, 219); // Blue background
+  //   doc.rect(20, startY, 170, 8, 'F');
     
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(255, 255, 255); // White text
-    doc.text('No.', 25, startY + 6);
-    doc.text('Deskripsi', 40, startY + 6);
-    doc.text('Jml', 140, startY + 6);
-    doc.text('Harga', 170, startY + 6);
+  //   doc.setFontSize(10);
+  //   doc.setFont('helvetica', 'bold');
+  //   doc.setTextColor(255, 255, 255); // White text
+  //   doc.text('No.', 25, startY + 6);
+  //   doc.text('Deskripsi', 40, startY + 6);
+  //   doc.text('Jml', 140, startY + 6);
+  //   doc.text('Harga', 170, startY + 6);
     
-    // Reset text color
-    doc.setTextColor(0, 0, 0);
+  //   // Reset text color
+  //   doc.setTextColor(0, 0, 0);
     
-    // Service items
-    let currentY = startY + 15;
-    let itemNumber = 1;
+  //   // Service items
+  //   let currentY = startY + 15;
+  //   let itemNumber = 1;
     
-    // Main service item (base price)
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(itemNumber.toString(), 25, currentY);
-    doc.text(orderData.service_name, 40, currentY);
-    doc.text('1', 140, currentY);
-    doc.text(formatPrice(orderData.base_price || 0), 170, currentY);
+  //   // Main service item (base price)
+  //   doc.setFontSize(10);
+  //   doc.setFont('helvetica', 'normal');
+  //   doc.text(itemNumber.toString(), 25, currentY);
+  //   doc.text(orderData.service_name, 40, currentY);
+  //   doc.text('1', 140, currentY);
+  //   doc.text(formatPrice(orderData.base_price || 0), 170, currentY);
     
-    // Selected items as sub-items
-    if (orderData.selected_items && orderData.selected_items.length > 0) {
-      currentY += 8;
-      orderData.selected_items.forEach((item) => {
-        doc.setFontSize(8);
-        doc.text(`  ${item.name}`, 40, currentY);
-        doc.text('1', 140, currentY);
-        doc.text(formatPrice(item.final_price || item.item_price || item.price), 170, currentY);
-        currentY += 5;
-      });
-    }
+  //   // Selected items as sub-items
+  //   if (orderData.selected_items && orderData.selected_items.length > 0) {
+  //     currentY += 8;
+  //     orderData.selected_items.forEach((item) => {
+  //       doc.setFontSize(8);
+  //       doc.text(`  ${item.name}`, 40, currentY);
+  //       doc.text('1', 140, currentY);
+  //       doc.text(formatPrice(item.final_price || item.item_price || item.price), 170, currentY);
+  //       currentY += 5;
+  //     });
+  //   }
     
-    // Add total service row
-    currentY += 8;
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.text('', 25, currentY); // Empty serial number
-    doc.text('Total Harga Layanan:', 40, currentY);
-    doc.text('', 140, currentY); // Empty quantity
-    doc.text(formatPrice(calculateTotalPrice(orderData.selected_items, orderData.base_price || 0)), 170, currentY);
+  //   // Add total service row
+  //   currentY += 8;
+  //   doc.setFontSize(10);
+  //   doc.setFont('helvetica', 'bold');
+  //   doc.text('', 25, currentY); // Empty serial number
+  //   doc.text('Total Harga Layanan:', 40, currentY);
+  //   doc.text('', 140, currentY); // Empty quantity
+  //   doc.text(formatPrice(calculateTotalPrice(orderData.selected_items, orderData.base_price || 0)), 170, currentY);
     
-    // Add payment details
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Detail Pembayaran:', 20, currentY + 20);
+  //   // Add payment details
+  //   doc.setFontSize(14);
+  //   doc.setFont('helvetica', 'bold');
+  //   doc.text('Detail Pembayaran:', 20, currentY + 20);
     
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Total Harga Layanan: ${formatPrice(calculateTotalPrice(orderData.selected_items, orderData.base_price || 0))}`, 20, currentY + 30);
-    doc.text(`Metode Pembayaran: ${selectedPaymentMethod?.name || 'Transfer Bank'}`, 20, currentY + 37);
-    doc.text('Biaya Booking: Rp 2.000.000', 20, currentY + 44);
-    doc.text(`Total Pembayaran Diperlukan: ${formatPrice(2000000)}`, 20, currentY + 51);
+  //   doc.setFontSize(10);
+  //   doc.setFont('helvetica', 'normal');
+  //   doc.text(`Total Harga Layanan: ${formatPrice(calculateTotalPrice(orderData.selected_items, orderData.base_price || 0))}`, 20, currentY + 30);
+  //   doc.text(`Metode Pembayaran: ${selectedPaymentMethod?.name || 'Transfer Bank'}`, 20, currentY + 37);
+  //   doc.text('Biaya Booking: Rp 2.000.000', 20, currentY + 44);
+  //   doc.text(`Total Pembayaran Diperlukan: ${formatPrice(2000000)}`, 20, currentY + 51);
     
-    // Add bank account information
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Rekening Tujuan:', 20, currentY + 65);
+  //   // Add bank account information
+  //   doc.setFontSize(12);
+  //   doc.setFont('helvetica', 'bold');
+  //   doc.text('Rekening Tujuan:', 20, currentY + 65);
     
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Nomor Rekening: ${selectedPaymentMethod?.account_number || 'N/A'}`, 20, currentY + 75);
-    doc.text(`Atas Nama: ${selectedPaymentMethod?.details || 'N/A'}`, 20, currentY + 82);
+  //   doc.setFontSize(10);
+  //   doc.setFont('helvetica', 'normal');
+  //   doc.text(`Nomor Rekening: ${selectedPaymentMethod?.account_number || 'N/A'}`, 20, currentY + 75);
+  //   doc.text(`Atas Nama: ${selectedPaymentMethod?.details || 'N/A'}`, 20, currentY + 82);
       
-    doc.text('Terima kasih telah memilih layanan kami!', 105, 280, { align: 'center' });
+  //   doc.text('Terima kasih telah memilih layanan kami!', 105, 280, { align: 'center' });
 
-    // Save the PDF
-    doc.save(`invoice-${orderData.id || 'order'}-${new Date().toISOString().split('T')[0]}.pdf`);
-  };
+  //   // Save the PDF
+  //   doc.save(`invoice-${orderData.id || 'order'}-${new Date().toISOString().split('T')[0]}.pdf`);
+  // };
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -547,7 +548,7 @@ const PaymentInstructionsModal = ({ orderData, onClose }) => {
               <h3 className="text-2xl font-bold text-gray-900">
                 Instruksi Pembayaran
               </h3>
-              <button
+              {/* <button
                 onClick={downloadInvoice}
                 className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
               >
@@ -555,15 +556,15 @@ const PaymentInstructionsModal = ({ orderData, onClose }) => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
                 Download Invoice
-              </button>
+              </button> */}
             </div>
             
 
             <PaymentInstructions
               totalAmount={orderData.total_amount}
+              bookingAmount={orderData.booking_amount}
               onComplete={onClose}
               onBack={onClose}
-              onPaymentMethodChange={setSelectedPaymentMethod}
             />
           </div>
         </div>
@@ -579,6 +580,7 @@ const BookingModal = ({ service, selectedItems, onClose, onOrderSuccess }) => {
     phone: '',
     address: '',
     wedding_date: '',
+    booking_amount: 2000000,
     notes: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -604,7 +606,8 @@ const BookingModal = ({ service, selectedItems, onClose, onOrderSuccess }) => {
         service_name: service.name,
         base_price: service.base_price,
         selected_items: selectedItems,
-        total_amount: totalAmount
+        total_amount: totalAmount,
+        booking_amount: parseFloat(formData.booking_amount)
       };
       
       const response = await fetch('https://api-inventory.isavralabel.com/user-wedding/api/orders', {
@@ -718,6 +721,23 @@ const BookingModal = ({ service, selectedItems, onClose, onOrderSuccess }) => {
                   </div>
 
                   <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Jumlah Booking (Minimal Rp 2.000.000)</label>
+                    <input
+                      type="number"
+                      name="booking_amount"
+                      value={formData.booking_amount}
+                      onChange={handleInputChange}
+                      min="2000000"
+                      step="100000"
+                      required
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Minimal booking Rp 2.000.000, bisa lebih sesuai kebutuhan
+                    </p>
+                  </div>
+
+                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Catatan Tambahan</label>
                     <textarea
                       name="notes"
@@ -738,7 +758,7 @@ const BookingModal = ({ service, selectedItems, onClose, onOrderSuccess }) => {
                   
                   <div className="bg-gray-50 rounded-lg p-4">
                     <h5 className="font-semibold text-gray-800 mb-3">{service.name}</h5>
-                    <p className="text-gray-600 mb-4">{service.description}</p>
+                    <p className="text-gray-600 mb-4 whitespace-pre-line">{service.description}</p>
                     
                     {selectedItems.length > 0 && (
                       <div className="space-y-2 mb-4">
@@ -765,6 +785,9 @@ const BookingModal = ({ service, selectedItems, onClose, onOrderSuccess }) => {
                           {formatPrice(2000000)}
                         </span>
                       </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Minimal Rp 2.000.000, bisa lebih sesuai kebutuhan
+                      </p>
                     </div>
                   </div>
 
@@ -783,13 +806,13 @@ const BookingModal = ({ service, selectedItems, onClose, onOrderSuccess }) => {
                   <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                     <h6 className="font-semibold text-red-800 mb-2">⚠️ Persyaratan Booking</h6>
                     <p className="text-sm text-red-700 mb-2">
-                      Untuk melakukan booking, Anda harus melakukan transfer <strong>Rp 2.000.000</strong> terlebih dahulu. 
+                      Untuk melakukan booking, Anda harus melakukan transfer <strong>minimal Rp 2.000.000</strong> terlebih dahulu. 
                       Pembayaran akan dikonfirmasi dalam 1x24 jam setelah transfer dilakukan.
                     </p>
                     <p className="text-xs text-red-600">
                       <strong>Catatan:</strong> Total harga layanan adalah {formatPrice(calculateTotalPrice(selectedItems, service.base_price))}. 
                       {selectedItems.length > 0 ? 'Paket lengkap dengan semua item terpilih.' : ''} 
-                      Pembayaran Rp 2.000.000 adalah uang muka untuk booking. Sisa pembayaran dapat diselesaikan sesuai kesepakatan.
+                      Pembayaran minimal Rp 2.000.000 adalah uang muka untuk booking. Sisa pembayaran dapat diselesaikan sesuai kesepakatan.
                     </p>
                   </div>
                 </div>

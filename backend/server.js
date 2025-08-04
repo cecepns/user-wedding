@@ -526,12 +526,12 @@ app.get('/api/orders', authenticateToken, async (req, res) => {
 });
 
 app.post('/api/orders', async (req, res) => {
-  const { name, email, phone, address, wedding_date, notes, service_id, service_name, selected_items, total_amount } = req.body;
+  const { name, email, phone, address, wedding_date, notes, service_id, service_name, selected_items, total_amount, booking_amount } = req.body;
   
   try {
     const [result] = await db.execute(
-      'INSERT INTO orders (name, email, phone, address, wedding_date, notes, service_id, service_name, selected_items, total_amount, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [name, email, phone, address, wedding_date, notes, service_id, service_name, JSON.stringify(selected_items), total_amount, 'pending']
+      'INSERT INTO orders (name, email, phone, address, wedding_date, notes, service_id, service_name, selected_items, total_amount, booking_amount, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [name, email, phone, address, wedding_date, notes, service_id, service_name, JSON.stringify(selected_items), total_amount, booking_amount || 2000000, 'pending']
     );
     res.json({ id: result.insertId, message: 'Order created successfully' });
   } catch (error) {
@@ -578,6 +578,27 @@ app.delete('/api/orders/:id', authenticateToken, async (req, res) => {
   }
 });
 
+app.put('/api/orders/:id/booking-amount', authenticateToken, async (req, res) => {
+  const { booking_amount } = req.body;
+  const { id } = req.params;
+  
+  try {
+    const [result] = await db.execute(
+      'UPDATE orders SET booking_amount = ? WHERE id = ?',
+      [booking_amount, id]
+    );
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+    
+    res.json({ message: 'Booking amount updated successfully' });
+  } catch (error) {
+    console.error('Update booking amount error:', error);
+    res.status(500).json({ message: 'Database error' });
+  }
+});
+
 // Custom requests routes
 app.post('/api/custom-requests', async (req, res) => {
   const { name, email, phone, wedding_date, booking_amount, services, additional_requests } = req.body;
@@ -609,7 +630,8 @@ app.post('/api/custom-requests', async (req, res) => {
     wedding_date || null,
     booking_amount ? parseFloat(booking_amount) : null,
     services || null,
-    additional_requests || null
+    additional_requests || null,
+    'pending' // Set default status to pending
   ];
   
   // Debug: Log the parameters being sent to database
@@ -617,7 +639,7 @@ app.post('/api/custom-requests', async (req, res) => {
   
   try {
     const [result] = await db.execute(
-      'INSERT INTO custom_requests (name, email, phone, wedding_date, booking_amount, services, additional_requests) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO custom_requests (name, email, phone, wedding_date, booking_amount, services, additional_requests, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
       params
     );
     res.json({ id: result.insertId, message: 'Custom request submitted successfully' });
@@ -671,6 +693,54 @@ app.delete('/api/custom-requests/:id', authenticateToken, async (req, res) => {
     res.json({ message: 'Custom request deleted successfully' });
   } catch (error) {
     console.error('Delete custom request error:', error);
+    res.status(500).json({ message: 'Database error' });
+  }
+});
+
+app.put('/api/custom-requests/:id/booking-amount', authenticateToken, async (req, res) => {
+  const { booking_amount } = req.body;
+  const { id } = req.params;
+  
+  try {
+    const [result] = await db.execute(
+      'UPDATE custom_requests SET booking_amount = ? WHERE id = ?',
+      [booking_amount, id]
+    );
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Custom request not found' });
+    }
+    
+    res.json({ message: 'Booking amount updated successfully' });
+  } catch (error) {
+    console.error('Update booking amount error:', error);
+    res.status(500).json({ message: 'Database error' });
+  }
+});
+
+app.put('/api/custom-requests/:id/status', authenticateToken, async (req, res) => {
+  const { status } = req.body;
+  const { id } = req.params;
+  
+  // Validate status
+  const validStatuses = ['pending', 'confirmed', 'completed', 'cancelled'];
+  if (!validStatuses.includes(status)) {
+    return res.status(400).json({ message: 'Invalid status' });
+  }
+  
+  try {
+    const [result] = await db.execute(
+      'UPDATE custom_requests SET status = ? WHERE id = ?',
+      [status, id]
+    );
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Custom request not found' });
+    }
+    
+    res.json({ message: 'Status updated successfully' });
+  } catch (error) {
+    console.error('Update status error:', error);
     res.status(500).json({ message: 'Database error' });
   }
 });
