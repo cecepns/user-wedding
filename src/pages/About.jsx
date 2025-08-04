@@ -60,28 +60,28 @@ const About = () => {
 
       <div className="pt-20">
         {/* Hero Section */}
-        <section className="section-padding gradient-bg">
+        <section className="section-padding bg-gray-900 text-white">
           <div className="container-custom">
             <div className="grid lg:grid-cols-2 gap-12 items-center">
               <div className="animate-fade-in">
-                <h1 className=" text-5xl lg:text-6xl font-bold text-gray-800 mb-6">
+                <h1 className=" text-5xl lg:text-6xl font-bold  mb-6">
                   {heroContent ? heroContent.title : ''}
                 </h1>
-                <p className="text-xl text-gray-600 mb-8 leading-relaxed">
+                <p className="text-xl  mb-8 leading-relaxed">
                   {heroContent ? heroContent.description : ''}
                 </p>
                 <div className="grid grid-cols-3 gap-6">
                   <div className="text-center">
-                    <div className="text-3xl font-bold text-primary-600">100+</div>
-                    <div className="text-gray-600">Pernikahan Direncanakan</div>
+                    <div className="text-3xl font-bold">100+</div>
+                    <div>Pernikahan Direncanakan</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-3xl font-bold text-primary-600">5+</div>
-                    <div className="text-gray-600">Tahun Pengalaman</div>
+                    <div className="text-3xl font-bold">5+</div>
+                    <div>Tahun Pengalaman</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-3xl font-bold text-primary-600">98%</div>
-                    <div className="text-gray-600">Pasangan Bahagia</div>
+                    <div className="text-3xl font-bold">98%</div>
+                    <div>Pasangan Bahagia</div>
                   </div>
                 </div>
               </div>

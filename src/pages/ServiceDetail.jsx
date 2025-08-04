@@ -144,28 +144,28 @@ const ServiceDetail = () => {
 
       <div className="pt-20 overflow-x-hidden">
         {/* Hero Section */}
-        <section className="relative min-h-[60vh] flex items-center gradient-bg overflow-hidden px-4 sm:px-6 lg:px-8">
-          <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent"></div>
+        <section className="relative min-h-[60vh] flex items-center bg-gray-900 text-white overflow-hidden px-4 sm:px-6 lg:px-8">
+          {/* <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent"></div> */}
           
           <div className="max-w-7xl mx-auto w-full relative z-10">
             {/* Breadcrumb */}
             <nav className="mb-8 mt-10" data-aos="fade-down">
               <ol className="flex items-center space-x-2 text-sm text-gray-600">
-                <li><Link to="/" className="hover:text-primary-600">Beranda</Link></li>
+                <li><Link to="/" className="text-white">Beranda</Link></li>
                 <li>•</li>
-                <li><Link to="/services" className="hover:text-primary-600">Layanan</Link></li>
+                <li><Link to="/services" className="text-white">Layanan</Link></li>
                 <li>•</li>
-                <li className="text-gray-800">{service.name}</li>
+                <li className="text-white">{service.name}</li>
               </ol>
             </nav>
 
             <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
               <div data-aos="fade-right">
-                <h1 className="text-3xl sm:text-4xl lg:text-6xl font-bold text-gray-800 mb-6 leading-tight">
+                <h1 className="text-3xl sm:text-4xl lg:text-6xl font-bold mb-6 leading-tight">
                   {service.name}
                 </h1>
                 <div className="flex flex-col gap-5" data-aos="fade-up" data-aos-delay="200">
-                  <p className="text-2xl md:text-4xl text-primary-600 font-bold leading-relaxed">
+                  <p className="text-2xl md:text-4xl text-white font-bold leading-relaxed">
                     {formatPrice(service.base_price)}
                   </p>
                   <button
@@ -230,24 +230,22 @@ const ServiceDetail = () => {
                       </button>
                     </div>
                     <div className="space-y-4">
-                      {items.map((item, index) => (
+                      {items.map((item) => (
                         <div
                           key={item.id}
-                          className="border border-gray-200 rounded-lg p-4 sm:p-6 hover:border-primary-300 transition-colors"
-                          data-aos="fade-up"
-                          data-aos-delay={300 + index * 100}
+                          className="border border-gray-200 bg-gradient-to-r from-primary-600 to-secondary-600 rounded-lg p-4 sm:p-6 hover:border-primary-300 transition-colors"
                         >
                           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
                             <div className="flex-1">
-                              <h4 className="text-lg sm:text-xl font-semibold text-gray-800 mb-2">
+                              <h4 className="text-lg sm:text-xl font-semibold text-white mb-2">
                                 {item.name}
                               </h4>
-                              <p className="text-gray-600 mb-4">
+                              <p className="text-gray-600 mb-4 text-white">
                                 {item.description}
                               </p>
                             </div>
                             <div className="text-left sm:text-right">
-                              <div className="text-xl sm:text-2xl font-bold text-primary-600 mb-2">
+                              <div className="text-xl sm:text-2xl font-bold text-white mb-2">
                                 {formatPrice(item.final_price || item.item_price || item.price)}
                               </div>
                               <button

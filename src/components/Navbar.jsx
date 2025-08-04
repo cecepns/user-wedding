@@ -28,8 +28,8 @@ const Navbar = () => {
   return (
     <nav className={`fixed w-full z-50 transition-all duration-300 ${
       isScrolled 
-        ? 'bg-white/20 backdrop-blur-xl shadow-lg border-b border-white/20' 
-        : 'bg-white/10 backdrop-blur-sm'
+        ? 'bg-white shadow-lg border-b border-white/20' 
+        : 'bg-white'
     }`}>
       <div className="container-custom">
         <div className="p-4 md:px-8 flex items-center justify-between h-20">

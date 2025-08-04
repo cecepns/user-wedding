@@ -72,12 +72,12 @@ const Gallery = () => {
 
       <div className="pt-20">
         {/* Hero Section */}
-        <section className="section-padding gradient-bg">
-          <div className="container-custom text-center">
-            <h1 className="text-5xl lg:text-6xl font-bold text-gray-800 mb-6 animate-fade-in">
+        <section className="section-padding bg-gray-900 text-white">
+          <div className="container-custom text-left">
+            <h1 className="text-5xl lg:text-6xl max-w-3xl mx-auto font-bold mb-6 animate-fade-in">
               {heroContent ? heroContent.title : ''}
             </h1>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto animate-slide-up">
+            <p className="text-xl max-w-3xl mx-auto animate-slide-up">
               {heroContent ? heroContent.description : ''}
             </p>
             {heroContent && heroContent.button_text && (
