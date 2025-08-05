@@ -530,7 +530,7 @@ const CustomService = () => {
                 </div>
 
                 {/* Category Filter */}
-                {categories.length > 0 && (
+                {/* {categories.length > 0 && (
                   <div className="mb-6">
                     <label className="block text-sm font-medium text-gray-700 mb-3">
                       Filter berdasarkan kategori:
@@ -561,7 +561,7 @@ const CustomService = () => {
                       ))}
                     </div>
                   </div>
-                )}
+                )} */}
 
                 {/* Selected Services Summary */}
                 {formData.services.length > 0 && (
