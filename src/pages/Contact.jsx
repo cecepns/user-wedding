@@ -70,7 +70,7 @@ const Contact = () => {
 
       <div className="pt-20">
         {/* Hero Section */}
-        <section className="section-padding bg-gray-900 text-white">
+        {/* <section className="section-padding bg-gray-900 text-white">
           <div className="container-custom text-left">
             <h1 className="text-3xl md:text-5xl max-w-3xl mx-auto lg:text-6xl font-bold mb-6 animate-fade-in">
               {heroContent ? heroContent.title : ''}
@@ -79,7 +79,7 @@ const Contact = () => {
               {heroContent ? heroContent.description : ''}
             </p>
           </div>
-        </section>
+        </section> */}
 
         {/* Contact Form & Info */}
         <section className="section-padding bg-white">

@@ -72,7 +72,7 @@ const Gallery = () => {
 
       <div className="pt-20">
         {/* Hero Section */}
-        <section className="section-padding bg-gray-900 text-white">
+        {/* <section className="section-padding bg-gray-900 text-white">
           <div className="container-custom text-left">
             <h1 className="text-3xl lg:text-6xl max-w-3xl mx-auto font-bold mb-6 animate-fade-in">
               {heroContent ? heroContent.title : ''}
@@ -91,7 +91,7 @@ const Gallery = () => {
               </div>
             )}
           </div>
-        </section>
+        </section> */}
 
         {/* Category Filter */}
         <section className="py-8 bg-white">

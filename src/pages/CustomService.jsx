@@ -479,7 +479,7 @@ const CustomService = () => {
 
       <div className="min-h-screen bg-gradient-to-br from-primary-50 to-secondary-50">
         {/* Header */}
-        <div className="mb-12 bg-gray-900 text-white pt-32 pb-24">
+        {/* <div className="mb-12 bg-gray-900 text-white pt-32 pb-24">
           <div className="container-custom text-left">
             <h1 className="text-3xl max-w-3xl px-4 mx-auto sm: text-3xl lg:text-5xl font-bold mb-6">
               {customServiceContent ? customServiceContent.title : ""}
@@ -493,8 +493,8 @@ const CustomService = () => {
               {customServiceContent ? customServiceContent.description : ""}
             </p>
           </div>
-        </div>
-        <div className="container-custom px-4">
+        </div> */}
+        <div className="container-custom px-4 pt-32">
           {!showForm ? (
             /* Service Selection Page */
             <div className="max-w-6xl mx-auto">
