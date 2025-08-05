@@ -72,7 +72,7 @@ const Contact = () => {
         {/* Hero Section */}
         <section className="section-padding bg-gray-900 text-white">
           <div className="container-custom text-left">
-            <h1 className="text-5xl max-w-3xl mx-auto lg:text-6xl font-bold mb-6 animate-fade-in">
+            <h1 className="text-3xl md:text-5xl max-w-3xl mx-auto lg:text-6xl font-bold mb-6 animate-fade-in">
               {heroContent ? heroContent.title : ''}
             </h1>
             <p className="text-xl max-w-3xl mx-auto animate-slide-up">
