@@ -64,7 +64,7 @@ const About = () => {
           <div className="container-custom">
             <div className="grid lg:grid-cols-2 gap-12 items-center">
               <div className="animate-fade-in">
-                <h1 className=" text-5xl lg:text-6xl font-bold  mb-6">
+                <h1 className=" text-3xl lg:text-6xl font-bold  mb-6">
                   {heroContent ? heroContent.title : ''}
                 </h1>
                 <p className="text-xl  mb-8 leading-relaxed">

@@ -30,7 +30,7 @@ const Articles = () => {
         {/* Hero Section */}
         <section className="section-padding gradient-bg">
           <div className="container-custom text-center">
-            <h1 className=" text-5xl lg:text-6xl font-bold text-gray-800 mb-6 animate-fade-in">
+            <h1 className=" text-3xl lg:text-6xl font-bold text-gray-800 mb-6 animate-fade-in">
               Artikel Pernikahan
             </h1>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto animate-slide-up">
