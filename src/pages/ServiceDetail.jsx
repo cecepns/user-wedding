@@ -362,7 +362,7 @@ const ServiceDetail = () => {
           <div className="absolute inset-0 bg-gradient-to-r from-primary-900/20 to-secondary-900/20"></div>
           <div className="max-w-4xl mx-auto relative z-10">
             <div className="text-center" data-aos="fade-up">
-              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-6">
+              <h2 className="text-3xl sm: text-3xl lg:text-5xl font-bold mb-6">
                 Siap Memesan {service.name}?
               </h2>
               <p className="text-lg sm:text-xl text-gray-300 mb-8">

@@ -281,7 +281,7 @@ const Home = () => {
         <div className="absolute inset-0 bg-gradient-to-r from-primary-900/20 to-secondary-900/20"></div>
         <div className="container-custom relative z-10">
           <div className="text-center max-w-4xl mx-auto" data-aos="fade-up">
-            <h2 className=" text-4xl lg:text-5xl font-bold mb-6">
+            <h2 className="  text-3xl lg:text-5xl font-bold mb-6">
               {ctaContent ? ctaContent.title : ''}
             </h2>
             <p className="text-xl text-gray-300 mb-8">

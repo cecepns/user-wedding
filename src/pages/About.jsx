@@ -162,7 +162,7 @@ const About = () => {
         {/* CTA Section */}
         <section className="section-padding bg-gray-900 text-white">
           <div className="container-custom text-center">
-            <h2 className=" text-4xl lg:text-5xl font-bold mb-6 animate-fade-in">
+            <h2 className="  text-3xl lg:text-5xl font-bold mb-6 animate-fade-in">
               {ctaContent ? ctaContent.title : 'Siap Mulai Merencanakan?'}
             </h2>
             <p className="text-xl text-gray-300 mb-8 max-w-3xl mx-auto animate-slide-up">

@@ -481,7 +481,7 @@ const CustomService = () => {
         {/* Header */}
         <div className="mb-12 bg-gray-900 text-white pt-32 pb-24">
           <div className="container-custom text-left">
-            <h1 className="text-3xl max-w-3xl px-4 mx-auto sm:text-4xl lg:text-5xl font-bold mb-6">
+            <h1 className="text-3xl max-w-3xl px-4 mx-auto sm: text-3xl lg:text-5xl font-bold mb-6">
               {customServiceContent ? customServiceContent.title : ""}
             </h1>
             {customServiceContent?.subtitle && (
