@@ -504,11 +504,14 @@ app.get('/api/orders', authenticateToken, async (req, res) => {
     const [countResult] = await db.execute('SELECT COUNT(*) as total FROM orders');
     const total = countResult[0].total;
     
-    // Get paginated orders
-    const [orders] = await db.execute(
-      'SELECT * FROM orders ORDER BY created_at DESC LIMIT ? OFFSET ?',
-      [limit, offset]
-    );
+    // Get paginated orders with service base_price
+    const [orders] = await db.execute(`
+      SELECT o.*, s.base_price 
+      FROM orders o 
+      LEFT JOIN services s ON o.service_id = s.id 
+      ORDER BY o.created_at DESC 
+      LIMIT ? OFFSET ?
+    `, [limit, offset]);
     
     res.json({
       orders,

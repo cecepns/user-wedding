@@ -32,6 +32,11 @@ const AdminOrders = () => {
   const [newBookingAmount, setNewBookingAmount] = useState('');
   const [loading, setLoading] = useState(false);
   const [customRequestsLoading, setCustomRequestsLoading] = useState(false);
+  const [showBankSelectionModal, setShowBankSelectionModal] = useState(false);
+  const [paymentMethods, setPaymentMethods] = useState([]);
+  const [selectedBankMethod, setSelectedBankMethod] = useState(null);
+  const [pendingInvoiceItem, setPendingInvoiceItem] = useState(null);
+  const [pendingInvoiceType, setPendingInvoiceType] = useState('');
 
   useEffect(() => {
     if (activeTab === 'orders') {
@@ -40,6 +45,23 @@ const AdminOrders = () => {
       fetchCustomRequests();
     }
   }, [activeTab, ordersPagination.page, customRequestsPagination.page]);
+
+  useEffect(() => {
+    fetchPaymentMethods();
+  }, []);
+
+  const fetchPaymentMethods = async () => {
+    try {
+      const response = await fetch('https://api-inventory.isavralabel.com/user-wedding/api/payment-methods');
+      const data = await response.json();
+      setPaymentMethods(data);
+      if (data.length > 0) {
+        setSelectedBankMethod(data[0]);
+      }
+    } catch (error) {
+      console.error('Error fetching payment methods:', error);
+    }
+  };
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -369,8 +391,17 @@ const AdminOrders = () => {
     }
   };
 
-  const generateInvoicePDF = (item, type) => {
+  const handleGenerateInvoice = (item, type) => {
+    setPendingInvoiceItem(item);
+    setPendingInvoiceType(type);
+    setShowBankSelectionModal(true);
+  };
+
+  const generateInvoicePDF = (item, type, selectedBank = null) => {
     const doc = new jsPDF();
+    
+    // Get current domain for website URL
+    const currentDomain = window.location.origin;
     
     // ===== PAGE 1 =====
     // Company header
@@ -384,7 +415,7 @@ const AdminOrders = () => {
     doc.text('Jl. Raya panongan Kec. Panongan Kab. Tangerang Provinsi Banten', 20, 30);
     doc.text('Telephone: 089646829459', 20, 37);
     doc.text('Email: edo19priyatno@gmail.com', 20, 44);
-    doc.text('Website: https://sites.google.com/view/userwedding/beranda', 20, 51);
+    doc.text(`Website: ${currentDomain}`, 20, 51);
     
     // Invoice details (right side)
     doc.setFontSize(12);
@@ -395,7 +426,7 @@ const AdminOrders = () => {
     doc.setFont('helvetica', 'normal');
     doc.text(`No. Invoice: ${item.id || 'N/A'}`, 150, 30);
     doc.text(`Tanggal Invoice: ${new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}`, 150, 37);
-    doc.text(`Jatuh Tempo: ${new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}`, 150, 44);
+    doc.text(`Jatuh Tempo: ${formatDate(item.wedding_date)}`, 150, 44);
     
     // Bill To section
     doc.setFontSize(12);
@@ -441,7 +472,7 @@ const AdminOrders = () => {
       doc.text(itemNumber.toString(), 25, currentY);
       doc.text(item.service_name, 40, currentY);
       doc.text('1', 140, currentY);
-      doc.text(formatRupiah(item.total_amount || 0), 170, currentY);
+      doc.text(formatRupiah(item.base_price || 0), 170, currentY);
       
       // Selected items as sub-items
       if (item.selected_items) {
@@ -496,10 +527,11 @@ const AdminOrders = () => {
     
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Total Harga Layanan: ${formatRupiah(type === 'order' ? (item.total_amount || 0) : (item.booking_amount || 0))}`, 20, currentY + 30);
-    doc.text('Metode Pembayaran: Transfer Bank', 20, currentY + 37);
-    doc.text(`Biaya Booking: ${formatRupiah(item.booking_amount || 0)}`, 20, currentY + 44);
-    doc.text(`Sisa Pembayaran: ${formatRupiah((type === 'order' ? (item.total_amount || 0) : (item.booking_amount || 0)) - (item.booking_amount || 0))}`, 20, currentY + 51);
+    doc.text(`Harga Layanan: ${formatRupiah(type === 'order' ? (item.base_price || 0) : (item.booking_amount || 0))}`, 20, currentY + 30);
+    doc.text(`Total Harga Layanan: ${formatRupiah(type === 'order' ? (item.total_amount || 0) : (item.booking_amount || 0))}`, 20, currentY + 37);
+    doc.text('Metode Pembayaran: Transfer Bank', 20, currentY + 44);
+    doc.text(`Biaya Booking: ${formatRupiah(item.booking_amount || 0)}`, 20, currentY + 51);
+    doc.text(`Sisa Pembayaran: ${formatRupiah((type === 'order' ? (item.total_amount || 0) : (item.booking_amount || 0)) - (item.booking_amount || 0))}`, 20, currentY + 58);
     
     // Add bank account information
     doc.setFontSize(12);
@@ -508,8 +540,11 @@ const AdminOrders = () => {
     
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text('Nomor Rekening: 1234567890', 20, currentY + 75);
-    doc.text('Atas Nama: User Wedding Organizer', 20, currentY + 82);
+    // Use selected bank account if available, otherwise use default
+    const bankAccountNumber = selectedBank?.account_number || item.selected_bank_account || item.bank_account_number || '1234567890';
+    const bankAccountName = selectedBank?.name || item.bank_account_name || 'User Wedding Organizer';
+    doc.text(`Nomor Rekening: ${bankAccountNumber}`, 20, currentY + 75);
+    doc.text(`Atas Nama: ${bankAccountName}`, 20, currentY + 82);
       
     doc.text('Terima kasih telah memilih layanan kami!', 105, 280, { align: 'center' });
 
@@ -675,7 +710,7 @@ const AdminOrders = () => {
                                 <Edit size={16} />
                               </button>
                               <button
-                                onClick={() => generateInvoicePDF(order, 'order')}
+                                onClick={() => handleGenerateInvoice(order, 'order')}
                                 className="text-purple-600 hover:text-purple-700 flex items-center gap-1"
                                 title="Download Invoice"
                               >
@@ -848,7 +883,7 @@ const AdminOrders = () => {
                                 <Edit size={16} />
                               </button>
                               <button
-                                onClick={() => generateInvoicePDF(request, 'request')}
+                                onClick={() => handleGenerateInvoice(request, 'request')}
                                 className="text-purple-600 hover:text-purple-700 flex items-center gap-1"
                                 title="Download Invoice"
                               >
@@ -1263,6 +1298,91 @@ const AdminOrders = () => {
                     className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
                   >
                     Simpan
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Bank Selection Modal */}
+        {showBankSelectionModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4">
+              <div className="flex justify-between items-center p-6 border-b border-gray-200">
+                <h2 className="text-xl font-bold text-gray-800">
+                  Pilih Bank Transfer
+                </h2>
+                <button
+                  onClick={() => {
+                    setShowBankSelectionModal(false);
+                    setPendingInvoiceItem(null);
+                    setPendingInvoiceType('');
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+              
+              <div className="p-6">
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Pilih Metode Pembayaran
+                  </label>
+                  <div className="space-y-2">
+                    {paymentMethods.map((method) => (
+                      <div
+                        key={method.id}
+                        className={`p-3 border rounded-lg cursor-pointer transition-all ${
+                          selectedBankMethod?.id === method.id
+                            ? 'border-primary-500 bg-primary-50'
+                            : 'border-gray-300 hover:border-primary-300'
+                        }`}
+                        onClick={() => setSelectedBankMethod(method)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="font-medium text-gray-800">{method.name}</h4>
+                            <p className="text-sm text-gray-600">{method.type}</p>
+                            {method.account_number && (
+                              <p className="text-xs text-gray-500">No. Rek: {method.account_number}</p>
+                            )}
+                          </div>
+                          <div className="w-4 h-4 border-2 border-gray-300 rounded-full flex items-center justify-center">
+                            {selectedBankMethod?.id === method.id && (
+                              <div className="w-2 h-2 bg-primary-600 rounded-full"></div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex justify-end space-x-3">
+                  <button
+                    onClick={() => {
+                      setShowBankSelectionModal(false);
+                      setPendingInvoiceItem(null);
+                      setPendingInvoiceType('');
+                    }}
+                    className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (pendingInvoiceItem && pendingInvoiceType) {
+                        generateInvoicePDF(pendingInvoiceItem, pendingInvoiceType, selectedBankMethod);
+                        setShowBankSelectionModal(false);
+                        setPendingInvoiceItem(null);
+                        setPendingInvoiceType('');
+                      }
+                    }}
+                    className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                  >
+                    Generate Invoice
                   </button>
                 </div>
               </div>

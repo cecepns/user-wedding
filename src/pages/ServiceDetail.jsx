@@ -160,9 +160,9 @@ const ServiceDetail = () => {
 
             <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
               <div data-aos="fade-right">
-                <h1 className="text-3xl sm:text-4xl lg:text-6xl font-bold mb-6 leading-tight">
+                {/* <h1 className="text-3xl sm:text-4xl lg:text-6xl font-bold mb-6 leading-tight">
                   {service.name}
-                </h1>
+                </h1> */}
                 <div className="flex flex-col gap-5" data-aos="fade-up" data-aos-delay="200">
                   <p className="text-2xl md:text-4xl text-white font-bold leading-relaxed">
                     {formatPrice(service.base_price)}
