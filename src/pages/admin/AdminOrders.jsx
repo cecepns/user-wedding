@@ -399,81 +399,106 @@ const AdminOrders = () => {
 
   const generateInvoicePDF = (item, type, selectedBank = null) => {
     const doc = new jsPDF();
-    
+
+    // Hitung lebar halaman dan margin
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 20;
+
     // Get current domain for website URL
     const currentDomain = window.location.origin;
-    
+
     // ===== PAGE 1 =====
     // Company header
     doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.text('User Wedding Organizer', 20, 20);
-    
+    doc.setFont("helvetica", "bold");
+    doc.text("User Wedding Organizer", 20, 20);
+
     // Company details
     doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text('Jl. Raya panongan Kec. Panongan Kab. Tangerang Provinsi Banten', 20, 30);
-    doc.text('Telephone: 089646829459', 20, 37);
-    doc.text('Email: edo19priyatno@gmail.com', 20, 44);
+    doc.setFont("helvetica", "normal");
+    doc.text(
+      "Jl. Raya panongan Kec. Panongan Kab. Tangerang Provinsi Banten",
+      20,
+      30
+    );
+    doc.text("Telephone: 089646829459", 20, 37);
+    doc.text("Email: edo19priyatno@gmail.com", 20, 44);
     doc.text(`Website: ${currentDomain}`, 20, 51);
-    
+
     // Invoice details (right side)
     doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('INVOICE', 150, 20);
-    
+    doc.setFont("helvetica", "bold");
+    doc.text("INVOICE", 150, 20);
+
     doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`No. Invoice: ${item.id || 'N/A'}`, 150, 30);
-    doc.text(`Tanggal Invoice: ${new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}`, 150, 37);
+    doc.setFont("helvetica", "normal");
+    doc.text(`No. Invoice: ${item.id || "N/A"}`, 150, 30);
+    doc.text(
+      `Tanggal Invoice: ${new Date().toLocaleDateString("id-ID", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+      })}`,
+      150,
+      37
+    );
     doc.text(`Jatuh Tempo: ${formatDate(item.wedding_date)}`, 150, 44);
-    
+
     // Bill To section
     doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Kepada :', 20, 70);
-    
+    doc.setFont("helvetica", "bold");
+    doc.text("Kepada :", 20, 60);
+
     doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(item.name, 20, 77);
-    doc.text(item.email, 20, 84);
-    doc.text(item.phone, 20, 91);
-    if (type === 'order' && item.address) {
-      doc.text(item.address, 20, 98);
-      doc.text(`Tanggal Pernikahan: ${formatDate(item.wedding_date)}`, 20, 105);
-    } else {
-      doc.text(`Tanggal Pernikahan: ${formatDate(item.wedding_date)}`, 20, 98);
+    doc.setFont("helvetica", "normal");
+    doc.text(item.name, 20, 67);
+    doc.text(item.email, 20, 74);
+    doc.text(item.phone, 20, 81);
+
+    // Handle address with text wrapping to prevent breaking
+    let addressY = 88;
+
+    if (type === "order" && item.address) {
+      // Use actual usable width (page width minus margins)
+      const actualUsableWidth = pageWidth - (margin * 2);
+      doc.text(item.address, margin, addressY, { maxWidth: actualUsableWidth });
+
+      // Hitung tinggi teks untuk spacing yang tepat
+      const addressHeight = doc.getTextDimensions(item.address, {
+        maxWidth: actualUsableWidth,
+      }).h;
+      addressY += addressHeight + 5;
     }
-    
-    // Service table header
-    const startY = type === 'order' ? 120 : 110;
+
+    // Service table header - adjust based on address length
+    const startY = type === "order" ? addressY + 8 : 110;
     doc.setFillColor(52, 152, 219); // Blue background
-    doc.rect(20, startY, 170, 8, 'F');
-    
+    doc.rect(20, startY, 170, 8, "F");
+
     doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
+    doc.setFont("helvetica", "bold");
     doc.setTextColor(255, 255, 255); // White text
-    doc.text('No.', 25, startY + 6);
-    doc.text('Deskripsi', 40, startY + 6);
-    doc.text('Jml', 140, startY + 6);
-    doc.text('Harga', 170, startY + 6);
-    
+    doc.text("No.", 25, startY + 6);
+    doc.text("Deskripsi", 40, startY + 6);
+    doc.text("Jml", 140, startY + 6);
+    doc.text("Harga", 170, startY + 6);
+
     // Reset text color
     doc.setTextColor(0, 0, 0);
-    
+
     // Service items
     let currentY = startY + 15;
     let itemNumber = 1;
-    
-    if (type === 'order') {
+
+    if (type === "order") {
       // Main service item (base price)
       doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
+      doc.setFont("helvetica", "normal");
       doc.text(itemNumber.toString(), 25, currentY);
       doc.text(item.service_name, 40, currentY);
-      doc.text('1', 140, currentY);
+      doc.text("1", 140, currentY);
       doc.text(formatRupiah(item.base_price || 0), 170, currentY);
-      
+
       // Selected items as sub-items
       if (item.selected_items) {
         try {
@@ -481,79 +506,155 @@ const AdminOrders = () => {
           if (Array.isArray(selectedItems) && selectedItems.length > 0) {
             currentY += 8;
             selectedItems.forEach((selectedItem) => {
-              const itemName = selectedItem.name || selectedItem.item_name || selectedItem.title || 'Item tidak dikenal';
-              const itemPrice = selectedItem.final_price || selectedItem.item_price || selectedItem.price || selectedItem.custom_price || 0;
-              
+              const itemName =
+                selectedItem.name ||
+                selectedItem.item_name ||
+                selectedItem.title ||
+                "Item tidak dikenal";
+              const itemPrice =
+                selectedItem.final_price ||
+                selectedItem.item_price ||
+                selectedItem.price ||
+                selectedItem.custom_price ||
+                0;
+
               doc.setFontSize(8);
               doc.text(`  ${itemName}`, 40, currentY);
-              doc.text('1', 140, currentY);
+              doc.text("1", 140, currentY);
               doc.text(formatRupiah(itemPrice), 170, currentY);
               currentY += 5;
             });
           }
         } catch (error) {
-          console.error('Error parsing selected items:', error);
+          console.error("Error parsing selected items:", error);
         }
       }
     } else {
       // Custom request
       doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
+      doc.setFont("helvetica", "normal");
       doc.text(itemNumber.toString(), 25, currentY);
-      doc.text('Layanan Kustom', 40, currentY);
-      doc.text('1', 140, currentY);
+      doc.text("Layanan Kustom", 40, currentY);
+      doc.text("1", 140, currentY);
       doc.text(formatRupiah(item.booking_amount || 0), 170, currentY);
-      
+
       if (item.services) {
         currentY += 8;
         doc.setFontSize(8);
         doc.text(`  ${item.services}`, 40, currentY);
       }
     }
-    
+
     // Add total service row
     currentY += 8;
     doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.text('', 25, currentY); // Empty serial number
-    doc.text('Total Harga Layanan:', 40, currentY);
-    doc.text('', 140, currentY); // Empty quantity
-    doc.text(formatRupiah(type === 'order' ? (item.total_amount || 0) : (item.booking_amount || 0)), 170, currentY);
-    
+    doc.setFont("helvetica", "bold");
+    doc.text("", 25, currentY); // Empty serial number
+    doc.text("Total Harga Layanan:", 40, currentY);
+    doc.text("", 140, currentY); // Empty quantity
+    doc.text(
+      formatRupiah(
+        type === "order" ? item.total_amount || 0 : item.booking_amount || 0
+      ),
+      170,
+      currentY
+    );
+
     // Add payment details
     doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Detail Pembayaran:', 20, currentY + 20);
-    
+    doc.setFont("helvetica", "bold");
+    doc.text("Detail Pembayaran:", 20, currentY + 20);
+
     doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Harga Layanan: ${formatRupiah(type === 'order' ? (item.base_price || 0) : (item.booking_amount || 0))}`, 20, currentY + 30);
-    doc.text(`Total Harga Layanan: ${formatRupiah(type === 'order' ? (item.total_amount || 0) : (item.booking_amount || 0))}`, 20, currentY + 37);
-    doc.text('Metode Pembayaran: Transfer Bank', 20, currentY + 44);
-    doc.text(`Biaya Booking: ${formatRupiah(item.booking_amount || 0)}`, 20, currentY + 51);
-    doc.text(`Sisa Pembayaran: ${formatRupiah((type === 'order' ? (item.total_amount || 0) : (item.booking_amount || 0)) - (item.booking_amount || 0))}`, 20, currentY + 58);
-    
+    doc.setFont("helvetica", "normal");
+    doc.text(
+      `Harga Layanan: ${formatRupiah(
+        type === "order" ? item.base_price || 0 : item.booking_amount || 0
+      )}`,
+      20,
+      currentY + 30
+    );
+    doc.text(
+      `Total Harga Layanan: ${formatRupiah(
+        type === "order" ? item.total_amount || 0 : item.booking_amount || 0
+      )}`,
+      20,
+      currentY + 37
+    );
+    doc.text("Metode Pembayaran: Transfer Bank", 20, currentY + 44);
+    doc.text(
+      `Biaya Booking: ${formatRupiah(item.booking_amount || 0)}`,
+      20,
+      currentY + 51
+    );
+    doc.text(
+      `Sisa Pembayaran: ${formatRupiah(
+        (type === "order" ? item.total_amount || 0 : item.booking_amount || 0) -
+          (item.booking_amount || 0)
+      )}`,
+      20,
+      currentY + 58
+    );
+
     // Add bank account information
     doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Rekening Tujuan:', 20, currentY + 65);
-    
+    doc.setFont("helvetica", "bold");
+    doc.text("Rekening Tujuan:", 20, currentY + 65);
+
     doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
+    doc.setFont("helvetica", "normal");
     // Use selected bank account if available, otherwise use default
-    const bankAccountNumber = selectedBank?.account_number || item.selected_bank_account || item.bank_account_number || '1234567890';
-    const bankAccountName = selectedBank?.name || item.bank_account_name || 'User Wedding Organizer';
+    const bankAccountNumber =
+      selectedBank?.account_number ||
+      item.selected_bank_account ||
+      item.bank_account_number ||
+      "1234567890";
+    const bankAccountName =
+      selectedBank?.name || item.bank_account_name || "User Wedding Organizer";
     doc.text(`Nomor Rekening: ${bankAccountNumber}`, 20, currentY + 75);
     doc.text(`Atas Nama: ${bankAccountName}`, 20, currentY + 82);
-      
-    doc.text('Terima kasih telah memilih layanan kami!', 105, 280, { align: 'center' });
+
+    // Add user notes section if available
+    let notesY = currentY + 95;
+    const notesText = item.notes || item.additional_requests || "";
+    if (notesText && notesText.trim()) {
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.text("Catatan:", 20, notesY);
+
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      notesY += 7;
+
+      // Use full width for notes (same as address width calculation)
+      const actualUsableWidth = pageWidth - (margin * 2);
+      const notesLines = doc.splitTextToSize(notesText, actualUsableWidth);
+      notesLines.forEach((line) => {
+        doc.text(line, 20, notesY);
+        notesY += 5;
+      });
+
+      notesY += 15; // Add more space after notes
+    }
+
+    // Position thank you message at the bottom of the page
+    // Calculate the final Y position after all content
+    const finalContentY = notesText && notesText.trim() ? notesY : currentY + 95;
+    const thankYouY = finalContentY + 30; // Add 30mm space after the last content
+    
+    // Set font for thank you message
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.text("Terima kasih telah memilih layanan kami!", 105, thankYouY, {
+      align: "center",
+    });
 
     // Save the PDF
-    const fileName = `invoice-${type}-${item.id}-${new Date().toISOString().split('T')[0]}.pdf`;
+    const fileName = `invoice-${type}-${item.id}-${
+      new Date().toISOString().split("T")[0]
+    }.pdf`;
     doc.save(fileName);
   };
-
-
 
   return (
     <>
