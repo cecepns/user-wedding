@@ -652,6 +652,85 @@ app.post('/api/custom-requests', async (req, res) => {
   }
 });
 
+// Helper function to get items details from services string
+async function getItemsDetailsFromServices(servicesString) {
+  if (!servicesString || typeof servicesString !== 'string') {
+    return { items: [], totalAmount: 0 };
+  }
+
+  try {
+    // Split services by comma and clean up
+    const serviceNames = servicesString
+      .split(',')
+      .map(s => s.trim())
+      .filter(s => s.length > 0);
+
+    if (serviceNames.length === 0) {
+      return { items: [], totalAmount: 0 };
+    }
+
+    const items = [];
+    let totalAmount = 0;
+
+    // For each service name, try to find matching items
+    for (const serviceName of serviceNames) {
+      let matchedItem = null;
+      
+      // Try exact match first
+      let [exactItems] = await db.execute(
+        'SELECT id, name, price FROM items WHERE name = ? AND is_active = true',
+        [serviceName]
+      );
+
+      // If no exact match, try LIKE match (case insensitive)
+      if (exactItems.length === 0) {
+        [exactItems] = await db.execute(
+          'SELECT id, name, price FROM items WHERE LOWER(name) LIKE LOWER(?) AND is_active = true LIMIT 1',
+          [`%${serviceName}%`]
+        );
+      }
+
+      // If still no match, try reverse LIKE (service name contains item name)
+      if (exactItems.length === 0) {
+        [exactItems] = await db.execute(
+          'SELECT id, name, price FROM items WHERE LOWER(?) LIKE CONCAT("%", LOWER(name), "%") AND is_active = true LIMIT 1',
+          [serviceName]
+        );
+      }
+
+      // If found, add to items list
+      if (exactItems.length > 0) {
+        matchedItem = exactItems[0];
+        const price = parseFloat(matchedItem.price) || 0;
+        items.push({
+          name: serviceName, // Use original service name from request
+          item_name: matchedItem.name, // Actual item name from database
+          price: price
+        });
+        totalAmount += price;
+      } else {
+        // If not found, still add with price 0
+        items.push({
+          name: serviceName,
+          item_name: serviceName,
+          price: 0
+        });
+      }
+    }
+
+    return { items, totalAmount };
+  } catch (error) {
+    console.error('Error getting items details from services:', error);
+    return { items: [], totalAmount: 0 };
+  }
+}
+
+// Helper function to calculate total amount from services string
+async function calculateTotalAmountFromServices(servicesString) {
+  const { totalAmount } = await getItemsDetailsFromServices(servicesString);
+  return totalAmount;
+}
+
 app.get('/api/custom-requests', authenticateToken, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -668,8 +747,20 @@ app.get('/api/custom-requests', authenticateToken, async (req, res) => {
       [limit, offset]
     );
     
+    // Calculate total_amount and items details for each request based on services
+    const requestsWithTotal = await Promise.all(
+      requests.map(async (request) => {
+        const { items, totalAmount } = await getItemsDetailsFromServices(request.services);
+        return {
+          ...request,
+          total_amount: totalAmount,
+          items_details: items // Include items breakdown for invoice
+        };
+      })
+    );
+    
     res.json({
-      requests,
+      requests: requestsWithTotal,
       pagination: {
         page,
         limit,

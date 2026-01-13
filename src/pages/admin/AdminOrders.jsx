@@ -530,18 +530,44 @@ const AdminOrders = () => {
         }
       }
     } else {
-      // Custom request
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "normal");
-      doc.text(itemNumber.toString(), 25, currentY);
-      doc.text("Layanan Kustom", 40, currentY);
-      doc.text("1", 140, currentY);
-      doc.text(formatRupiah(item.booking_amount || 0), 170, currentY);
+      // Custom request - show breakdown per item
+      if (item.items_details && Array.isArray(item.items_details) && item.items_details.length > 0) {
+        // Display each item as a separate row with its price
+        item.items_details.forEach((serviceItem, index) => {
+          doc.setFontSize(10);
+          doc.setFont("helvetica", "normal");
+          
+          // Show item number
+          doc.text((itemNumber + index).toString(), 25, currentY);
+          
+          // Show item name
+          doc.text(serviceItem.name, 40, currentY);
+          
+          // Show quantity
+          doc.text("1", 140, currentY);
+          
+          // Show price
+          doc.text(formatRupiah(serviceItem.price || 0), 170, currentY);
+          
+          // Move to next row
+          currentY += 8;
+        });
+        // No need to add extra spacing, currentY already updated in loop
+      } else {
+        // Fallback: if no items_details, show as before
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.text(itemNumber.toString(), 25, currentY);
+        doc.text("Layanan Kustom", 40, currentY);
+        doc.text("1", 140, currentY);
+        doc.text(formatRupiah(item.total_amount || 0), 170, currentY);
 
-      if (item.services) {
+        if (item.services) {
+          currentY += 8;
+          doc.setFontSize(8);
+          doc.text(`  ${item.services}`, 40, currentY);
+        }
         currentY += 8;
-        doc.setFontSize(8);
-        doc.text(`  ${item.services}`, 40, currentY);
       }
     }
 
@@ -554,7 +580,7 @@ const AdminOrders = () => {
     doc.text("", 140, currentY); // Empty quantity
     doc.text(
       formatRupiah(
-        type === "order" ? item.total_amount || 0 : item.booking_amount || 0
+        type === "order" ? item.total_amount || 0 : item.total_amount || 0
       ),
       170,
       currentY
@@ -569,14 +595,14 @@ const AdminOrders = () => {
     doc.setFont("helvetica", "normal");
     doc.text(
       `Harga Layanan: ${formatRupiah(
-        type === "order" ? item.base_price || 0 : item.booking_amount || 0
+        type === "order" ? item.base_price || 0 : item.total_amount || 0
       )}`,
       20,
       currentY + 30
     );
     doc.text(
       `Total Harga Layanan: ${formatRupiah(
-        type === "order" ? item.total_amount || 0 : item.booking_amount || 0
+        type === "order" ? item.total_amount || 0 : item.total_amount || 0
       )}`,
       20,
       currentY + 37
@@ -589,7 +615,7 @@ const AdminOrders = () => {
     );
     doc.text(
       `Sisa Pembayaran: ${formatRupiah(
-        (type === "order" ? item.total_amount || 0 : item.booking_amount || 0) -
+        (type === "order" ? item.total_amount || 0 : item.total_amount || 0) -
           (item.booking_amount || 0)
       )}`,
       20,
@@ -903,6 +929,9 @@ const AdminOrders = () => {
                         Tanggal Pernikahan
                       </th>
                       <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Total Harga
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Booking Amount
                       </th>
                       <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -916,7 +945,7 @@ const AdminOrders = () => {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {customRequestsLoading ? (
                       <tr>
-                        <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
+                        <td colSpan="7" className="px-6 py-4 text-center text-gray-500">
                           Memuat data...
                         </td>
                       </tr>
@@ -949,6 +978,11 @@ const AdminOrders = () => {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm font-bold text-primary-600">
+                              {formatRupiah(request.total_amount || 0)}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-bold text-green-600">
                               {formatRupiah(request.booking_amount)}
                             </div>
                           </td>
@@ -1003,7 +1037,7 @@ const AdminOrders = () => {
                       ))
                     ) : (
                       <tr>
-                        <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
+                        <td colSpan="7" className="px-6 py-4 text-center text-gray-500">
                           Tidak ada permintaan kustom
                         </td>
                       </tr>
@@ -1267,8 +1301,12 @@ const AdminOrders = () => {
                         <p className="text-gray-900">{formatDate(selectedRequest.wedding_date)}</p>
                       </div>
                       <div>
+                        <span className="font-medium text-gray-700">Total Harga:</span>
+                        <p className="text-2xl font-bold text-primary-600">{formatRupiah(selectedRequest.total_amount || 0)}</p>
+                      </div>
+                      <div>
                         <span className="font-medium text-gray-700">Booking Amount:</span>
-                        <p className="text-2xl font-bold text-primary-600">{formatRupiah(selectedRequest.booking_amount)}</p>
+                        <p className="text-lg font-semibold text-green-600">{formatRupiah(selectedRequest.booking_amount)}</p>
                       </div>
                       <div>
                         <span className="font-medium text-gray-700">Tanggal Permintaan:</span>
