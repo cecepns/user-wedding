@@ -162,6 +162,29 @@ CREATE TABLE IF NOT EXISTS contact_messages (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Surat Jalan (Delivery Orders) table
+CREATE TABLE IF NOT EXISTS surat_jalan (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  order_id INT,
+  client_name VARCHAR(255) NOT NULL,
+  client_phone VARCHAR(50),
+  client_address TEXT,
+  wedding_date DATE,
+  package_name VARCHAR(255),
+  plaminan_image TEXT,
+  pintu_masuk_image TEXT,
+  dekorasi_image TEXT,
+  warna_kain TEXT,
+  ukuran_tenda TEXT,
+  vendor_name VARCHAR(255) DEFAULT 'User Wedding Organizer',
+  notes TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE SET NULL,
+  INDEX idx_surat_jalan_order_id (order_id),
+  INDEX idx_surat_jalan_created_at (created_at)
+);
+
 -- Gallery categories table
 CREATE TABLE IF NOT EXISTS gallery_categories (
   id INT AUTO_INCREMENT PRIMARY KEY,

@@ -1,247 +1,262 @@
-import { useState, useEffect } from 'react';
-import { Helmet } from 'react-helmet-async';
-import { Plus, ShoppingCart, Eye, Trash2, ChevronLeft, ChevronRight, X, Edit, Download } from 'lucide-react';
-import toast, { Toaster } from 'react-hot-toast';
-import AdminLayout from '../../components/AdminLayout';
-import { formatRupiah, formatDate } from '../../utils/formatters';
-import jsPDF from 'jspdf';
+import { useState, useEffect } from "react";
+import { Helmet } from "react-helmet-async";
+import { Eye, Trash2, ChevronLeft, ChevronRight, X, Edit, Download } from "lucide-react";
+import toast, { Toaster } from "react-hot-toast";
+import AdminLayout from "../../components/AdminLayout";
+import { formatRupiah, formatDate, formatDateTime } from "../../utils/formatters";
+import jsPDF from "jspdf";
 
 const AdminOrders = () => {
   const [orders, setOrders] = useState([]);
-  const [customRequests, setCustomRequests] = useState([]);
-  const [activeTab, setActiveTab] = useState('orders');
   const [ordersPagination, setOrdersPagination] = useState({
     page: 1,
     limit: 10,
     total: 0,
-    totalPages: 0
-  });
-  const [customRequestsPagination, setCustomRequestsPagination] = useState({
-    page: 1,
-    limit: 10,
-    total: 0,
-    totalPages: 0
+    totalPages: 0,
   });
   const [selectedOrder, setSelectedOrder] = useState(null);
-  const [selectedRequest, setSelectedRequest] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
-  const [showRequestDetailModal, setShowRequestDetailModal] = useState(false);
   const [showEditBookingModal, setShowEditBookingModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
-  const [editingType, setEditingType] = useState(''); // 'order' or 'request'
-  const [newBookingAmount, setNewBookingAmount] = useState('');
+  const [newBookingAmount, setNewBookingAmount] = useState("");
   const [loading, setLoading] = useState(false);
-  const [customRequestsLoading, setCustomRequestsLoading] = useState(false);
   const [showBankSelectionModal, setShowBankSelectionModal] = useState(false);
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [selectedBankMethod, setSelectedBankMethod] = useState(null);
   const [pendingInvoiceItem, setPendingInvoiceItem] = useState(null);
-  const [pendingInvoiceType, setPendingInvoiceType] = useState('');
+  const [calendarMonth, setCalendarMonth] = useState(new Date());
+  const [calendarOrders, setCalendarOrders] = useState([]);
+  const [calendarLoading, setCalendarLoading] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [tableFilteredOrders, setTableFilteredOrders] = useState(null);
 
   useEffect(() => {
-    if (activeTab === 'orders') {
-      fetchOrders();
-    } else {
-      fetchCustomRequests();
-    }
-  }, [activeTab, ordersPagination.page, customRequestsPagination.page]);
+    // Intentionally only depend on page to avoid ref changes of fetchOrders
+    fetchOrders();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ordersPagination.page]);
 
   useEffect(() => {
     fetchPaymentMethods();
   }, []);
 
+  useEffect(() => {
+    fetchCalendarOrders(calendarMonth);
+  }, [calendarMonth]);
+
   const fetchPaymentMethods = async () => {
     try {
-      const response = await fetch('https://api-inventory.isavralabel.com/user-wedding/api/payment-methods');
+      const response = await fetch(
+        "https://api-inventory.isavralabel.com/user-wedding/api/payment-methods"
+      );
       const data = await response.json();
       setPaymentMethods(data);
       if (data.length > 0) {
         setSelectedBankMethod(data[0]);
       }
     } catch (error) {
-      console.error('Error fetching payment methods:', error);
+      console.error("Error fetching payment methods:", error);
     }
   };
 
   const fetchOrders = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`https://api-inventory.isavralabel.com/user-wedding/api/orders?page=${ordersPagination.page}&limit=${ordersPagination.limit}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
+      const response = await fetch(
+        `https://api-inventory.isavralabel.com/user-wedding/api/orders?page=${ordersPagination.page}&limit=${ordersPagination.limit}&status=pending`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("admin_token")}`,
+          },
         }
-      });
+      );
       const data = await response.json();
-      
+
       // Handle both old format (array) and new format (object with pagination)
       if (Array.isArray(data)) {
         // Old format - no pagination
         setOrders(data);
-        setOrdersPagination(prev => ({
+        setOrdersPagination((prev) => ({
           ...prev,
           total: data.length,
-          totalPages: 1
+          totalPages: 1,
         }));
       } else {
         // New format - with pagination
         setOrders(data.orders || []);
-        setOrdersPagination(prev => ({
+        setOrdersPagination((prev) => ({
           ...prev,
           total: data.pagination?.total || 0,
-          totalPages: data.pagination?.totalPages || 1
+          totalPages: data.pagination?.totalPages || 1,
         }));
       }
     } catch (error) {
-      console.error('Error fetching orders:', error);
+      console.error("Error fetching orders:", error);
       setOrders([]);
-      setOrdersPagination(prev => ({
+      setOrdersPagination((prev) => ({
         ...prev,
         total: 0,
-        totalPages: 1
+        totalPages: 1,
       }));
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchCustomRequests = async () => {
-    setCustomRequestsLoading(true);
+  const fetchCalendarOrders = async (monthDate) => {
+    setCalendarLoading(true);
     try {
-      const response = await fetch(`https://api-inventory.isavralabel.com/user-wedding/api/custom-requests?page=${customRequestsPagination.page}&limit=${customRequestsPagination.limit}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
+      const response = await fetch(
+        `https://api-inventory.isavralabel.com/user-wedding/api/orders?page=1&limit=5000&status=pending`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("admin_token")}`,
+          },
         }
-      });
+      );
       const data = await response.json();
-      
-      // Handle both old format (array) and new format (object with pagination)
-      if (Array.isArray(data)) {
-        // Old format - no pagination
-        setCustomRequests(data);
-        setCustomRequestsPagination(prev => ({
-          ...prev,
-          total: data.length,
-          totalPages: 1
-        }));
-      } else {
-        // New format - with pagination
-        setCustomRequests(data.requests || []);
-        setCustomRequestsPagination(prev => ({
-          ...prev,
-          total: data.pagination?.total || 0,
-          totalPages: data.pagination?.totalPages || 1
-        }));
-      }
+
+      const allOrders = Array.isArray(data) ? data : data.orders || [];
+
+      const year = monthDate.getFullYear();
+      const month = monthDate.getMonth();
+
+      const filtered = allOrders.filter((order) => {
+        const rawDate = order.wedding_date;
+        if (!rawDate) return false;
+        const d = new Date(rawDate);
+        if (isNaN(d.getTime())) return false;
+        return d.getFullYear() === year && d.getMonth() === month;
+      });
+
+      setCalendarOrders(filtered);
+      setSelectedDate(null);
     } catch (error) {
-      console.error('Error fetching custom requests:', error);
-      setCustomRequests([]);
-      setCustomRequestsPagination(prev => ({
-        ...prev,
-        total: 0,
-        totalPages: 1
-      }));
+      console.error("Error fetching calendar orders:", error);
+      setCalendarOrders([]);
+      setSelectedDate(null);
     } finally {
-      setCustomRequestsLoading(false);
+      setCalendarLoading(false);
     }
   };
+
 
   const handleStatusUpdate = async (orderId, newStatus) => {
     try {
-      const response = await fetch(`https://api-inventory.isavralabel.com/user-wedding/api/orders/${orderId}/status`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
-        },
-        body: JSON.stringify({ status: newStatus }),
-      });
+      const response = await fetch(
+        `https://api-inventory.isavralabel.com/user-wedding/api/orders/${orderId}/status`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("admin_token")}`,
+          },
+          body: JSON.stringify({ status: newStatus }),
+        }
+      );
 
       if (response.ok) {
+        // Optimistic update: hapus order yang sudah bukan pending dari semua list lokal
+        setOrders((prev) => prev.filter((order) => order.id !== orderId));
+        setCalendarOrders((prev) =>
+          prev.filter((order) => order.id !== orderId)
+        );
+        setTableFilteredOrders((prev) =>
+          Array.isArray(prev)
+            ? prev.filter((order) => order.id !== orderId)
+            : prev
+        );
+
+        // Refetch untuk sinkron dengan server & filter status=pending
         fetchOrders();
-        toast.success('Status pesanan berhasil diperbarui!');
+        fetchCalendarOrders(calendarMonth);
+        toast.success("Status pesanan berhasil diperbarui!");
       } else {
-        toast.error('Error memperbarui status pesanan');
+        toast.error("Error memperbarui status pesanan");
       }
     } catch (error) {
-      console.error('Error:', error);
-      toast.error('Error memperbarui status pesanan');
+      console.error("Error:", error);
+      toast.error("Error memperbarui status pesanan");
     }
   };
 
-  const handleCustomRequestStatusUpdate = async (requestId, newStatus) => {
-    try {
-      const response = await fetch(`https://api-inventory.isavralabel.com/user-wedding/api/custom-requests/${requestId}/status`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
-        },
-        body: JSON.stringify({ status: newStatus }),
-      });
-
-      if (response.ok) {
-        fetchCustomRequests();
-        toast.success('Status permintaan kustom berhasil diperbarui!');
-      } else {
-        toast.error('Error memperbarui status permintaan kustom');
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      toast.error('Error memperbarui status permintaan kustom');
-    }
-  };
 
   const handleDeleteOrder = async (orderId) => {
     const confirmed = await new Promise((resolve) => {
-      toast((t) => (
-        <div className="flex items-center gap-3">
-          <span>Apakah Anda yakin ingin menghapus pesanan ini?</span>
-          <div className="flex gap-2">
-            <button
-              onClick={() => {
-                toast.dismiss(t.id);
-                resolve(true);
-              }}
-              className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700"
-            >
-              Ya
-            </button>
-            <button
-              onClick={() => {
-                toast.dismiss(t.id);
-                resolve(false);
-              }}
-              className="px-3 py-1 bg-gray-300 text-gray-700 rounded text-sm hover:bg-gray-400"
-            >
-              Tidak
-            </button>
+      toast(
+        (t) => (
+          <div className="flex items-center gap-3">
+            <span>Apakah Anda yakin ingin menghapus pesanan ini?</span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  toast.dismiss(t.id);
+                  resolve(true);
+                }}
+                className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700"
+              >
+                Ya
+              </button>
+              <button
+                onClick={() => {
+                  toast.dismiss(t.id);
+                  resolve(false);
+                }}
+                className="px-3 py-1 bg-gray-300 text-gray-700 rounded text-sm hover:bg-gray-400"
+              >
+                Tidak
+              </button>
+            </div>
           </div>
-        </div>
-      ), {
-        duration: Infinity,
-        position: 'top-center',
-      });
+        ),
+        {
+          duration: Infinity,
+          position: "top-center",
+        }
+      );
     });
 
     if (!confirmed) return;
 
     try {
-      const response = await fetch(`https://api-inventory.isavralabel.com/user-wedding/api/orders/${orderId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
+      const response = await fetch(
+        `https://api-inventory.isavralabel.com/user-wedding/api/orders/${orderId}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("admin_token")}`,
+          },
         }
-      });
+      );
 
       if (response.ok) {
+        // Optimistic update: hapus order dari semua list lokal
+        setOrders((prev) => prev.filter((order) => order.id !== orderId));
+        setCalendarOrders((prev) =>
+          prev.filter((order) => order.id !== orderId)
+        );
+        setTableFilteredOrders((prev) =>
+          Array.isArray(prev)
+            ? prev.filter((order) => order.id !== orderId)
+            : prev
+        );
+
+        // Tutup modal detail jika order yang dihapus sedang dilihat
+        if (selectedOrder && selectedOrder.id === orderId) {
+          setShowDetailModal(false);
+          setSelectedOrder(null);
+        }
+
+        // Refetch untuk sinkron dengan server
         fetchOrders();
-        toast.success('Pesanan berhasil dihapus!');
+        fetchCalendarOrders(calendarMonth);
+        toast.success("Pesanan berhasil dihapus!");
       } else {
-        toast.error('Error menghapus pesanan');
+        toast.error("Error menghapus pesanan");
       }
     } catch (error) {
-      console.error('Error:', error);
-      toast.error('Error menghapus pesanan');
+      console.error("Error:", error);
+      toast.error("Error menghapus pesanan");
     }
   };
 
@@ -252,152 +267,162 @@ const AdminOrders = () => {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'confirmed':
-        return 'bg-blue-100 text-blue-800';
-      case 'completed':
-        return 'bg-green-100 text-green-800';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800';
+      case "pending":
+        return "bg-yellow-100 text-yellow-800";
+      case "confirmed":
+        return "bg-blue-100 text-blue-800";
+      case "completed":
+        return "bg-green-100 text-green-800";
+      case "cancelled":
+        return "bg-red-100 text-red-800";
       default:
-        return 'bg-gray-100 text-gray-800';
+        return "bg-gray-100 text-gray-800";
     }
   };
-
-
 
   const handleOrdersPageChange = (newPage) => {
-    setOrdersPagination(prev => ({ ...prev, page: newPage }));
+    setOrdersPagination((prev) => ({ ...prev, page: newPage }));
   };
 
-  const handleCustomRequestsPageChange = (newPage) => {
-    setCustomRequestsPagination(prev => ({ ...prev, page: newPage }));
-  };
-
-  const handleViewRequestDetail = (request) => {
-    setSelectedRequest(request);
-    setShowRequestDetailModal(true);
-  };
-
-
-
-  const handleDeleteCustomRequest = async (requestId) => {
-    const confirmed = await new Promise((resolve) => {
-      toast((t) => (
-        <div className="flex items-center gap-3">
-          <span>Apakah Anda yakin ingin menghapus permintaan kustom ini?</span>
-          <div className="flex gap-2">
-            <button
-              onClick={() => {
-                toast.dismiss(t.id);
-                resolve(true);
-              }}
-              className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700"
-            >
-              Ya
-            </button>
-            <button
-              onClick={() => {
-                toast.dismiss(t.id);
-                resolve(false);
-              }}
-              className="px-3 py-1 bg-gray-300 text-gray-700 rounded text-sm hover:bg-gray-400"
-            >
-              Tidak
-            </button>
-          </div>
-        </div>
-      ), {
-        duration: Infinity,
-        position: 'top-center',
-      });
-    });
-
-    if (!confirmed) return;
-
-    try {
-      const response = await fetch(`https://api-inventory.isavralabel.com/user-wedding/api/custom-requests/${requestId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
-        }
-      });
-
-      if (response.ok) {
-        fetchCustomRequests();
-        toast.success('Permintaan kustom berhasil dihapus!');
-      } else {
-        toast.error('Error menghapus permintaan kustom');
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      toast.error('Error menghapus permintaan kustom');
+  const getPaginationPages = (currentPage, totalPages) => {
+    if (totalPages <= 7) {
+      // Jika total halaman <= 7, tampilkan semua
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
     }
+
+    const pages = [];
+    const showEllipsis = totalPages > 7;
+
+    if (currentPage <= 3) {
+      // Dekat dengan awal: 1 2 3 ... last-1 last
+      pages.push(1, 2, 3);
+      if (showEllipsis) pages.push("ellipsis");
+      pages.push(totalPages - 1, totalPages);
+    } else if (currentPage >= totalPages - 2) {
+      // Dekat dengan akhir: 1 2 ... last-2 last-1 last
+      pages.push(1, 2);
+      if (showEllipsis) pages.push("ellipsis");
+      pages.push(totalPages - 2, totalPages - 1, totalPages);
+    } else {
+      // Di tengah: 1 ... current-1 current current+1 ... last
+      pages.push(1);
+      if (showEllipsis) pages.push("ellipsis");
+      pages.push(currentPage - 1, currentPage, currentPage + 1);
+      if (showEllipsis) pages.push("ellipsis");
+      pages.push(totalPages);
+    }
+
+    return pages;
   };
 
-  const handleEditBookingAmount = (item, type) => {
+  const changeCalendarMonth = (direction) => {
+    setCalendarMonth((prev) => {
+      const newDate = new Date(prev);
+      newDate.setMonth(prev.getMonth() + direction);
+      return newDate;
+    });
+  };
+
+  const getCalendarDays = () => {
+    const year = calendarMonth.getFullYear();
+    const month = calendarMonth.getMonth();
+    const firstDayOfMonth = new Date(year, month, 1);
+    const lastDayOfMonth = new Date(year, month + 1, 0);
+    const startWeekday = firstDayOfMonth.getDay(); // 0 (Sun) - 6 (Sat)
+
+    const days = [];
+
+    // Leading empty cells for first week
+    for (let i = 0; i < startWeekday; i++) {
+      days.push(null);
+    }
+
+    // Actual days of month
+    for (let d = 1; d <= lastDayOfMonth.getDate(); d++) {
+      days.push(new Date(year, month, d));
+    }
+
+    return days;
+  };
+
+  const bookingsByDate = calendarOrders.reduce((acc, order) => {
+    const rawDate = order.wedding_date;
+    if (!rawDate) return acc;
+
+    const dateObj = new Date(rawDate);
+    if (isNaN(dateObj.getTime())) return acc;
+
+    const y = dateObj.getFullYear();
+    const m = dateObj.getMonth() + 1;
+    const d = dateObj.getDate();
+    const key = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(order);
+    return acc;
+  }, {});
+
+  const handleFilterTableBySelectedDate = (dateKey) => {
+    if (!dateKey) return;
+    const ordersForDate = bookingsByDate[dateKey] || [];
+    setTableFilteredOrders(ordersForDate);
+  };
+
+  const handleClearTableFilter = () => {
+    setTableFilteredOrders(null);
+  };
+
+  const tableOrders = tableFilteredOrders ?? orders;
+
+
+  const handleEditBookingAmount = (item) => {
     setEditingItem(item);
-    setEditingType(type);
-    setNewBookingAmount(item.booking_amount?.toString() || '');
+    setNewBookingAmount(item.booking_amount?.toString() || "");
     setShowEditBookingModal(true);
   };
 
   const handleUpdateBookingAmount = async () => {
     if (!newBookingAmount || isNaN(parseFloat(newBookingAmount))) {
-      toast.error('Masukkan jumlah booking yang valid');
+      toast.error("Masukkan jumlah booking yang valid");
       return;
     }
 
     try {
-      let response;
-      if (editingType === 'order') {
-        response = await fetch(`https://api-inventory.isavralabel.com/user-wedding/api/orders/${editingItem.id}/booking-amount`, {
-          method: 'PUT',
+      const response = await fetch(
+        `https://api-inventory.isavralabel.com/user-wedding/api/orders/${editingItem.id}/booking-amount`,
+        {
+          method: "PUT",
           headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("admin_token")}`,
           },
-          body: JSON.stringify({ booking_amount: parseFloat(newBookingAmount) }),
-        });
-      } else {
-        response = await fetch(`https://api-inventory.isavralabel.com/user-wedding/api/custom-requests/${editingItem.id}/booking-amount`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
-          },
-          body: JSON.stringify({ booking_amount: parseFloat(newBookingAmount) }),
-        });
-      }
+          body: JSON.stringify({
+            booking_amount: parseFloat(newBookingAmount),
+          }),
+        }
+      );
 
       if (response.ok) {
-        if (editingType === 'order') {
-          fetchOrders();
-        } else {
-          fetchCustomRequests();
-        }
-        toast.success('Booking amount berhasil diperbarui!');
+        fetchOrders();
+        toast.success("Booking amount berhasil diperbarui!");
         setShowEditBookingModal(false);
         setEditingItem(null);
-        setEditingType('');
-        setNewBookingAmount('');
+        setNewBookingAmount("");
       } else {
-        toast.error('Error memperbarui booking amount');
+        toast.error("Error memperbarui booking amount");
       }
     } catch (error) {
-      console.error('Error:', error);
-      toast.error('Error memperbarui booking amount');
+      console.error("Error:", error);
+      toast.error("Error memperbarui booking amount");
     }
   };
 
-  const handleGenerateInvoice = (item, type) => {
+  const handleGenerateInvoice = (item) => {
     setPendingInvoiceItem(item);
-    setPendingInvoiceType(type);
     setShowBankSelectionModal(true);
   };
 
-  const generateInvoicePDF = (item, type, selectedBank = null) => {
+  const generateInvoicePDF = (item, selectedBank = null) => {
     const doc = new jsPDF();
 
     // Hitung lebar halaman dan margin
@@ -442,7 +467,8 @@ const AdminOrders = () => {
       150,
       37
     );
-    doc.text(`Jatuh Tempo: ${formatDate(item.wedding_date)}`, 150, 44);
+    const eventDate = item.wedding_date;
+    doc.text(`Jatuh Tempo: ${eventDate ? formatDateTime(eventDate) : '-'}`, 150, 44);
 
     // Bill To section
     doc.setFontSize(12);
@@ -458,7 +484,7 @@ const AdminOrders = () => {
     // Handle address with text wrapping to prevent breaking
     let addressY = 88;
 
-    if (type === "order" && item.address) {
+    if (item.address) {
       // Use actual usable width (page width minus margins)
       const actualUsableWidth = pageWidth - (margin * 2);
       doc.text(item.address, margin, addressY, { maxWidth: actualUsableWidth });
@@ -471,7 +497,7 @@ const AdminOrders = () => {
     }
 
     // Service table header - adjust based on address length
-    const startY = type === "order" ? addressY + 8 : 110;
+    const startY = item.address ? addressY + 8 : 110;
     doc.setFillColor(52, 152, 219); // Blue background
     doc.rect(20, startY, 170, 8, "F");
 
@@ -490,84 +516,45 @@ const AdminOrders = () => {
     let currentY = startY + 15;
     let itemNumber = 1;
 
-    if (type === "order") {
-      // Main service item (base price)
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "normal");
-      doc.text(itemNumber.toString(), 25, currentY);
-      doc.text(item.service_name, 40, currentY);
-      doc.text("1", 140, currentY);
-      doc.text(formatRupiah(item.base_price || 0), 170, currentY);
+    // Main service item (base price)
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text(itemNumber.toString(), 25, currentY);
+    doc.text(item.service_name, 40, currentY);
+    doc.text("1", 140, currentY);
+    doc.text(formatRupiah(item.base_price || 0), 170, currentY);
 
-      // Selected items as sub-items
-      if (item.selected_items) {
-        try {
-          const selectedItems = JSON.parse(item.selected_items);
-          if (Array.isArray(selectedItems) && selectedItems.length > 0) {
-            currentY += 8;
-            selectedItems.forEach((selectedItem) => {
-              const itemName =
-                selectedItem.name ||
-                selectedItem.item_name ||
-                selectedItem.title ||
-                "Item tidak dikenal";
-              const itemPrice =
-                selectedItem.final_price ||
-                selectedItem.item_price ||
-                selectedItem.price ||
-                selectedItem.custom_price ||
-                0;
-
-              doc.setFontSize(8);
-              doc.text(`  ${itemName}`, 40, currentY);
-              doc.text("1", 140, currentY);
-              doc.text(formatRupiah(itemPrice), 170, currentY);
-              currentY += 5;
-            });
-          }
-        } catch (error) {
-          console.error("Error parsing selected items:", error);
-        }
-      }
-    } else {
-      // Custom request - show breakdown per item
-      if (item.items_details && Array.isArray(item.items_details) && item.items_details.length > 0) {
-        // Display each item as a separate row with its price
-        item.items_details.forEach((serviceItem, index) => {
-          doc.setFontSize(10);
-          doc.setFont("helvetica", "normal");
-          
-          // Show item number
-          doc.text((itemNumber + index).toString(), 25, currentY);
-          
-          // Show item name
-          doc.text(serviceItem.name, 40, currentY);
-          
-          // Show quantity
-          doc.text("1", 140, currentY);
-          
-          // Show price
-          doc.text(formatRupiah(serviceItem.price || 0), 170, currentY);
-          
-          // Move to next row
+    // Selected items as sub-items
+    if (item.selected_items) {
+      try {
+        const selectedItems = JSON.parse(item.selected_items);
+        if (Array.isArray(selectedItems) && selectedItems.length > 0) {
           currentY += 8;
-        });
-        // No need to add extra spacing, currentY already updated in loop
-      } else {
-        // Fallback: if no items_details, show as before
-        doc.setFontSize(10);
-        doc.setFont("helvetica", "normal");
-        doc.text(itemNumber.toString(), 25, currentY);
-        doc.text("Layanan Kustom", 40, currentY);
-        doc.text("1", 140, currentY);
-        doc.text(formatRupiah(item.total_amount || 0), 170, currentY);
+          selectedItems.forEach((selectedItem) => {
+            const itemName =
+              selectedItem.name ||
+              selectedItem.item_name ||
+              selectedItem.title ||
+              "Item tidak dikenal";
+            const itemPrice =
+              selectedItem.final_price ||
+              selectedItem.item_price ||
+              selectedItem.price ||
+              selectedItem.custom_price ||
+              0;
 
-        if (item.services) {
-          currentY += 8;
-          doc.setFontSize(8);
-          doc.text(`  ${item.services}`, 40, currentY);
+            const quantity = selectedItem.quantity || 1;
+            const subtotal = (typeof itemPrice === 'number' ? itemPrice : parseFloat(itemPrice) || 0) * quantity;
+            
+            doc.setFontSize(8);
+            doc.text(`  ${itemName}`, 40, currentY);
+            doc.text(quantity.toString(), 140, currentY);
+            doc.text(formatRupiah(subtotal), 170, currentY);
+            currentY += 5;
+          });
         }
-        currentY += 8;
+      } catch (error) {
+        console.error("Error parsing selected items:", error);
       }
     }
 
@@ -579,9 +566,7 @@ const AdminOrders = () => {
     doc.text("Total Harga Layanan:", 40, currentY);
     doc.text("", 140, currentY); // Empty quantity
     doc.text(
-      formatRupiah(
-        type === "order" ? item.total_amount || 0 : item.total_amount || 0
-      ),
+      formatRupiah(item.total_amount || 0),
       170,
       currentY
     );
@@ -594,16 +579,12 @@ const AdminOrders = () => {
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
     doc.text(
-      `Harga Layanan: ${formatRupiah(
-        type === "order" ? item.base_price || 0 : item.total_amount || 0
-      )}`,
+      `Harga Layanan: ${formatRupiah(item.base_price || 0)}`,
       20,
       currentY + 30
     );
     doc.text(
-      `Total Harga Layanan: ${formatRupiah(
-        type === "order" ? item.total_amount || 0 : item.total_amount || 0
-      )}`,
+      `Total Harga Layanan: ${formatRupiah(item.total_amount || 0)}`,
       20,
       currentY + 37
     );
@@ -615,8 +596,7 @@ const AdminOrders = () => {
     );
     doc.text(
       `Sisa Pembayaran: ${formatRupiah(
-        (type === "order" ? item.total_amount || 0 : item.total_amount || 0) -
-          (item.booking_amount || 0)
+        (item.total_amount || 0) - (item.booking_amount || 0)
       )}`,
       20,
       currentY + 58
@@ -676,7 +656,7 @@ const AdminOrders = () => {
     });
 
     // Save the PDF
-    const fileName = `invoice-${type}-${item.id}-${
+    const fileName = `invoice-order-${item.id}-${
       new Date().toISOString().split("T")[0]
     }.pdf`;
     doc.save(fileName);
@@ -685,48 +665,152 @@ const AdminOrders = () => {
   return (
     <>
       <Helmet>
-        <title>Kelola Pesanan - Dashboard Admin</title>
+        <title>Kalender Booking - Dashboard Admin</title>
       </Helmet>
 
       <Toaster position="top-right" />
 
       <AdminLayout>
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Kelola Pesanan</h1>
-          <p className="text-gray-600">Lacak dan kelola pesanan pelanggan dan permintaan kustom.</p>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">
+            Kalender Booking
+          </h1>
+          <p className="text-gray-600">
+            Lihat jadwal booking dan pesanan yang masih menunggu.
+          </p>
         </div>
 
-        {/* Tabs */}
-        <div className="mb-6">
-          <div className="flex space-x-1 bg-gray-100 rounded-lg p-1">
-            <button
-              onClick={() => setActiveTab('orders')}
-              className={`flex-1 py-2 px-4 rounded-md font-medium transition-colors flex items-center justify-center gap-2 ${
-                activeTab === 'orders'
-                  ? 'bg-white text-primary-700 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <ShoppingCart size={16} />
-              Pesanan Layanan
-            </button>
-            <button
-              onClick={() => setActiveTab('custom')}
-              className={`flex-1 py-2 px-4 rounded-md font-medium transition-colors flex items-center justify-center gap-2 ${
-                activeTab === 'custom'
-                  ? 'bg-white text-primary-700 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <Plus size={16} />
-              Permintaan Kustom 
-            </button>
+        {/* Booking Calendar */}
+        <div className="mb-8 bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+          <div className="flex flex-col lg:flex-row lg:items-start gap-6">
+            <div className="flex-1">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-800">
+                  Kalender Booking
+                </h2>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => changeCalendarMonth(-1)}
+                    className="p-2 rounded-full border border-gray-300 text-gray-600 hover:bg-gray-100"
+                    title="Bulan sebelumnya"
+                  >
+                    <ChevronLeft size={18} />
+                  </button>
+                  <span className="text-sm font-medium text-gray-700">
+                    {calendarMonth.toLocaleDateString("id-ID", {
+                      month: "long",
+                      year: "numeric",
+                    })}
+                  </span>
+                  <button
+                    onClick={() => changeCalendarMonth(1)}
+                    className="p-2 rounded-full border border-gray-300 text-gray-600 hover:bg-gray-100"
+                    title="Bulan berikutnya"
+                  >
+                    <ChevronRight size={18} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="border border-gray-200 rounded-xl overflow-hidden">
+                <div className="grid grid-cols-7 bg-gray-50 text-xs font-semibold text-gray-600">
+                  {["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"].map(
+                    (day) => (
+                      <div
+                        key={day}
+                        className="px-2 py-2 text-center uppercase tracking-wide"
+                      >
+                        {day}
+                      </div>
+                    )
+                  )}
+                </div>
+                <div className="grid grid-cols-7 text-sm">
+                  {calendarLoading ? (
+                    <div className="col-span-7 flex items-center justify-center py-8">
+                      <span className="text-gray-500 text-sm">
+                        Memuat data booking untuk bulan ini...
+                      </span>
+                    </div>
+                  ) : (
+                    getCalendarDays().map((date, index) => {
+                      if (!date) {
+                        return (
+                          <div
+                            key={`empty-${index}`}
+                            className="h-14 border border-gray-100 bg-gray-50"
+                          />
+                        );
+                      }
+
+                      const y = date.getFullYear();
+                      const m = date.getMonth() + 1;
+                      const d = date.getDate();
+                      const key = `${y}-${String(m).padStart(
+                        2,
+                        "0"
+                      )}-${String(d).padStart(2, "0")}`;
+
+                      const ordersForDay = bookingsByDate[key] || [];
+                      const hasBookings = ordersForDay.length > 0;
+                      const isSelected = selectedDate === key;
+
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => {
+                            setSelectedDate(key);
+                            handleFilterTableBySelectedDate(key);
+                          }}
+                          className={`h-14 border border-gray-100 flex flex-col items-center justify-center relative transition ${
+                            hasBookings
+                              ? "bg-red-200 hover:bg-red-100"
+                              : "bg-blue-50 hover:bg-blue-100"
+                          } ${isSelected ? "ring-2 ring-primary-500 z-10" : ""}`}
+                        >
+                          <span
+                            className={`text-sm font-medium ${
+                              hasBookings ? "text-red-700" : "text-blue-700"
+                            }`}
+                          >
+                            {d}
+                          </span>
+                          {hasBookings && (
+                            <span className="mt-1 w-2 h-2 rounded-full bg-red-500" />
+                          )}
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Orders Tab */}
-        {activeTab === 'orders' && (
+        {/* Orders Table */}
+        {selectedDate && (
           <div className="space-y-6">
+            {tableFilteredOrders && (
+              <div className="flex items-center justify-between bg-blue-50 border border-blue-100 px-4 py-2 rounded-lg">
+                <span className="text-sm text-blue-800">
+                  Menampilkan pesanan untuk tanggal{" "}
+                  {new Date(selectedDate).toLocaleDateString("id-ID", {
+                    day: "2-digit",
+                    month: "long",
+                    year: "numeric",
+                  })}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleClearTableFilter}
+                  className="text-xs font-semibold text-blue-700 hover:text-blue-900"
+                >
+                  Hapus filter
+                </button>
+              </div>
+            )}
             {/* Orders Table */}
             <div className="bg-white rounded-xl shadow-lg overflow-hidden">
               <div className="overflow-x-auto">
@@ -762,19 +846,24 @@ const AdminOrders = () => {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {loading ? (
                       <tr>
-                        <td colSpan="7" className="px-6 py-4 text-center text-gray-500">
+                        <td
+                          colSpan="8"
+                          className="px-6 py-4 text-center text-gray-500"
+                        >
                           Memuat data...
                         </td>
                       </tr>
-                    ) : orders.length > 0 ? (
-                      orders.map((order) => (
-                        <tr key={order.id} className="hover:bg-gray-50">
+                    ) : tableOrders.length > 0 ? (
+                      tableOrders.map((order) => (
+                        <tr key={order.id} className="hover:bg-gray-50 bg-green-50">
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">
-                              #{order.id}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              {formatDate(order.created_at)}
+                            <div className="rounded-lg px-3 py-2 inline-flex flex-col">
+                              <span className="text-xs font-semibold text-green-800">
+                                #{order.id}
+                              </span>
+                              <span className="text-xs text-green-700 mt-1">
+                                {formatDate(order.created_at)}
+                              </span>
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -795,7 +884,7 @@ const AdminOrders = () => {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm text-gray-900">
-                              {formatDate(order.wedding_date)}
+                              {formatDateTime(order.wedding_date)}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -811,12 +900,16 @@ const AdminOrders = () => {
                           <td className="px-6 py-4 whitespace-nowrap">
                             <select
                               value={order.status}
-                              onChange={(e) => handleStatusUpdate(order.id, e.target.value)}
-                              className={`px-3 py-1 rounded-full text-sm font-medium border-0 ${getStatusColor(order.status)}`}
+                              onChange={(e) =>
+                                handleStatusUpdate(order.id, e.target.value)
+                              }
+                              className={`px-3 py-1 rounded-full text-sm font-medium border-0 ${getStatusColor(
+                                order.status
+                              )}`}
                             >
                               <option value="pending">Menunggu</option>
                               <option value="confirmed">Dikonfirmasi</option>
-                              <option value="completed">Selesai</option>
+                              {/* <option value="completed">Selesai</option> */}
                               <option value="cancelled">Dibatalkan</option>
                             </select>
                           </td>
@@ -830,14 +923,18 @@ const AdminOrders = () => {
                                 <Eye size={16} />
                               </button>
                               <button
-                                onClick={() => handleEditBookingAmount(order, 'order')}
+                                onClick={() =>
+                                  handleEditBookingAmount(order)
+                                }
                                 className="text-green-600 hover:text-green-700 flex items-center gap-1"
                                 title="Edit Booking Amount"
                               >
                                 <Edit size={16} />
                               </button>
                               <button
-                                onClick={() => handleGenerateInvoice(order, 'order')}
+                                onClick={() =>
+                                  handleGenerateInvoice(order)
+                                }
                                 className="text-purple-600 hover:text-purple-700 flex items-center gap-1"
                                 title="Download Invoice"
                               >
@@ -856,7 +953,10 @@ const AdminOrders = () => {
                       ))
                     ) : (
                       <tr>
-                        <td colSpan="7" className="px-6 py-4 text-center text-gray-500">
+                        <td
+                          colSpan="8"
+                          className="px-6 py-4 text-center text-gray-500"
+                        >
                           Tidak ada pesanan
                         </td>
                       </tr>
@@ -867,220 +967,66 @@ const AdminOrders = () => {
             </div>
 
             {/* Pagination */}
-            {ordersPagination.totalPages > 1 && (
+            {!tableFilteredOrders && ordersPagination.totalPages > 1 && (
               <div className="flex items-center justify-between bg-white px-6 py-3 border-t border-gray-200">
                 <div className="flex items-center text-sm text-gray-700">
                   <span>
-                    Menampilkan {((ordersPagination.page - 1) * ordersPagination.limit) + 1} - {Math.min(ordersPagination.page * ordersPagination.limit, ordersPagination.total)} dari {ordersPagination.total} pesanan
+                    Menampilkan{" "}
+                    {(ordersPagination.page - 1) * ordersPagination.limit + 1} -{" "}
+                    {Math.min(
+                      ordersPagination.page * ordersPagination.limit,
+                      ordersPagination.total
+                    )}{" "}
+                    dari {ordersPagination.total} pesanan
                   </span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <button
-                    onClick={() => handleOrdersPageChange(ordersPagination.page - 1)}
+                    onClick={() =>
+                      handleOrdersPageChange(ordersPagination.page - 1)
+                    }
                     disabled={ordersPagination.page === 1}
                     className="px-3 py-1 rounded-md text-sm font-medium text-gray-500 bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <ChevronLeft size={16} />
                   </button>
-                  
-                  {Array.from({ length: ordersPagination.totalPages }, (_, i) => i + 1).map((page) => (
-                    <button
-                      key={page}
-                      onClick={() => handleOrdersPageChange(page)}
-                      className={`px-3 py-1 rounded-md text-sm font-medium ${
-                        page === ordersPagination.page
-                          ? 'bg-primary-600 text-white'
-                          : 'text-gray-500 bg-white border border-gray-300 hover:bg-gray-50'
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  ))}
-                  
-                  <button
-                    onClick={() => handleOrdersPageChange(ordersPagination.page + 1)}
-                    disabled={ordersPagination.page === ordersPagination.totalPages}
-                    className="px-3 py-1 rounded-md text-sm font-medium text-gray-500 bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <ChevronRight size={16} />
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
 
-        {/* Custom Requests Tab */}
-        {activeTab === 'custom' && (
-          <div className="space-y-6">
-            {/* Custom Requests Table */}
-            <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        ID Permintaan
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Pelanggan
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Tanggal Pernikahan
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Total Harga
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Booking Amount
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Status
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Aksi
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {customRequestsLoading ? (
-                      <tr>
-                        <td colSpan="7" className="px-6 py-4 text-center text-gray-500">
-                          Memuat data...
-                        </td>
-                      </tr>
-                    ) : customRequests.length > 0 ? (
-                      customRequests.map((request) => (
-                        <tr key={request.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">
-                              #{request.id}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              {formatDate(request.created_at)}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">
-                              {request.name}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              {request.email}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              {request.phone}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">
-                              {formatDate(request.wedding_date)}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-bold text-primary-600">
-                              {formatRupiah(request.total_amount || 0)}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-bold text-green-600">
-                              {formatRupiah(request.booking_amount)}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(request.status)}`}>
-                              {request.status || 'pending'}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <div className="flex space-x-3">
-                              <select
-                                value={request.status || 'pending'}
-                                onChange={(e) => handleCustomRequestStatusUpdate(request.id, e.target.value)}
-                                className="text-xs border border-gray-300 rounded px-2 py-1 bg-white"
-                              >
-                                <option value="pending">Pending</option>
-                                <option value="confirmed">Confirmed</option>
-                                <option value="completed">Completed</option>
-                                <option value="cancelled">Cancelled</option>
-                              </select>
-                              <button
-                                onClick={() => handleViewRequestDetail(request)}
-                                className="text-blue-600 hover:text-blue-700 flex items-center gap-1"
-                                title="Lihat Detail"
-                              >
-                                <Eye size={16} />
-                              </button>
-                              <button
-                                onClick={() => handleEditBookingAmount(request, 'request')}
-                                className="text-green-600 hover:text-green-700 flex items-center gap-1"
-                                title="Edit Booking Amount"
-                              >
-                                <Edit size={16} />
-                              </button>
-                              <button
-                                onClick={() => handleGenerateInvoice(request, 'request')}
-                                className="text-purple-600 hover:text-purple-700 flex items-center gap-1"
-                                title="Download Invoice"
-                              >
-                                <Download size={16} />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteCustomRequest(request.id)}
-                                className="text-red-600 hover:text-red-700 flex items-center gap-1"
-                                title="Hapus"
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan="7" className="px-6 py-4 text-center text-gray-500">
-                          Tidak ada permintaan kustom
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                  {getPaginationPages(
+                    ordersPagination.page,
+                    ordersPagination.totalPages
+                  ).map((page, index) => {
+                    if (page === "ellipsis") {
+                      return (
+                        <span
+                          key={`ellipsis-${index}`}
+                          className="px-2 text-gray-500"
+                        >
+                          ...
+                        </span>
+                      );
+                    }
+                    return (
+                      <button
+                        key={page}
+                        onClick={() => handleOrdersPageChange(page)}
+                        className={`px-3 py-1 rounded-md text-sm font-medium ${
+                          page === ordersPagination.page
+                            ? "bg-primary-600 text-white"
+                            : "text-gray-500 bg-white border border-gray-300 hover:bg-gray-50"
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    );
+                  })}
 
-            {/* Custom Requests Pagination */}
-            {customRequestsPagination.totalPages > 1 && (
-              <div className="flex items-center justify-between bg-white px-6 py-3 border-t border-gray-200">
-                <div className="flex items-center text-sm text-gray-700">
-                  <span>
-                    Menampilkan {((customRequestsPagination.page - 1) * customRequestsPagination.limit) + 1} - {Math.min(customRequestsPagination.page * customRequestsPagination.limit, customRequestsPagination.total)} dari {customRequestsPagination.total} permintaan
-                  </span>
-                </div>
-                <div className="flex items-center space-x-2">
                   <button
-                    onClick={() => handleCustomRequestsPageChange(customRequestsPagination.page - 1)}
-                    disabled={customRequestsPagination.page === 1}
-                    className="px-3 py-1 rounded-md text-sm font-medium text-gray-500 bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <ChevronLeft size={16} />
-                  </button>
-                  
-                  {Array.from({ length: customRequestsPagination.totalPages }, (_, i) => i + 1).map((page) => (
-                    <button
-                      key={page}
-                      onClick={() => handleCustomRequestsPageChange(page)}
-                      className={`px-3 py-1 rounded-md text-sm font-medium ${
-                        page === customRequestsPagination.page
-                          ? 'bg-primary-600 text-white'
-                          : 'text-gray-500 bg-white border border-gray-300 hover:bg-gray-50'
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  ))}
-                  
-                  <button
-                    onClick={() => handleCustomRequestsPageChange(customRequestsPagination.page + 1)}
-                    disabled={customRequestsPagination.page === customRequestsPagination.totalPages}
+                    onClick={() =>
+                      handleOrdersPageChange(ordersPagination.page + 1)
+                    }
+                    disabled={
+                      ordersPagination.page === ordersPagination.totalPages
+                    }
                     className="px-3 py-1 rounded-md text-sm font-medium text-gray-500 bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <ChevronRight size={16} />
@@ -1106,49 +1052,75 @@ const AdminOrders = () => {
                   <X size={24} />
                 </button>
               </div>
-              
+
               <div className="p-6">
                 <div className="grid md:grid-cols-2 gap-6 mb-6">
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Informasi Pelanggan</h3>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                      Informasi Pelanggan
+                    </h3>
                     <div className="space-y-3">
                       <div>
                         <span className="font-medium text-gray-700">Nama:</span>
                         <p className="text-gray-900">{selectedOrder.name}</p>
                       </div>
                       <div>
-                        <span className="font-medium text-gray-700">Email:</span>
+                        <span className="font-medium text-gray-700">
+                          Email:
+                        </span>
                         <p className="text-gray-900">{selectedOrder.email}</p>
                       </div>
                       <div>
-                        <span className="font-medium text-gray-700">Telepon:</span>
+                        <span className="font-medium text-gray-700">
+                          Telepon:
+                        </span>
                         <p className="text-gray-900">{selectedOrder.phone}</p>
                       </div>
                       <div>
-                        <span className="font-medium text-gray-700">Alamat:</span>
+                        <span className="font-medium text-gray-700">
+                          Alamat:
+                        </span>
                         <p className="text-gray-900">{selectedOrder.address}</p>
                       </div>
                     </div>
                   </div>
-                  
+
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Informasi Pesanan</h3>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                      Informasi Pesanan
+                    </h3>
                     <div className="space-y-3">
                       <div>
-                        <span className="font-medium text-gray-700">Layanan:</span>
-                        <p className="text-gray-900">{selectedOrder.service_name}</p>
+                        <span className="font-medium text-gray-700">
+                          Layanan:
+                        </span>
+                        <p className="text-gray-900">
+                          {selectedOrder.service_name}
+                        </p>
                       </div>
                       <div>
-                        <span className="font-medium text-gray-700">Tanggal Pernikahan:</span>
-                        <p className="text-gray-900">{formatDate(selectedOrder.wedding_date)}</p>
+                        <span className="font-medium text-gray-700">
+                          Tanggal Pernikahan:
+                        </span>
+                        <p className="text-gray-900">
+                          {formatDateTime(selectedOrder.wedding_date)}
+                        </p>
                       </div>
                       <div>
-                        <span className="font-medium text-gray-700">Tanggal Pesanan:</span>
-                        <p className="text-gray-900">{formatDate(selectedOrder.created_at)}</p>
+                        <span className="font-medium text-gray-700">
+                          Tanggal Pesanan:
+                        </span>
+                        <p className="text-gray-900">
+                          {formatDate(selectedOrder.created_at)}
+                        </p>
                       </div>
                       <div>
-                        <span className="font-medium text-gray-700">Total:</span>
-                        <p className="text-2xl font-bold text-primary-600">{formatRupiah(selectedOrder.total_amount)}</p>
+                        <span className="font-medium text-gray-700">
+                          Total:
+                        </span>
+                        <p className="text-2xl font-bold text-primary-600">
+                          {formatRupiah(selectedOrder.total_amount)}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -1156,19 +1128,27 @@ const AdminOrders = () => {
 
                 {selectedOrder.notes && (
                   <div className="mb-6">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-2">Catatan</h3>
-                    <p className="text-gray-700 bg-gray-50 p-4 rounded-lg">{selectedOrder.notes}</p>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                      Catatan
+                    </h3>
+                    <p className="text-gray-700 bg-gray-50 p-4 rounded-lg">
+                      {selectedOrder.notes}
+                    </p>
                   </div>
                 )}
 
                 <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-4">Item yang Dipilih</h3>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                    Item yang Dipilih
+                  </h3>
                   <div className="bg-gray-50 rounded-lg p-4">
                     {(() => {
                       try {
-                        const items = JSON.parse(selectedOrder.selected_items || '[]');
-                        console.log('Selected items structure:', items); // Debug log
-                        
+                        const items = JSON.parse(
+                          selectedOrder.selected_items || "[]"
+                        );
+                        console.log("Selected items structure:", items); // Debug log
+
                         if (!Array.isArray(items) || items.length === 0) {
                           return (
                             <div className="text-gray-500 text-center py-4">
@@ -1176,22 +1156,47 @@ const AdminOrders = () => {
                             </div>
                           );
                         }
-                        
+
                         return items.map((item, index) => {
                           // Handle different item structures
-                          const itemName = item.name || item.item_name || item.title || 'Item tidak dikenal';
+                          const itemName =
+                            item.name ||
+                            item.item_name ||
+                            item.title ||
+                            "Item tidak dikenal";
                           // Check for all possible price fields in order of preference
-                          const itemPrice = item.final_price || item.item_price || item.price || item.custom_price || 0;
-                          
+                          const itemPrice =
+                            item.final_price ||
+                            item.item_price ||
+                            item.price ||
+                            item.custom_price ||
+                            0;
+                          const quantity = item.quantity || 1;
+                          const subtotal = (typeof itemPrice === 'number' ? itemPrice : parseFloat(itemPrice) || 0) * quantity;
+
                           return (
-                            <div key={index} className="flex justify-between items-center py-2 border-b border-gray-200 last:border-b-0">
-                              <span className="text-gray-900">{itemName}</span>
-                              <span className="font-medium text-primary-600">{formatRupiah(itemPrice)}</span>
+                            <div
+                              key={index}
+                              className="flex justify-between items-center py-2 border-b border-gray-200 last:border-b-0"
+                            >
+                              <span className="text-gray-900">
+                                {itemName} {quantity > 1 && <span className="text-gray-500">(x{quantity})</span>}
+                              </span>
+                              <div className="text-right">
+                                {quantity > 1 && (
+                                  <div className="text-xs text-gray-500">
+                                    {formatRupiah(itemPrice)} × {quantity}
+                                  </div>
+                                )}
+                                <span className="font-medium text-primary-600">
+                                  {formatRupiah(subtotal)}
+                                </span>
+                              </div>
                             </div>
                           );
                         });
                       } catch (error) {
-                        console.error('Error parsing selected items:', error);
+                        console.error("Error parsing selected items:", error);
                         return (
                           <div className="text-gray-500 text-center py-4">
                             Error memuat item yang dipilih
@@ -1212,34 +1217,39 @@ const AdminOrders = () => {
                   <button
                     onClick={async () => {
                       const confirmed = await new Promise((resolve) => {
-                        toast((t) => (
-                          <div className="flex items-center gap-3">
-                            <span>Apakah Anda yakin ingin menghapus pesanan ini?</span>
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => {
-                                  toast.dismiss(t.id);
-                                  resolve(true);
-                                }}
-                                className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700"
-                              >
-                                Ya
-                              </button>
-                              <button
-                                onClick={() => {
-                                  toast.dismiss(t.id);
-                                  resolve(false);
-                                }}
-                                className="px-3 py-1 bg-gray-300 text-gray-700 rounded text-sm hover:bg-gray-400"
-                              >
-                                Tidak
-                              </button>
+                        toast(
+                          (t) => (
+                            <div className="flex items-center gap-3">
+                              <span>
+                                Apakah Anda yakin ingin menghapus pesanan ini?
+                              </span>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => {
+                                    toast.dismiss(t.id);
+                                    resolve(true);
+                                  }}
+                                  className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700"
+                                >
+                                  Ya
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    toast.dismiss(t.id);
+                                    resolve(false);
+                                  }}
+                                  className="px-3 py-1 bg-gray-300 text-gray-700 rounded text-sm hover:bg-gray-400"
+                                >
+                                  Tidak
+                                </button>
+                              </div>
                             </div>
-                          </div>
-                        ), {
-                          duration: Infinity,
-                          position: 'top-center',
-                        });
+                          ),
+                          {
+                            duration: Infinity,
+                            position: "top-center",
+                          }
+                        );
                       });
 
                       if (confirmed) {
@@ -1257,133 +1267,6 @@ const AdminOrders = () => {
           </div>
         )}
 
-        {/* Custom Request Detail Modal */}
-        {showRequestDetailModal && selectedRequest && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-              <div className="flex justify-between items-center p-6 border-b border-gray-200">
-                <h2 className="text-2xl font-bold text-gray-800">
-                  Detail Permintaan Kustom #{selectedRequest.id}
-                </h2>
-                <button
-                  onClick={() => setShowRequestDetailModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <X size={24} />
-                </button>
-              </div>
-              
-              <div className="p-6">
-                <div className="grid md:grid-cols-2 gap-6 mb-6">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Informasi Pelanggan</h3>
-                    <div className="space-y-3">
-                      <div>
-                        <span className="font-medium text-gray-700">Nama:</span>
-                        <p className="text-gray-900">{selectedRequest.name}</p>
-                      </div>
-                      <div>
-                        <span className="font-medium text-gray-700">Email:</span>
-                        <p className="text-gray-900">{selectedRequest.email}</p>
-                      </div>
-                      <div>
-                        <span className="font-medium text-gray-700">Telepon:</span>
-                        <p className="text-gray-900">{selectedRequest.phone}</p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Informasi Pernikahan</h3>
-                    <div className="space-y-3">
-                      <div>
-                        <span className="font-medium text-gray-700">Tanggal Pernikahan:</span>
-                        <p className="text-gray-900">{formatDate(selectedRequest.wedding_date)}</p>
-                      </div>
-                      <div>
-                        <span className="font-medium text-gray-700">Total Harga:</span>
-                        <p className="text-2xl font-bold text-primary-600">{formatRupiah(selectedRequest.total_amount || 0)}</p>
-                      </div>
-                      <div>
-                        <span className="font-medium text-gray-700">Booking Amount:</span>
-                        <p className="text-lg font-semibold text-green-600">{formatRupiah(selectedRequest.booking_amount)}</p>
-                      </div>
-                      <div>
-                        <span className="font-medium text-gray-700">Tanggal Permintaan:</span>
-                        <p className="text-gray-900">{formatDate(selectedRequest.created_at)}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-4">Layanan yang Diminta</h3>
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <p className="text-gray-700">{selectedRequest.services}</p>
-                  </div>
-                </div>
-
-                {selectedRequest.additional_requests && (
-                  <div className="mb-6">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-2">Permintaan Tambahan</h3>
-                    <p className="text-gray-700 bg-gray-50 p-4 rounded-lg">{selectedRequest.additional_requests}</p>
-                  </div>
-                )}
-
-                <div className="flex justify-end space-x-3">
-                  <button
-                    onClick={() => setShowRequestDetailModal(false)}
-                    className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-                  >
-                    Tutup
-                  </button>
-                  <button
-                    onClick={async () => {
-                      const confirmed = await new Promise((resolve) => {
-                        toast((t) => (
-                          <div className="flex items-center gap-3">
-                            <span>Apakah Anda yakin ingin menghapus permintaan kustom ini?</span>
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => {
-                                  toast.dismiss(t.id);
-                                  resolve(true);
-                                }}
-                                className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700"
-                              >
-                                Ya
-                              </button>
-                              <button
-                                onClick={() => {
-                                  toast.dismiss(t.id);
-                                  resolve(false);
-                                }}
-                                className="px-3 py-1 bg-gray-300 text-gray-700 rounded text-sm hover:bg-gray-400"
-                              >
-                                Tidak
-                              </button>
-                            </div>
-                          </div>
-                        ), {
-                          duration: Infinity,
-                          position: 'top-center',
-                        });
-                      });
-
-                      if (confirmed) {
-                        await handleDeleteCustomRequest(selectedRequest.id);
-                        setShowRequestDetailModal(false);
-                      }
-                    }}
-                    className="px-4 py-2 text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
-                  >
-                    Hapus Permintaan
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Edit Booking Amount Modal */}
         {showEditBookingModal && editingItem && (
@@ -1397,15 +1280,14 @@ const AdminOrders = () => {
                   onClick={() => {
                     setShowEditBookingModal(false);
                     setEditingItem(null);
-                    setEditingType('');
-                    setNewBookingAmount('');
+                    setNewBookingAmount("");
                   }}
                   className="text-gray-400 hover:text-gray-600"
                 >
                   <X size={24} />
                 </button>
               </div>
-              
+
               <div className="p-6">
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1425,8 +1307,7 @@ const AdminOrders = () => {
                     onClick={() => {
                       setShowEditBookingModal(false);
                       setEditingItem(null);
-                      setEditingType('');
-                      setNewBookingAmount('');
+                      setNewBookingAmount("");
                     }}
                     className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
                   >
@@ -1456,14 +1337,13 @@ const AdminOrders = () => {
                   onClick={() => {
                     setShowBankSelectionModal(false);
                     setPendingInvoiceItem(null);
-                    setPendingInvoiceType('');
                   }}
                   className="text-gray-400 hover:text-gray-600"
                 >
                   <X size={24} />
                 </button>
               </div>
-              
+
               <div className="p-6">
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1475,17 +1355,23 @@ const AdminOrders = () => {
                         key={method.id}
                         className={`p-3 border rounded-lg cursor-pointer transition-all ${
                           selectedBankMethod?.id === method.id
-                            ? 'border-primary-500 bg-primary-50'
-                            : 'border-gray-300 hover:border-primary-300'
+                            ? "border-primary-500 bg-primary-50"
+                            : "border-gray-300 hover:border-primary-300"
                         }`}
                         onClick={() => setSelectedBankMethod(method)}
                       >
                         <div className="flex items-center justify-between">
                           <div>
-                            <h4 className="font-medium text-gray-800">{method.name}</h4>
-                            <p className="text-sm text-gray-600">{method.type}</p>
+                            <h4 className="font-medium text-gray-800">
+                              {method.name}
+                            </h4>
+                            <p className="text-sm text-gray-600">
+                              {method.type}
+                            </p>
                             {method.account_number && (
-                              <p className="text-xs text-gray-500">No. Rek: {method.account_number}</p>
+                              <p className="text-xs text-gray-500">
+                                No. Rek: {method.account_number}
+                              </p>
                             )}
                           </div>
                           <div className="w-4 h-4 border-2 border-gray-300 rounded-full flex items-center justify-center">
@@ -1504,7 +1390,6 @@ const AdminOrders = () => {
                     onClick={() => {
                       setShowBankSelectionModal(false);
                       setPendingInvoiceItem(null);
-                      setPendingInvoiceType('');
                     }}
                     className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
                   >
@@ -1512,11 +1397,13 @@ const AdminOrders = () => {
                   </button>
                   <button
                     onClick={() => {
-                      if (pendingInvoiceItem && pendingInvoiceType) {
-                        generateInvoicePDF(pendingInvoiceItem, pendingInvoiceType, selectedBankMethod);
+                      if (pendingInvoiceItem) {
+                        generateInvoicePDF(
+                          pendingInvoiceItem,
+                          selectedBankMethod
+                        );
                         setShowBankSelectionModal(false);
                         setPendingInvoiceItem(null);
-                        setPendingInvoiceType('');
                       }
                     }}
                     className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"

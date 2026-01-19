@@ -20,6 +20,8 @@ import AdminItems from './pages/admin/AdminItems';
 import AdminServices from './pages/admin/AdminServices';
 import AdminPayments from './pages/admin/AdminPayments';
 import AdminOrders from './pages/admin/AdminOrders';
+import AdminOrdersHistory from './pages/admin/AdminOrdersHistory';
+import AdminSuratJalan from './pages/admin/AdminSuratJalan';
 import AdminGallery from './pages/admin/AdminGallery';
 import AdminArticles from './pages/admin/AdminArticles';
 import AdminContactMessages from './pages/admin/AdminContactMessages';
@@ -60,6 +62,16 @@ function App() {
             <Route path="/admin/orders" element={
               <ProtectedRoute>
                 <AdminOrders />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/orders-history" element={
+              <ProtectedRoute>
+                <AdminOrdersHistory />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/surat-jalan" element={
+              <ProtectedRoute>
+                <AdminSuratJalan />
               </ProtectedRoute>
             } />
             <Route path="/admin/articles" element={

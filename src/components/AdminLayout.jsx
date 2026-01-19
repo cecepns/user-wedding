@@ -12,6 +12,8 @@ const AdminLayout = ({ children }) => {
     { name: 'Layanan', path: '/admin/services', icon: 'M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m8 0V6a2 2 0 012 2v6a2 2 0 01-2 2H8a2 2 0 01-2-2V8a2 2 0 012-2h8z' },
     { name: 'Fitur Layanan', path: '/admin/service-features', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' },
     { name: 'Pesanan', path: '/admin/orders', icon: 'M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2' },
+    { name: 'History Pesanan', path: '/admin/orders-history', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
+    { name: 'Surat Jalan', path: '/admin/surat-jalan', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
     { name: 'Pembayaran', path: '/admin/payments', icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1' },
     { name: 'Pesan Kontak', path: '/admin/contact-messages', icon: 'M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
     { name: 'Galeri', path: '/admin/gallery', icon: 'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z' },
@@ -36,10 +38,11 @@ const AdminLayout = ({ children }) => {
       )}
 
       {/* Sidebar */}
-      <div className={`inset-y-0 left-0 z-30 w-64 bg-white shadow-lg transform fixed ${
+      <div className={`inset-y-0 left-0 z-30 w-64 bg-white shadow-lg transform fixed flex flex-col ${
         isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
       } transition-transform duration-300 ease-in-out lg:translate-x-0 lg:inset-0`}>
-        <div className="flex items-center justify-center h-20 px-4 bg-gradient-to-r from-primary-600 to-secondary-600">
+        {/* Header - Fixed at top */}
+        <div className="flex items-center justify-center h-20 px-4 bg-gradient-to-r from-primary-600 to-secondary-600 flex-shrink-0">
           <Link to="/" className="flex items-center space-x-3">
             <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
               <span className="text-primary-600 font-bold">U</span>
@@ -48,7 +51,8 @@ const AdminLayout = ({ children }) => {
           </Link>
         </div>
 
-        <nav className="mt-8">
+        {/* Scrollable Navigation Area */}
+        <nav className="flex-1 overflow-y-auto mt-8">
           <div className="px-4 space-y-2">
             {menuItems.map((item) => (
               <Link
@@ -69,7 +73,8 @@ const AdminLayout = ({ children }) => {
             ))}
           </div>
 
-          <div className="mt-8 pt-8 border-t border-gray-200">
+          {/* Logout button inside scrollable area */}
+          <div className="mt-8 pt-8 pb-4 border-t border-gray-200">
             <div className="px-4">
               <button
                 onClick={handleLogout}

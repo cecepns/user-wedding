@@ -73,6 +73,29 @@ async function initializeDatabase() {
       ['admin@weddingbliss.com', hashedPassword]
     );
 
+    // Create surat_jalan table if not exists
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS surat_jalan (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        order_id INT,
+        client_name VARCHAR(255) NOT NULL,
+        client_phone VARCHAR(50),
+        client_address TEXT,
+        wedding_date DATE,
+        package_name VARCHAR(255),
+        plaminan_image TEXT,
+        pintu_masuk_image TEXT,
+        dekorasi_image TEXT,
+        warna_kain TEXT,
+        ukuran_tenda TEXT,
+        vendor_name VARCHAR(255) DEFAULT 'User Wedding Organizer',
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE SET NULL
+      )
+    `);
+
     console.log('Database initialized successfully');
   } catch (error) {
     console.error('Database initialization error:', error);
@@ -499,9 +522,31 @@ app.get('/api/orders', authenticateToken, async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const offset = (page - 1) * limit;
+    const { status } = req.query;
+
+    // Optional status filter (mendukung satu atau beberapa status, dipisahkan koma)
+    const whereClauses = [];
+    const params = [];
+
+    if (status) {
+      const statuses = status.split(',').map(s => s.trim()).filter(Boolean);
+
+      if (statuses.length === 1) {
+        whereClauses.push('status = ?');
+        params.push(statuses[0]);
+      } else if (statuses.length > 1) {
+        whereClauses.push(`status IN (${statuses.map(() => '?').join(',')})`);
+        params.push(...statuses);
+      }
+    }
+
+    const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
     
     // Get total count
-    const [countResult] = await db.execute('SELECT COUNT(*) as total FROM orders');
+    const [countResult] = await db.execute(
+      `SELECT COUNT(*) as total FROM orders ${whereSql}`,
+      params
+    );
     const total = countResult[0].total;
     
     // Get paginated orders with service base_price
@@ -509,9 +554,10 @@ app.get('/api/orders', authenticateToken, async (req, res) => {
       SELECT o.*, s.base_price 
       FROM orders o 
       LEFT JOIN services s ON o.service_id = s.id 
+      ${whereSql ? whereSql.replace(/status/g, 'o.status') : ''}
       ORDER BY o.created_at DESC 
       LIMIT ? OFFSET ?
-    `, [limit, offset]);
+    `, [...params, limit, offset]);
     
     res.json({
       orders,
@@ -1364,6 +1410,185 @@ app.delete('/api/service-features/:id', authenticateToken, async (req, res) => {
 });
 
 // About cards routes - REMOVED (now handled by unified service-cards endpoint)
+
+// Orders search route (for surat jalan dropdown)
+app.get('/api/orders/search', authenticateToken, async (req, res) => {
+  try {
+    const { q } = req.query;
+    
+    let query = `
+      SELECT id, name, email, phone, address, wedding_date, service_name, total_amount, booking_amount, status
+      FROM orders
+    `;
+    let params = [];
+    
+    if (q && q.trim()) {
+      query += ` WHERE 
+        name LIKE ? OR 
+        email LIKE ? OR 
+        phone LIKE ? OR 
+        service_name LIKE ? OR
+        id LIKE ?
+      `;
+      const searchTerm = `%${q.trim()}%`;
+      params = [searchTerm, searchTerm, searchTerm, searchTerm, searchTerm];
+    }
+    
+    query += ' ORDER BY created_at DESC LIMIT 10';
+    
+    const [orders] = await db.execute(query, params);
+    res.json(orders);
+  } catch (error) {
+    console.error('Orders search error:', error);
+    res.status(500).json({ message: 'Database error' });
+  }
+});
+
+// Surat Jalan routes
+app.get('/api/surat-jalan', authenticateToken, async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+    
+    // Get total count
+    const [countResult] = await db.execute('SELECT COUNT(*) as total FROM surat_jalan');
+    const total = countResult[0].total;
+    
+    // Get paginated surat jalan
+    const [suratJalan] = await db.execute(
+      'SELECT * FROM surat_jalan ORDER BY created_at DESC LIMIT ? OFFSET ?',
+      [limit, offset]
+    );
+    
+    res.json({
+      suratJalan,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    console.error('Surat jalan error:', error);
+    res.status(500).json({ message: 'Database error' });
+  }
+});
+
+app.get('/api/surat-jalan/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  
+  try {
+    const [rows] = await db.execute('SELECT * FROM surat_jalan WHERE id = ?', [id]);
+    const suratJalan = rows[0];
+    
+    if (!suratJalan) {
+      return res.status(404).json({ message: 'Surat jalan not found' });
+    }
+    
+    res.json(suratJalan);
+  } catch (error) {
+    console.error('Surat jalan detail error:', error);
+    res.status(500).json({ message: 'Database error' });
+  }
+});
+
+app.post('/api/surat-jalan', authenticateToken, async (req, res) => {
+  const { 
+    order_id, 
+    client_name, 
+    client_phone, 
+    client_address, 
+    wedding_date,
+    package_name,
+    plaminan_image,
+    pintu_masuk_image,
+    dekorasi_image,
+    warna_kain,
+    ukuran_tenda,
+    vendor_name,
+    notes
+  } = req.body;
+  
+  try {
+    const [result] = await db.execute(
+      `INSERT INTO surat_jalan (
+        order_id, client_name, client_phone, client_address, wedding_date,
+        package_name, plaminan_image, pintu_masuk_image, dekorasi_image,
+        warna_kain, ukuran_tenda, vendor_name, notes
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        order_id, client_name, client_phone, client_address, wedding_date,
+        package_name, plaminan_image, pintu_masuk_image, dekorasi_image,
+        warna_kain, ukuran_tenda, vendor_name, notes
+      ]
+    );
+    res.json({ id: result.insertId, message: 'Surat jalan created successfully' });
+  } catch (error) {
+    console.error('Create surat jalan error:', error);
+    res.status(500).json({ message: 'Database error' });
+  }
+});
+
+app.put('/api/surat-jalan/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  const { 
+    client_name, 
+    client_phone, 
+    client_address, 
+    wedding_date,
+    package_name,
+    plaminan_image,
+    pintu_masuk_image,
+    dekorasi_image,
+    warna_kain,
+    ukuran_tenda,
+    vendor_name,
+    notes
+  } = req.body;
+  
+  try {
+    const [result] = await db.execute(
+      `UPDATE surat_jalan SET 
+        client_name = ?, client_phone = ?, client_address = ?, wedding_date = ?,
+        package_name = ?, plaminan_image = ?, pintu_masuk_image = ?, dekorasi_image = ?,
+        warna_kain = ?, ukuran_tenda = ?, vendor_name = ?, notes = ?
+      WHERE id = ?`,
+      [
+        client_name, client_phone, client_address, wedding_date,
+        package_name, plaminan_image, pintu_masuk_image, dekorasi_image,
+        warna_kain, ukuran_tenda, vendor_name, notes, id
+      ]
+    );
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Surat jalan not found' });
+    }
+    
+    res.json({ message: 'Surat jalan updated successfully' });
+  } catch (error) {
+    console.error('Update surat jalan error:', error);
+    res.status(500).json({ message: 'Database error' });
+  }
+});
+
+app.delete('/api/surat-jalan/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  
+  try {
+    const [result] = await db.execute('DELETE FROM surat_jalan WHERE id = ?', [id]);
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Surat jalan not found' });
+    }
+    
+    res.json({ message: 'Surat jalan deleted successfully' });
+  } catch (error) {
+    console.error('Delete surat jalan error:', error);
+    res.status(500).json({ message: 'Database error' });
+  }
+});
 
 // Contact form
 app.post('/api/contact', async (req, res) => {
