@@ -642,47 +642,8 @@ const CustomService = () => {
                           : "border-gray-200 hover:border-primary-300"
                       }`}
                     >
-                      <div className="flex flex-col sm:flex-row bg-gradient-to-r from-primary-600 to-secondary-600">
-                        {/* Image block - clickable */}
-                        <div
-                          className={`relative shrink-0 w-full sm:w-56 h-44 sm:h-auto min-h-[180px] bg-primary-700/50 ${
-                            hasImages
-                              ? "cursor-pointer group"
-                              : "flex items-center justify-center"
-                          }`}
-                          onClick={() => hasImages && openImageLightbox(service)}
-                          role={hasImages ? "button" : undefined}
-                          onKeyDown={(e) =>
-                            hasImages &&
-                            (e.key === "Enter" || e.key === " ") &&
-                            openImageLightbox(service)
-                          }
-                          tabIndex={hasImages ? 0 : undefined}
-                        >
-                          {hasImages ? (
-                            <>
-                              <img
-                                src={itemImageUrl(thumb)}
-                                alt={service.name}
-                                className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                              />
-                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
-                              {images.length > 1 && (
-                                <span className="absolute bottom-2 right-2 px-2 py-1 rounded-full bg-black/50 text-white text-xs font-medium flex items-center gap-1">
-                                  <ImageIcon size={12} />
-                                  {images.length}
-                                </span>
-                              )}
-                              <span className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30">
-                                <span className="px-3 py-1.5 rounded-lg bg-white/90 text-primary-700 text-sm font-medium">
-                                  Lihat galeri
-                                </span>
-                              </span>
-                            </>
-                          ) : (
-                            <ImageIcon className="w-14 h-14 text-white/40" />
-                          )}
-                        </div>
+                      <div className="flex flex-col bg-gradient-to-r from-primary-600 to-secondary-600">
+                        {/* Content: title, description, price, button - always on top */}
                         <div className="flex-1 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                           <div className="flex-1">
                             <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -718,6 +679,37 @@ const CustomService = () => {
                             </button>
                           </div>
                         </div>
+                        {/* Image - only below content when images exist, no placeholder */}
+                        {hasImages && (
+                          <div
+                            className="relative w-full h-48 sm:h-56 bg-primary-700/50 cursor-pointer group"
+                            onClick={() => openImageLightbox(service)}
+                            role="button"
+                            onKeyDown={(e) =>
+                              (e.key === "Enter" || e.key === " ") &&
+                              openImageLightbox(service)
+                            }
+                            tabIndex={0}
+                          >
+                            <img
+                              src={itemImageUrl(thumb)}
+                              alt={service.name}
+                              className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                            />
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                            {images.length > 1 && (
+                              <span className="absolute bottom-2 right-2 px-2 py-1 rounded-full bg-black/50 text-white text-xs font-medium flex items-center gap-1">
+                                <ImageIcon size={12} />
+                                {images.length}
+                              </span>
+                            )}
+                            <span className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30">
+                              <span className="px-3 py-1.5 rounded-lg bg-white/90 text-primary-700 text-sm font-medium">
+                                Lihat galeri
+                              </span>
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
