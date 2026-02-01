@@ -10,12 +10,23 @@ import {
   X,
   Download,
   FileText,
+  Search,
+  Calendar,
+  List,
+  Image as ImageIcon,
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 import Select from "react-select";
 import AdminLayout from "../../components/AdminLayout";
 import { formatDate } from "../../utils/formatters";
 import jsPDF from "jspdf";
+
+const API_BASE = "https://api-inventory.isavralabel.com/user-wedding";
+function imageUrl(value) {
+  if (!value) return "";
+  if (value.startsWith("http")) return value;
+  return `${API_BASE}/uploads-weddingsapp/${value}`;
+}
 
 const AdminSuratJalan = () => {
   const [suratJalanList, setSuratJalanList] = useState([]);
@@ -28,11 +39,30 @@ const AdminSuratJalan = () => {
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showGalleryPicker, setShowGalleryPicker] = useState(false);
+  const [galleryPickerField, setGalleryPickerField] = useState(null);
+  const [galleryImages, setGalleryImages] = useState([]);
   const [editingItem, setEditingItem] = useState(null);
   const [selectedItem, setSelectedItem] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [orderOptions, setOrderOptions] = useState([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
+  const [viewMode, setViewMode] = useState("table");
+  const [searchInput, setSearchInput] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [calendarMonth, setCalendarMonth] = useState(new Date());
+  const [calendarSuratJalan, setCalendarSuratJalan] = useState([]);
+  const [calendarLoading, setCalendarLoading] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(null);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setSearchQuery(searchInput);
+      setPagination((prev) => (prev.page === 1 ? prev : { ...prev, page: 1 }));
+    }, 300);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
   const [formData, setFormData] = useState({
     order_id: "",
     client_name: "",
@@ -52,17 +82,29 @@ const AdminSuratJalan = () => {
   useEffect(() => {
     fetchSuratJalan();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pagination.page]);
+  }, [pagination.page, searchQuery, viewMode]);
 
   useEffect(() => {
     loadOrderOptions();
   }, []);
 
+  useEffect(() => {
+    if (viewMode === "calendar") {
+      fetchCalendarSuratJalan(calendarMonth);
+    }
+  }, [viewMode, calendarMonth]);
+
   const fetchSuratJalan = async () => {
     setLoading(true);
     try {
+      const limit = pagination.limit;
+      const params = new URLSearchParams({
+        page: String(pagination.page),
+        limit: String(limit),
+      });
+      if (searchQuery.trim()) params.set("search", searchQuery.trim());
       const response = await fetch(
-        `https://api-inventory.isavralabel.com/user-wedding/api/surat-jalan?page=${pagination.page}&limit=${pagination.limit}`,
+        `${API_BASE}/api/surat-jalan?${params}`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("admin_token")}`,
@@ -85,11 +127,111 @@ const AdminSuratJalan = () => {
     }
   };
 
+  const fetchCalendarSuratJalan = async (monthDate) => {
+    setCalendarLoading(true);
+    try {
+      const response = await fetch(
+        `${API_BASE}/api/surat-jalan?page=1&limit=500`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("admin_token")}`,
+          },
+        }
+      );
+      const data = await response.json();
+      const all = data.suratJalan || [];
+      const year = monthDate.getFullYear();
+      const month = monthDate.getMonth();
+      const filtered = all.filter((item) => {
+        const rawDate = item.wedding_date;
+        if (!rawDate) return false;
+        const d = new Date(rawDate);
+        if (isNaN(d.getTime())) return false;
+        return d.getFullYear() === year && d.getMonth() === month;
+      });
+      setCalendarSuratJalan(filtered);
+      setSelectedDate(null);
+    } catch (error) {
+      console.error("Error fetching calendar surat jalan:", error);
+      setCalendarSuratJalan([]);
+      setSelectedDate(null);
+    } finally {
+      setCalendarLoading(false);
+    }
+  };
+
+  const changeCalendarMonth = (direction) => {
+    setCalendarMonth((prev) => {
+      const newDate = new Date(prev);
+      newDate.setMonth(prev.getMonth() + direction);
+      return newDate;
+    });
+  };
+
+  const getCalendarDays = () => {
+    const year = calendarMonth.getFullYear();
+    const month = calendarMonth.getMonth();
+    const firstDayOfMonth = new Date(year, month, 1);
+    const lastDayOfMonth = new Date(year, month + 1, 0);
+    const startWeekday = firstDayOfMonth.getDay();
+
+    const days = [];
+    for (let i = 0; i < startWeekday; i++) {
+      days.push(null);
+    }
+    for (let d = 1; d <= lastDayOfMonth.getDate(); d++) {
+      days.push(new Date(year, month, d));
+    }
+    return days;
+  };
+
+  const suratJalanByDate = calendarSuratJalan.reduce((acc, item) => {
+    const rawDate = item.wedding_date;
+    if (!rawDate) return acc;
+    const dateObj = new Date(rawDate);
+    if (isNaN(dateObj.getTime())) return acc;
+    const y = dateObj.getFullYear();
+    const m = dateObj.getMonth() + 1;
+    const d = dateObj.getDate();
+    const key = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(item);
+    return acc;
+  }, {});
+
+  const fetchGalleryImages = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/api/gallery/images`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("admin_token")}` },
+      });
+      const data = await response.json();
+      setGalleryImages(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error("Error fetching gallery:", e);
+      setGalleryImages([]);
+    }
+  };
+
+  const openGalleryPicker = (field) => {
+    setGalleryPickerField(field);
+    setShowGalleryPicker(true);
+    fetchGalleryImages();
+  };
+
+  const onGalleryImageSelect = (img) => {
+    const url = img.image_url && img.image_url.startsWith("http") ? img.image_url : imageUrl(img.image_url);
+    if (galleryPickerField && url) {
+      setFormData((prev) => ({ ...prev, [galleryPickerField]: img.image_url }));
+    }
+    setShowGalleryPicker(false);
+    setGalleryPickerField(null);
+  };
+
   const loadOrderOptions = async (inputValue = "") => {
     setIsLoadingOrders(true);
     try {
       const response = await fetch(
-        `https://api-inventory.isavralabel.com/user-wedding/api/orders/search?q=${encodeURIComponent(inputValue)}`,
+        `${API_BASE}/api/orders/search?q=${encodeURIComponent(inputValue)}`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("admin_token")}`,
@@ -231,8 +373,8 @@ const AdminSuratJalan = () => {
 
     try {
       const url = editingItem
-        ? `https://api-inventory.isavralabel.com/user-wedding/api/surat-jalan/${editingItem.id}`
-        : "https://api-inventory.isavralabel.com/user-wedding/api/surat-jalan";
+        ? `${API_BASE}/api/surat-jalan/${editingItem.id}`
+        : `${API_BASE}/api/surat-jalan`;
 
       const response = await fetch(url, {
         method: editingItem ? "PUT" : "POST",
@@ -249,6 +391,9 @@ const AdminSuratJalan = () => {
         );
         handleCloseModal();
         fetchSuratJalan();
+        if (viewMode === "calendar") {
+          fetchCalendarSuratJalan(calendarMonth);
+        }
       } else {
         toast.error("Error menyimpan surat jalan");
       }
@@ -297,7 +442,7 @@ const AdminSuratJalan = () => {
 
     try {
       const response = await fetch(
-        `https://api-inventory.isavralabel.com/user-wedding/api/surat-jalan/${id}`,
+        `${API_BASE}/api/surat-jalan/${id}`,
         {
           method: "DELETE",
           headers: {
@@ -309,6 +454,9 @@ const AdminSuratJalan = () => {
       if (response.ok) {
         toast.success("Surat jalan berhasil dihapus!");
         fetchSuratJalan();
+        if (viewMode === "calendar") {
+          fetchCalendarSuratJalan(calendarMonth);
+        }
       } else {
         toast.error("Error menghapus surat jalan");
       }
@@ -464,9 +612,8 @@ const AdminSuratJalan = () => {
       if (item.plaminan_image) {
         try {
           toast.loading("Memuat gambar Plaminan...", { id: loadingToast });
-          console.log("Loading Plaminan image from:", item.plaminan_image);
-          const { dataURL, width, height } = await loadImageAsDataURL(item.plaminan_image, 15000);
-          console.log("Plaminan image loaded successfully:", width, "x", height);
+          const url = imageUrl(item.plaminan_image);
+          const { dataURL, width, height } = await loadImageAsDataURL(url, 15000);
           const aspectRatio = width / height;
           const imgHeight = Math.min(maxImageHeight, imageWidth / aspectRatio);
           
@@ -510,9 +657,8 @@ const AdminSuratJalan = () => {
       if (item.pintu_masuk_image) {
         try {
           toast.loading("Memuat gambar Pintu Masuk...", { id: loadingToast });
-          console.log("Loading Pintu Masuk image from:", item.pintu_masuk_image);
-          const { dataURL, width, height } = await loadImageAsDataURL(item.pintu_masuk_image, 15000);
-          console.log("Pintu Masuk image loaded successfully:", width, "x", height);
+          const url = imageUrl(item.pintu_masuk_image);
+          const { dataURL, width, height } = await loadImageAsDataURL(url, 15000);
           const aspectRatio = width / height;
           const imgHeight = Math.min(maxImageHeight, imageWidth / aspectRatio);
           
@@ -555,9 +701,8 @@ const AdminSuratJalan = () => {
       if (item.dekorasi_image) {
         try {
           toast.loading("Memuat gambar Dekorasi...", { id: loadingToast });
-          console.log("Loading Dekorasi image from:", item.dekorasi_image);
-          const { dataURL, width, height } = await loadImageAsDataURL(item.dekorasi_image, 15000);
-          console.log("Dekorasi image loaded successfully:", width, "x", height);
+          const url = imageUrl(item.dekorasi_image);
+          const { dataURL, width, height } = await loadImageAsDataURL(url, 15000);
           const aspectRatio = width / height;
           const imgHeight = Math.min(maxImageHeight, imageWidth / aspectRatio);
           
@@ -670,7 +815,7 @@ const AdminSuratJalan = () => {
           <p className="text-gray-600">Kelola surat jalan untuk pengiriman dekorasi.</p>
         </div>
 
-        <div className="mb-6">
+        <div className="mb-6 flex flex-wrap items-center gap-4">
           <button
             onClick={() => handleOpenModal()}
             className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
@@ -678,119 +823,278 @@ const AdminSuratJalan = () => {
             <Plus size={20} />
             Tambah Surat Jalan
           </button>
+          <div className="flex items-center gap-2 flex-1 min-w-[200px] max-w-md">
+            <Search size={18} className="text-gray-400 shrink-0" />
+            <input
+              type="text"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Cari nama client..."
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
+            />
+          </div>
+          <div className="flex rounded-lg border border-gray-200 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setViewMode("calendar")}
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium ${viewMode === "calendar" ? "bg-[#2f4274] text-white" : "bg-white text-gray-600 hover:bg-gray-50"}`}
+            >
+              <Calendar size={16} />
+              Kalender
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("table")}
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium ${viewMode === "table" ? "bg-[#2f4274] text-white" : "bg-white text-gray-600 hover:bg-gray-50"}`}
+            >
+              <List size={16} />
+              Tabel
+            </button>
+          </div>
         </div>
 
+        {/* Calendar View - same style as AdminOrders */}
+        {viewMode === "calendar" && (
+          <div className="mb-8 bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+            <div className="flex flex-col lg:flex-row lg:items-start gap-6">
+              <div className="flex-1">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold text-gray-800">
+                    Kalender Surat Jalan
+                  </h2>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => changeCalendarMonth(-1)}
+                      className="p-2 rounded-full border border-gray-300 text-gray-600 hover:bg-gray-100"
+                      title="Bulan sebelumnya"
+                    >
+                      <ChevronLeft size={18} />
+                    </button>
+                    <span className="text-sm font-medium text-gray-700">
+                      {calendarMonth.toLocaleDateString("id-ID", {
+                        month: "long",
+                        year: "numeric",
+                      })}
+                    </span>
+                    <button
+                      onClick={() => changeCalendarMonth(1)}
+                      className="p-2 rounded-full border border-gray-300 text-gray-600 hover:bg-gray-100"
+                      title="Bulan berikutnya"
+                    >
+                      <ChevronRight size={18} />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="border border-gray-200 rounded-xl overflow-hidden">
+                  <div className="grid grid-cols-7 bg-gray-50 text-xs font-semibold text-gray-600">
+                    {["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"].map(
+                      (day) => (
+                        <div
+                          key={day}
+                          className="px-2 py-2 text-center uppercase tracking-wide"
+                        >
+                          {day}
+                        </div>
+                      )
+                    )}
+                  </div>
+                  <div className="grid grid-cols-7 text-sm">
+                    {calendarLoading ? (
+                      <div className="col-span-7 flex items-center justify-center py-8">
+                        <span className="text-gray-500 text-sm">
+                          Memuat data surat jalan untuk bulan ini...
+                        </span>
+                      </div>
+                    ) : (
+                      getCalendarDays().map((date, index) => {
+                        if (!date) {
+                          return (
+                            <div
+                              key={`empty-${index}`}
+                              className="h-14 border border-gray-100 bg-gray-50"
+                            />
+                          );
+                        }
+
+                        const y = date.getFullYear();
+                        const m = date.getMonth() + 1;
+                        const d = date.getDate();
+                        const key = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+
+                        const itemsForDay = suratJalanByDate[key] || [];
+                        const hasItems = itemsForDay.length > 0;
+                        const isSelected = selectedDate === key;
+
+                        return (
+                          <button
+                            key={key}
+                            type="button"
+                            onClick={() => setSelectedDate(key)}
+                            className={`h-14 border border-gray-100 flex flex-col items-center justify-center relative transition ${
+                              hasItems
+                                ? "bg-red-200 hover:bg-red-100"
+                                : "bg-blue-50 hover:bg-blue-100"
+                            } ${isSelected ? "ring-2 ring-[#2f4274] z-10" : ""}`}
+                          >
+                            <span
+                              className={`text-sm font-medium ${
+                                hasItems ? "text-red-700" : "text-blue-700"
+                              }`}
+                            >
+                              {d}
+                            </span>
+                            {hasItems && (
+                              <span className="bg-[#2f4274] rounded md:py-1 px-2 mt-1 text-[7px] md:text-xs font-semibold text-white">
+                                {itemsForDay.length} Client
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Selected date: list surat jalan for that day */}
+            {selectedDate && (
+              <div className="mt-6 space-y-4">
+                <div className="flex items-center justify-between bg-blue-50 border border-blue-100 px-4 py-2 rounded-lg">
+                  <span className="text-sm text-blue-800">
+                    Surat jalan untuk tanggal{" "}
+                    {new Date(selectedDate).toLocaleDateString("id-ID", {
+                      day: "2-digit",
+                      month: "long",
+                      year: "numeric",
+                    })}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDate(null)}
+                    className="text-xs font-semibold text-blue-700 hover:text-blue-900"
+                  >
+                    Hapus filter
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {(suratJalanByDate[selectedDate] || []).map((item) => (
+                    <div
+                      key={item.id}
+                      className="border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow bg-gray-50/50"
+                    >
+                      <div className="text-base font-semibold text-gray-900 mb-1">{item.client_name}</div>
+                      <div className="text-xs text-gray-500 mb-2">
+                        SJ/{String(item.id).padStart(4, "0")}/{new Date(item.created_at).getFullYear()} · {item.package_name}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          onClick={() => handleViewDetail(item)}
+                          className="p-1.5 rounded-lg text-[#2f4274] bg-[#2f4274]/10 hover:bg-[#2f4274]/20"
+                          title="Detail"
+                        >
+                          <Eye size={14} />
+                        </button>
+                        <button
+                          onClick={() => handleOpenModal(item)}
+                          className="p-1.5 rounded-lg text-green-600 bg-green-50 hover:bg-green-100"
+                          title="Edit"
+                        >
+                          <Edit size={14} />
+                        </button>
+                        <button
+                          onClick={() => generatePDF(item)}
+                          className="p-1.5 rounded-lg text-purple-600 bg-purple-50 hover:bg-purple-100"
+                          title="PDF"
+                        >
+                          <Download size={14} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(item.id)}
+                          className="p-1.5 rounded-lg text-red-600 bg-red-50 hover:bg-red-100"
+                          title="Hapus"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Table */}
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+        {viewMode === "table" && (
+        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    No. Surat
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Nama Client
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Paket
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Tanggal Acara
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Vendor
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Aksi
-                  </th>
+            <table className="w-full min-w-[800px]">
+              <thead>
+                <tr className="bg-gradient-to-r from-[#2f4274] to-[#3d5285] text-white">
+                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white/95">Tanggal Acara</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white/95">Nama Client</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white/95">No. Surat</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white/95">Paket</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white/95">Vendor</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white/95 w-36">Aksi</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white divide-y divide-gray-100">
                 {loading ? (
                   <tr>
-                    <td
-                      colSpan="6"
-                      className="px-6 py-4 text-center text-gray-500"
-                    >
-                      Memuat data...
+                    <td colSpan="6" className="px-6 py-16 text-center">
+                      <div className="flex flex-col items-center gap-3 text-gray-400">
+                        <div className="w-10 h-10 border-2 border-[#2f4274]/30 border-t-[#2f4274] rounded-full animate-spin" />
+                        <span className="text-sm font-medium">Memuat data...</span>
+                      </div>
                     </td>
                   </tr>
                 ) : suratJalanList.length > 0 ? (
-                  suratJalanList.map((item) => (
-                    <tr key={item.id} className="hover:bg-gray-50">
+                  suratJalanList.map((item, idx) => (
+                    <tr
+                      key={item.id}
+                      className={`transition-colors duration-150 hover:bg-[#2f4274]/[0.04] ${idx % 2 === 1 ? "bg-gray-50/50" : ""}`}
+                    >
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          SJ/{String(item.id).padStart(4, "0")}/{new Date(item.created_at).getFullYear()}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {formatDate(item.created_at)}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          {item.client_name}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {item.client_phone || "-"}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-gray-900">
-                          {item.package_name}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
+                        <div className="text-sm font-semibold text-gray-900">
                           {item.wedding_date ? formatDate(item.wedding_date) : "-"}
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-gray-900">
-                          {item.vendor_name || "User Wedding Organizer"}
-                        </div>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-semibold text-gray-900">{item.client_name}</div>
+                        <div className="text-xs text-gray-500">{item.client_phone || "-"}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex space-x-3">
-                          <button
-                            onClick={() => handleViewDetail(item)}
-                            className="text-blue-600 hover:text-blue-700"
-                            title="Lihat Detail"
-                          >
-                            <Eye size={16} />
-                          </button>
-                          <button
-                            onClick={() => handleOpenModal(item)}
-                            className="text-green-600 hover:text-green-700"
-                            title="Edit"
-                          >
-                            <Edit size={16} />
-                          </button>
-                          <button
-                            onClick={() => generatePDF(item)}
-                            className="text-purple-600 hover:text-purple-700"
-                            title="Download PDF"
-                          >
-                            <Download size={16} />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(item.id)}
-                            className="text-red-600 hover:text-red-700"
-                            title="Hapus"
-                          >
-                            <Trash2 size={16} />
-                          </button>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-semibold text-gray-900">
+                          SJ/{String(item.id).padStart(4, "0")}/{new Date(item.created_at).getFullYear()}
+                        </div>
+                        <div className="text-xs text-gray-500">{formatDate(item.created_at)}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-900">{item.package_name}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-900">{item.vendor_name || "User Wedding Organizer"}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => handleViewDetail(item)} className="p-2 rounded-lg text-[#2f4274] bg-[#2f4274]/10 hover:bg-[#2f4274]/20" title="Detail"><Eye size={16} /></button>
+                          <button onClick={() => handleOpenModal(item)} className="p-2 rounded-lg text-green-600 bg-green-50 hover:bg-green-100" title="Edit"><Edit size={16} /></button>
+                          <button onClick={() => generatePDF(item)} className="p-2 rounded-lg text-purple-600 bg-purple-50 hover:bg-purple-100" title="PDF"><Download size={16} /></button>
+                          <button onClick={() => handleDelete(item.id)} className="p-2 rounded-lg text-red-600 bg-red-50 hover:bg-red-100" title="Hapus"><Trash2 size={16} /></button>
                         </div>
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td
-                      colSpan="6"
-                      className="px-6 py-4 text-center text-gray-500"
-                    >
-                      Belum ada surat jalan
+                    <td colSpan="6" className="px-6 py-16 text-center">
+                      <div className="flex flex-col items-center gap-2 text-gray-400">
+                        <FileText size={32} className="text-gray-300" />
+                        <span className="text-sm font-medium">Belum ada surat jalan</span>
+                      </div>
                     </td>
                   </tr>
                 )}
@@ -798,52 +1102,48 @@ const AdminSuratJalan = () => {
             </table>
           </div>
 
-          {/* Pagination */}
-          {pagination.totalPages > 1 && (
-            <div className="flex items-center justify-between bg-white px-6 py-3 border-t border-gray-200">
-              <div className="flex items-center text-sm text-gray-700">
-                <span>
-                  Menampilkan {(pagination.page - 1) * pagination.limit + 1} -{" "}
-                  {Math.min(pagination.page * pagination.limit, pagination.total)}{" "}
-                  dari {pagination.total} surat jalan
+          {/* Pagination - only in table view */}
+          {viewMode === "table" && pagination.totalPages > 1 && (
+            <div className="flex flex-wrap items-center justify-between gap-4 bg-white rounded-xl border border-gray-100 px-6 py-4 shadow-sm mt-4">
+              <div className="text-sm text-gray-600">
+                <span className="font-medium text-gray-800">
+                  {(pagination.page - 1) * pagination.limit + 1}–{Math.min(pagination.page * pagination.limit, pagination.total)}
                 </span>
+                <span className="mx-1">dari</span>
+                <span className="font-medium text-gray-800">{pagination.total}</span>
+                <span className="ml-1">surat jalan</span>
               </div>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center gap-1">
                 <button
                   onClick={() => handlePageChange(pagination.page - 1)}
                   disabled={pagination.page === 1}
-                  className="px-3 py-1 rounded-md text-sm font-medium text-gray-500 bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="p-2 rounded-lg text-gray-600 bg-gray-100 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-gray-100 transition-colors"
                 >
-                  <ChevronLeft size={16} />
+                  <ChevronLeft size={18} />
                 </button>
-
-                {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map(
-                  (page) => (
-                    <button
-                      key={page}
-                      onClick={() => handlePageChange(page)}
-                      className={`px-3 py-1 rounded-md text-sm font-medium ${
-                        page === pagination.page
-                          ? "bg-primary-600 text-white"
-                          : "text-gray-500 bg-white border border-gray-300 hover:bg-gray-50"
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  )
-                )}
-
+                {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => handlePageChange(page)}
+                    className={`min-w-[2.25rem] py-2 px-2.5 rounded-lg text-sm font-semibold transition-colors ${
+                      page === pagination.page ? "bg-[#2f4274] text-white shadow-md shadow-[#2f4274]/25" : "text-gray-600 bg-gray-100 hover:bg-gray-200"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
                 <button
                   onClick={() => handlePageChange(pagination.page + 1)}
                   disabled={pagination.page === pagination.totalPages}
-                  className="px-3 py-1 rounded-md text-sm font-medium text-gray-500 bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="p-2 rounded-lg text-gray-600 bg-gray-100 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-gray-100 transition-colors"
                 >
-                  <ChevronRight size={16} />
+                  <ChevronRight size={18} />
                 </button>
               </div>
             </div>
           )}
         </div>
+        )}
 
         {/* Add/Edit Modal */}
         {showModal && (
@@ -970,54 +1270,61 @@ const AdminSuratJalan = () => {
                     </>
                   )}
 
-                  {/* Image URLs */}
+                  {/* Gambar Dekorasi - Pilih dari Galeri atau URL */}
                   <div className="md:col-span-2 mt-4">
                     <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                      Gambar Dekorasi (URL)
+                      Gambar Dekorasi
                     </h3>
                   </div>
 
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      URL Gambar Plaminan
-                    </label>
-                    <input
-                      type="url"
-                      name="plaminan_image"
-                      value={formData.plaminan_image}
-                      onChange={handleInputChange}
-                      placeholder="https://example.com/image.jpg"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    />
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      URL Gambar Pintu Masuk
-                    </label>
-                    <input
-                      type="url"
-                      name="pintu_masuk_image"
-                      value={formData.pintu_masuk_image}
-                      onChange={handleInputChange}
-                      placeholder="https://example.com/image.jpg"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    />
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      URL Gambar Dekorasi
-                    </label>
-                    <input
-                      type="url"
-                      name="dekorasi_image"
-                      value={formData.dekorasi_image}
-                      onChange={handleInputChange}
-                      placeholder="https://example.com/image.jpg"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    />
-                  </div>
+                  {["plaminan_image", "pintu_masuk_image", "dekorasi_image"].map((field) => {
+                    const labels = {
+                      plaminan_image: "Plaminan",
+                      pintu_masuk_image: "Pintu Masuk",
+                      dekorasi_image: "Dekorasi",
+                    };
+                    const src = formData[field] ? imageUrl(formData[field]) : "";
+                    return (
+                      <div key={field} className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Gambar {labels[field]}
+                        </label>
+                        <div className="flex flex-wrap items-start gap-3">
+                          {src ? (
+                            <div className="relative w-24 h-24 rounded-lg overflow-hidden border border-gray-200 shrink-0">
+                              <img
+                                src={src}
+                                alt={labels[field]}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.target.onerror = null;
+                                  e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96'%3E%3Crect fill='%23f3f4f6' width='96' height='96'/%3E%3Ctext fill='%239ca3af' font-size='10' x='50%25' y='50%25' text-anchor='middle' dominant-baseline='middle'%3ETidak ada%3C/text%3E%3C/svg%3E";
+                                }}
+                              />
+                            </div>
+                          ) : null}
+                          <div className="flex flex-col gap-2 flex-1 min-w-0">
+                            <button
+                              type="button"
+                              onClick={() => openGalleryPicker(field)}
+                              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-[#2f4274]/10 text-[#2f4274] hover:bg-[#2f4274]/20 text-sm font-medium"
+                            >
+                              <ImageIcon size={16} />
+                              Pilih dari Galeri
+                            </button>
+                            <input
+                              type="text"
+                              name={field}
+                              value={formData[field]}
+                              onChange={handleInputChange}
+                              placeholder="URL atau filename dari galeri"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
 
                   {/* Notes */}
                   <div className="md:col-span-2 mt-4">
@@ -1095,6 +1402,51 @@ const AdminSuratJalan = () => {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Gallery Picker Modal */}
+        {showGalleryPicker && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+            <div className="bg-white rounded-xl shadow-xl max-w-3xl w-full max-h-[85vh] overflow-hidden flex flex-col">
+              <div className="flex justify-between items-center p-4 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-800">Pilih dari Galeri</h3>
+                <button
+                  type="button"
+                  onClick={() => { setShowGalleryPicker(false); setGalleryPickerField(null); }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+              <div className="p-4 overflow-y-auto flex-1">
+                {galleryImages.length === 0 ? (
+                  <p className="text-gray-500 text-center py-8">Belum ada gambar di galeri.</p>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                    {galleryImages.map((img) => (
+                      <button
+                        key={img.id}
+                        type="button"
+                        onClick={() => onGalleryImageSelect(img)}
+                        className="rounded-lg overflow-hidden border-2 border-transparent hover:border-[#2f4274] focus:border-[#2f4274] focus:outline-none"
+                      >
+                        <img
+                          src={imageUrl(img.image_url)}
+                          alt={img.title || ""}
+                          className="w-full h-28 object-cover"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='112'%3E%3Crect fill='%23f3f4f6' width='200' height='112'/%3E%3Ctext fill='%239ca3af' font-size='12' x='50%25' y='50%25' text-anchor='middle' dominant-baseline='middle'%3EError%3C/text%3E%3C/svg%3E";
+                          }}
+                        />
+                        <span className="block text-xs text-gray-600 truncate px-2 py-1">{img.title}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -1182,7 +1534,7 @@ const AdminSuratJalan = () => {
                       {selectedItem.plaminan_image ? (
                         <div className="relative group">
                           <img
-                            src={selectedItem.plaminan_image}
+                            src={imageUrl(selectedItem.plaminan_image)}
                             alt="Plaminan"
                             className="w-full h-48 object-cover rounded-lg border border-gray-300"
                             onError={(e) => {
@@ -1191,7 +1543,7 @@ const AdminSuratJalan = () => {
                             }}
                           />
                           <a
-                            href={selectedItem.plaminan_image}
+                            href={imageUrl(selectedItem.plaminan_image)}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-50 transition-all rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100"
@@ -1212,7 +1564,7 @@ const AdminSuratJalan = () => {
                       {selectedItem.pintu_masuk_image ? (
                         <div className="relative group">
                           <img
-                            src={selectedItem.pintu_masuk_image}
+                            src={imageUrl(selectedItem.pintu_masuk_image)}
                             alt="Pintu Masuk"
                             className="w-full h-48 object-cover rounded-lg border border-gray-300"
                             onError={(e) => {
@@ -1221,7 +1573,7 @@ const AdminSuratJalan = () => {
                             }}
                           />
                           <a
-                            href={selectedItem.pintu_masuk_image}
+                            href={imageUrl(selectedItem.pintu_masuk_image)}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-50 transition-all rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100"
@@ -1240,7 +1592,7 @@ const AdminSuratJalan = () => {
                       {selectedItem.dekorasi_image ? (
                         <div className="relative group">
                           <img
-                            src={selectedItem.dekorasi_image}
+                            src={imageUrl(selectedItem.dekorasi_image)}
                             alt="Dekorasi"
                             className="w-full h-48 object-cover rounded-lg border border-gray-300"
                             onError={(e) => {
@@ -1249,7 +1601,7 @@ const AdminSuratJalan = () => {
                             }}
                           />
                           <a
-                            href={selectedItem.dekorasi_image}
+                            href={imageUrl(selectedItem.dekorasi_image)}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-50 transition-all rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100"

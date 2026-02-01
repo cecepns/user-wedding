@@ -1,6 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 
+const API_BASE = 'https://api-inventory.isavralabel.com/user-wedding';
+function imageUrl(value) {
+  if (!value) return '';
+  if (value.startsWith('http')) return value;
+  return `${API_BASE}/uploads-weddingsapp/${value}`;
+}
+
 const Gallery = () => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [images, setImages] = useState([]);
@@ -137,7 +144,7 @@ const Gallery = () => {
                     onClick={() => setSelectedImage(image)}
                   >
                     <img
-                      src={image.image_url}
+                      src={imageUrl(image.image_url)}
                       alt={image.title}
                       className="w-full h-64 lg:h-80 object-cover transition-transform duration-300 group-hover:scale-110"
                     />
@@ -178,7 +185,7 @@ const Gallery = () => {
                 </svg>
               </button>
               <img
-                src={selectedImage.image_url}
+                src={imageUrl(selectedImage.image_url)}
                 alt={selectedImage.title}
                 className="max-w-full max-h-full object-contain rounded-lg"
               />

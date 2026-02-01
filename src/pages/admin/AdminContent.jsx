@@ -186,71 +186,56 @@ const AdminContent = () => {
         </div>
 
         {/* Content Sections Table */}
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Nama Section
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Judul
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Urutan
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Aksi
-                  </th>
+            <table className="w-full min-w-[700px]">
+              <thead>
+                <tr className="bg-gradient-to-r from-[#2f4274] to-[#3d5285] text-white">
+                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white/95">Nama Section</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white/95">Judul</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white/95">Status</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white/95 w-20">Urutan</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white/95 w-24">Aksi</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {sections.map((section) => (
-                  <tr key={section.id} className="hover:bg-gray-50">
+              <tbody className="bg-white divide-y divide-gray-100">
+                {sections.map((section, idx) => (
+                  <tr
+                    key={section.id}
+                    className={`transition-colors duration-150 hover:bg-[#2f4274]/[0.04] ${idx % 2 === 1 ? "bg-gray-50/50" : ""}`}
+                  >
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        {section.section_name}
-                      </div>
+                      <div className="text-sm font-semibold text-gray-900">{section.section_name}</div>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="max-w-xs">
-                        <div className="text-sm text-gray-900 truncate" title={section.title}>
-                          {section.title}
-                        </div>
-                        {section.subtitle && (
-                          <div className="text-xs text-gray-500 truncate" title={section.subtitle}>
-                            {section.subtitle}
-                          </div>
-                        )}
-                      </div>
+                    <td className="px-6 py-4 max-w-xs">
+                      <div className="text-sm text-gray-900 truncate" title={section.title}>{section.title}</div>
+                      {section.subtitle && (
+                        <div className="text-xs text-gray-500 truncate" title={section.subtitle}>{section.subtitle}</div>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        section.is_active
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-red-100 text-red-800'
+                      <span className={`inline-flex px-2.5 py-1 rounded-lg text-xs font-semibold ${
+                        section.is_active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
                       }`}>
-                        {section.is_active ? 'Aktif' : 'Nonaktif'}
+                        {section.is_active ? "Aktif" : "Nonaktif"}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {section.sort_order}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex items-center space-x-2">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
                         <button
                           onClick={() => handleEdit(section)}
-                          className="text-primary-600 hover:text-primary-900"
+                          className="p-2 rounded-lg text-[#2f4274] bg-[#2f4274]/10 hover:bg-[#2f4274]/20 transition-colors"
+                          title="Edit"
                         >
                           <Edit size={16} />
                         </button>
                         <button
                           onClick={() => handleDelete(section.id)}
-                          className="text-red-600 hover:text-red-900"
+                          className="p-2 rounded-lg text-red-600 bg-red-50 hover:bg-red-100 transition-colors"
+                          title="Hapus"
                         >
                           <Trash2 size={16} />
                         </button>

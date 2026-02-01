@@ -1,8 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Helmet } from "react-helmet-async";
 import { useNavigate, useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
+import { ChevronLeft, ChevronRight, X, Image as ImageIcon } from "lucide-react";
 import { formatRupiah } from "../utils/formatters";
+
+const API_BASE = "https://api-inventory.isavralabel.com/user-wedding";
+function itemImageUrl(filename) {
+  if (!filename || filename.startsWith("http")) return filename || "";
+  return `${API_BASE}/uploads-weddingsapp/${filename}`;
+}
 
 const CustomService = () => {
   const navigate = useNavigate();
@@ -25,6 +32,9 @@ const CustomService = () => {
   const [customServiceContent, setCustomServiceContent] = useState(null);
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("");
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxImages, setLightboxImages] = useState([]);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
 
   // Get category from URL query parameter
   // useEffect(() => {
@@ -225,6 +235,40 @@ const CustomService = () => {
     )}`;
     window.open(whatsappUrl, "_blank");
   };
+
+  const openImageLightbox = (service) => {
+    const images = Array.isArray(service.images) ? service.images : [];
+    if (images.length === 0) return;
+    const urls = images.map((f) => itemImageUrl(f));
+    setLightboxImages(urls);
+    setLightboxIndex(0);
+    setLightboxOpen(true);
+  };
+
+  const closeLightbox = useCallback(() => setLightboxOpen(false), []);
+  const goPrev = () =>
+    setLightboxIndex((i) => (i <= 0 ? lightboxImages.length - 1 : i - 1));
+  const goNext = () =>
+    setLightboxIndex((i) =>
+      i >= lightboxImages.length - 1 ? 0 : i + 1
+    );
+
+  useEffect(() => {
+    if (!lightboxOpen) return;
+    const onKey = (e) => {
+      if (e.key === "Escape") closeLightbox();
+      if (e.key === "ArrowLeft")
+        setLightboxIndex((i) =>
+          i <= 0 ? lightboxImages.length - 1 : i - 1
+        );
+      if (e.key === "ArrowRight")
+        setLightboxIndex((i) =>
+          i >= lightboxImages.length - 1 ? 0 : i + 1
+        );
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [lightboxOpen, closeLightbox, lightboxImages.length]);
 
   // Payment Instructions Component
   const PaymentInstructionsModal = () => {
@@ -583,52 +627,179 @@ const CustomService = () => {
 
               {/* Service List */}
               <div className="grid gap-4 mb-5">
-                {serviceOptions.map((service) => (
-                  <div
-                    key={service.id}
-                    className={`bg-white rounded-lg p-6 border-2 bg-gradient-to-r from-primary-600 to-secondary-600 transition-all duration-200 ${
-                      formData.services.includes(service.id)
-                        ? "border-primary-500 bg-primary-50"
-                        : "border-gray-200 hover:border-gray-300"
-                    }`}
-                  >
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                      <div className="flex-1">
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mb-2">
-                          <h3 className="text-xl font-semibold text-white">
-                            {service.name}
-                          </h3>
-                          {service.category && (
-                            <span className="px-3 py-1 text-xs bg-blue-100 text-blue-800 rounded-full self-start">
-                              {service.category}
-                            </span>
+                {serviceOptions.map((service) => {
+                  const images = Array.isArray(service.images)
+                    ? service.images
+                    : [];
+                  const thumb = images[0];
+                  const hasImages = images.length > 0;
+                  return (
+                    <div
+                      key={service.id}
+                      className={`rounded-2xl overflow-hidden border-2 shadow-lg transition-all duration-300 hover:shadow-xl ${
+                        formData.services.includes(service.id)
+                          ? "border-primary-500 ring-2 ring-primary-200"
+                          : "border-gray-200 hover:border-primary-300"
+                      }`}
+                    >
+                      <div className="flex flex-col sm:flex-row bg-gradient-to-r from-primary-600 to-secondary-600">
+                        {/* Image block - clickable */}
+                        <div
+                          className={`relative shrink-0 w-full sm:w-56 h-44 sm:h-auto min-h-[180px] bg-primary-700/50 ${
+                            hasImages
+                              ? "cursor-pointer group"
+                              : "flex items-center justify-center"
+                          }`}
+                          onClick={() => hasImages && openImageLightbox(service)}
+                          role={hasImages ? "button" : undefined}
+                          onKeyDown={(e) =>
+                            hasImages &&
+                            (e.key === "Enter" || e.key === " ") &&
+                            openImageLightbox(service)
+                          }
+                          tabIndex={hasImages ? 0 : undefined}
+                        >
+                          {hasImages ? (
+                            <>
+                              <img
+                                src={itemImageUrl(thumb)}
+                                alt={service.name}
+                                className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                              />
+                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                              {images.length > 1 && (
+                                <span className="absolute bottom-2 right-2 px-2 py-1 rounded-full bg-black/50 text-white text-xs font-medium flex items-center gap-1">
+                                  <ImageIcon size={12} />
+                                  {images.length}
+                                </span>
+                              )}
+                              <span className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30">
+                                <span className="px-3 py-1.5 rounded-lg bg-white/90 text-primary-700 text-sm font-medium">
+                                  Lihat galeri
+                                </span>
+                              </span>
+                            </>
+                          ) : (
+                            <ImageIcon className="w-14 h-14 text-white/40" />
                           )}
                         </div>
-                        <p className="text-white mb-3">{service.description}</p>
-                      </div>
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
-                        <div className="text-left sm:text-right">
-                          <div className="text-2xl font-bold text-white">
-                            {formatRupiah(service.price)}
+                        <div className="flex-1 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                          <div className="flex-1">
+                            <div className="flex flex-wrap items-center gap-2 mb-2">
+                              <h3 className="text-xl font-semibold text-white">
+                                {service.name}
+                              </h3>
+                              {service.category && (
+                                <span className="px-3 py-1 text-xs bg-white/20 text-white rounded-full">
+                                  {service.category}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-white/90 text-sm sm:text-base mb-0">
+                              {service.description}
+                            </p>
+                          </div>
+                          <div className="flex flex-col sm:items-end gap-3">
+                            <div className="text-2xl font-bold text-white">
+                              {formatRupiah(service.price)}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleServiceToggle(service)}
+                              className={`w-full sm:w-auto px-6 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                                formData.services.includes(service.id)
+                                  ? "bg-white text-primary-600 hover:bg-white/90 shadow"
+                                  : "bg-white/20 text-white hover:bg-white/30 border border-white/40"
+                              }`}
+                            >
+                              {formData.services.includes(service.id)
+                                ? "✓ Dipilih"
+                                : "Pilih"}
+                            </button>
                           </div>
                         </div>
-                        <button
-                          onClick={() => handleServiceToggle(service)}
-                          className={`w-full sm:w-auto px-6 py-2 rounded-lg text-sm font-medium transition-colors ${
-                            formData.services.includes(service.id)
-                              ? "bg-primary-600 text-white hover:bg-primary-700"
-                              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                          }`}
-                        >
-                          {formData.services.includes(service.id)
-                            ? "Dipilih"
-                            : "Pilih"}
-                        </button>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
+
+              {/* Image Lightbox */}
+              {lightboxOpen && lightboxImages.length > 0 && (
+                <div
+                  className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm animate-fade-in"
+                  onClick={closeLightbox}
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label="Galeri gambar"
+                >
+                  <button
+                    type="button"
+                    onClick={closeLightbox}
+                    className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+                    aria-label="Tutup"
+                  >
+                    <X size={28} />
+                  </button>
+                  <div
+                    className="relative max-w-5xl max-h-[90vh] w-full mx-4 flex items-center justify-center"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <img
+                      src={lightboxImages[lightboxIndex]}
+                      alt=""
+                      className="max-w-full max-h-[85vh] w-auto h-auto object-contain rounded-lg shadow-2xl"
+                    />
+                    {lightboxImages.length > 1 && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            goPrev();
+                          }}
+                          className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 p-2 sm:p-3 rounded-full bg-white/10 hover:bg-white/25 text-white transition-colors"
+                          aria-label="Sebelumnya"
+                        >
+                          <ChevronLeft size={32} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            goNext();
+                          }}
+                          className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 p-2 sm:p-3 rounded-full bg-white/10 hover:bg-white/25 text-white transition-colors"
+                          aria-label="Selanjutnya"
+                        >
+                          <ChevronRight size={32} />
+                        </button>
+                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+                          {lightboxImages.map((_, i) => (
+                            <button
+                              key={i}
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setLightboxIndex(i);
+                              }}
+                              className={`w-2.5 h-2.5 rounded-full transition-colors ${
+                                i === lightboxIndex
+                                  ? "bg-white scale-125"
+                                  : "bg-white/50 hover:bg-white/70"
+                              }`}
+                              aria-label={`Gambar ${i + 1}`}
+                            />
+                          ))}
+                        </div>
+                        <span className="absolute top-4 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-black/40 text-white text-sm">
+                          {lightboxIndex + 1} / {lightboxImages.length}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Floating Continue Button */}
               <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-40">
@@ -638,7 +809,7 @@ const CustomService = () => {
                   className={`px-4 md:px-8 py-3 md:py-4 rounded-lg text-lg font-medium transition-all duration-300 shadow-lg ${
                     formData.services.length === 0
                       ? "bg-gray-300 text-gray-500 cursor-not-allowed shadow-md"
-                      : "bg-green-600 text-white hover:bg-green-700 hover:shadow-xl transform hover:scale-105"
+                      : "btn-primary text-white hover:bg-green-700 hover:shadow-xl transform hover:scale-105"
                   }`}
                 >
                   <div className="flex items-center gap-2">

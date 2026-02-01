@@ -1,8 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Plus, Edit, Trash2, Package } from 'lucide-react';
+import { Plus, Edit, Trash2, Package, Search, Image as ImageIcon, X } from 'lucide-react';
+import Select from 'react-select';
 import toast, { Toaster } from 'react-hot-toast';
 import AdminLayout from '../../components/AdminLayout';
+
+const API_BASE = 'https://api-inventory.isavralabel.com/user-wedding';
+function imageUrl(value) {
+  if (!value) return '';
+  if (value.startsWith('http')) return value;
+  return `${API_BASE}/uploads-weddingsapp/${value}`;
+}
 
 // Utility function for Indonesian Rupiah formatting
 const formatRupiah = (amount) => {
@@ -24,21 +32,35 @@ const AdminServices = () => {
   const [serviceItems, setServiceItems] = useState([]);
   const [availableItems, setAvailableItems] = useState([]);
   const [editingServiceItem, setEditingServiceItem] = useState(null);
+  const [serviceSearchQuery, setServiceSearchQuery] = useState('');
+  const serviceItemsSectionRef = useRef(null);
 
   useEffect(() => {
-    fetchServices();
     fetchAvailableItems();
   }, []);
 
-  const fetchServices = async () => {
+  const fetchServices = async (searchQuery = '') => {
     try {
-      const response = await fetch('https://api-inventory.isavralabel.com/user-wedding/api/services');
+      const base = 'https://api-inventory.isavralabel.com/user-wedding/api/services';
+      const url = searchQuery.trim()
+        ? `${base}?q=${encodeURIComponent(searchQuery.trim())}`
+        : base;
+      const response = await fetch(url);
       const data = await response.json();
       setServices(data);
     } catch (error) {
       console.error('Error fetching services:', error);
     }
   };
+
+  // Debounced search by API: initial load + when search query changes
+  useEffect(() => {
+    const delay = serviceSearchQuery.trim() ? 400 : 0;
+    const t = setTimeout(() => {
+      fetchServices(serviceSearchQuery);
+    }, delay);
+    return () => clearTimeout(t);
+  }, [serviceSearchQuery]);
 
   const fetchAvailableItems = async () => {
     try {
@@ -60,6 +82,12 @@ const AdminServices = () => {
     }
   };
 
+  useEffect(() => {
+    if (selectedService && serviceItemsSectionRef.current) {
+      serviceItemsSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [selectedService]);
+
   const handleServiceSubmit = async (serviceData) => {
     try {
       const url = serviceData.id 
@@ -78,7 +106,7 @@ const AdminServices = () => {
       });
 
       if (response.ok) {
-        fetchServices();
+        fetchServices(serviceSearchQuery);
         setShowServiceModal(false);
         toast.success('Layanan berhasil disimpan!');
       } else {
@@ -133,7 +161,7 @@ const AdminServices = () => {
       });
 
       if (response.ok) {
-        fetchServices();
+        fetchServices(serviceSearchQuery);
         toast.success('Layanan berhasil dihapus!');
       } else {
         toast.error('Error menghapus layanan');
@@ -277,85 +305,86 @@ const AdminServices = () => {
           </div>
         </div>
 
+        {/* Search nama makeup / paket */}
+        <div className="mb-4">
+          <div className="relative max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              value={serviceSearchQuery}
+              onChange={(e) => setServiceSearchQuery(e.target.value)}
+              placeholder="Cari nama makeup / nama paket..."
+              className={`w-full pl-10 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${serviceSearchQuery ? 'pr-9' : 'pr-4'}`}
+            />
+            {serviceSearchQuery && (
+              <button
+                type="button"
+                onClick={() => setServiceSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-600 rounded"
+                aria-label="Hapus pencarian"
+              >
+                ×
+              </button>
+            )}
+          </div>
+        </div>
+
         {/* Services Table */}
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Nama Layanan
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Deskripsi
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Harga Dasar
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Item
-                  </th>
-                  <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Aksi
-                  </th>
+            <table className="w-full min-w-[700px]">
+              <thead>
+                <tr className="bg-gradient-to-r from-[#2f4274] to-[#3d5285] text-white">
+                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white/95">Nama Layanan</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white/95">Harga Dasar</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white/95">Item</th>
+                  <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider text-white/95 w-28">Aksi</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {services.map((service) => (
-                  <tr key={service.id} className="hover:bg-gray-50 transition-colors">
+              <tbody className="bg-white divide-y divide-gray-100">
+                {services.map((service, idx) => (
+                  <tr
+                    key={service.id}
+                    className={`transition-colors duration-150 hover:bg-[#2f4274]/[0.04] ${idx % 2 === 1 ? "bg-gray-50/50" : ""}`}
+                  >
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <div className="text-sm font-semibold text-gray-900">{service.name}</div>
+                      <div className="flex items-center gap-3">
                         {service.image && (
-                          <div className="mt-1">
-                            <img 
-                              src={service.image} 
-                              alt={service.name}
-                              className="w-12 h-12 rounded-lg object-cover"
-                              onError={(e) => {
-                                e.target.style.display = 'none';
-                              }}
-                            />
-                          </div>
+                          <img
+                            src={imageUrl(service.image)}
+                            alt={service.name}
+                            className="w-12 h-12 rounded-lg object-cover shrink-0"
+                            onError={(e) => { e.target.style.display = "none"; }}
+                          />
                         )}
+                        <div className="text-sm font-semibold text-gray-900">{service.name}</div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900 max-w-xs">
-                        {service.description}
-                      </div>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-bold text-[#2f4274]">{formatRupiah(service.base_price)}</div>
                     </td>
-                                         <td className="px-6 py-4 whitespace-nowrap">
-                       <div className="text-sm font-bold text-primary-600">
-                         {formatRupiah(service.base_price)}
-                       </div>
-                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <button
-                        onClick={() => {
-                          setSelectedService(service);
-                          fetchServiceItems(service.id);
-                        }}
-                        className="text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 text-sm"
+                        onClick={() => { setSelectedService(service); fetchServiceItems(service.id); }}
+                        className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-[#2f4274]/10 text-[#2f4274] hover:bg-[#2f4274]/20 text-sm font-medium transition-colors"
                       >
                         <Package size={16} />
                         Kelola Item
                       </button>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex items-center justify-end space-x-2">
+                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                      <div className="flex items-center justify-end gap-2">
                         <button
-                          onClick={() => {
-                            setSelectedService(service);
-                            setShowServiceModal(true);
-                          }}
-                          className="text-primary-600 hover:text-primary-700 flex items-center gap-1"
+                          onClick={() => { setSelectedService(service); setShowServiceModal(true); }}
+                          className="p-2 rounded-lg text-[#2f4274] bg-[#2f4274]/10 hover:bg-[#2f4274]/20 transition-colors"
+                          title="Edit"
                         >
                           <Edit size={16} />
                         </button>
                         <button
                           onClick={() => handleDeleteService(service.id)}
-                          className="text-red-600 hover:text-red-700 flex items-center gap-1"
+                          className="p-2 rounded-lg text-red-600 bg-red-50 hover:bg-red-100 transition-colors"
+                          title="Hapus"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -370,7 +399,7 @@ const AdminServices = () => {
 
         {/* Service Items Preview */}
         {selectedService && (
-          <div className="mt-6 bg-white rounded-xl shadow-lg p-6">
+          <div ref={serviceItemsSectionRef} className="mt-6 bg-white rounded-2xl shadow-xl border border-gray-100 p-6 scroll-mt-4">
             <div className="flex justify-between items-center mb-4">
               <h4 className="font-semibold text-lg text-gray-800">
                 Item Layanan: {selectedService.name}
@@ -385,79 +414,60 @@ const AdminServices = () => {
             </div>
             
             <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Nama Item
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Kategori
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Harga
-                    </th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Aksi
-                    </th>
+              <table className="w-full min-w-[640px]">
+                <thead>
+                  <tr className="bg-gradient-to-r from-[#2f4274] to-[#3d5285] text-white">
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-white/95 w-12">No</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-white/95">Nama Item</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-white/95">Kategori</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-white/95">Status</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-white/95">Harga</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-white/95 w-28">Aksi</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {serviceItems.map((item) => (
-                    <tr key={item.id} className="hover:bg-gray-50 transition-colors">
+                <tbody className="bg-white divide-y divide-gray-100">
+                  {serviceItems.map((item, index) => (
+                    <tr
+                      key={item.id}
+                      className={`transition-colors duration-150 hover:bg-[#2f4274]/[0.04] ${index % 2 === 1 ? "bg-gray-50/50" : ""}`}
+                    >
+                      <td className="px-4 py-3 whitespace-nowrap text-gray-500 text-sm font-medium">{index + 1}</td>
                       <td className="px-4 py-3">
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">{item.name}</div>
-                          <div className="text-sm text-gray-500">{item.description}</div>
-                        </div>
+                        <div className="text-sm font-medium text-gray-900">{item.name}</div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
+                        <span className="inline-flex px-2.5 py-1 rounded-lg bg-gray-100 text-gray-800 text-xs font-medium">
                           {item.category}
                         </span>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         {item.is_required ? (
-                          <span className="px-2 py-1 bg-red-100 text-red-800 text-xs font-medium rounded-full">
-                            Wajib
-                          </span>
+                          <span className="inline-flex px-2.5 py-1 rounded-lg bg-red-100 text-red-800 text-xs font-semibold">Wajib</span>
                         ) : (
-                          <span className="px-2 py-1 bg-gray-100 text-gray-800 text-xs font-medium rounded-full">
-                            Opsional
-                          </span>
+                          <span className="inline-flex px-2.5 py-1 rounded-lg bg-gray-100 text-gray-800 text-xs font-medium">Opsional</span>
                         )}
                       </td>
-                                             <td className="px-4 py-3 whitespace-nowrap">
-                         <div className="text-sm font-bold text-secondary-600">
-                           {formatRupiah(item.final_price)}
-                         </div>
-                         {item.custom_price && (
-                           <div className="text-xs text-gray-500">
-                             Asli: {formatRupiah(item.item_price)}
-                           </div>
-                         )}
-                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex items-center justify-end space-x-2">
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="text-sm font-bold text-[#2f4274]">{formatRupiah(item.final_price)}</div>
+                        {item.custom_price && (
+                          <div className="text-xs text-gray-500">Asli: {formatRupiah(item.item_price)}</div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-right">
+                        <div className="flex items-center justify-end gap-2">
                           <button
-                            onClick={() => {
-                              setEditingServiceItem(item);
-                              setShowItemModal(true);
-                            }}
-                            className="text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                            onClick={() => { setEditingServiceItem(item); setShowItemModal(true); }}
+                            className="p-2 rounded-lg text-[#2f4274] bg-[#2f4274]/10 hover:bg-[#2f4274]/20 transition-colors"
+                            title="Edit"
                           >
                             <Edit size={14} />
-                            Edit
                           </button>
                           <button
                             onClick={() => handleDeleteServiceItem(item.id)}
-                            className="text-red-600 hover:text-red-700 flex items-center gap-1"
+                            className="p-2 rounded-lg text-red-600 bg-red-50 hover:bg-red-100 transition-colors"
+                            title="Hapus"
                           >
                             <Trash2 size={14} />
-                            Hapus
                           </button>
                         </div>
                       </td>
@@ -505,6 +515,21 @@ const ServiceModal = ({ service, onSubmit, onClose }) => {
     base_price: service?.base_price || '',
     image: service?.image || ''
   });
+  const [showGalleryPicker, setShowGalleryPicker] = useState(false);
+  const [galleryImages, setGalleryImages] = useState([]);
+
+  const fetchGalleryImages = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/api/gallery/images`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` },
+      });
+      const data = await response.json();
+      setGalleryImages(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error(e);
+      setGalleryImages([]);
+    }
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -561,13 +586,33 @@ const ServiceModal = ({ service, onSubmit, onClose }) => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">URL Gambar</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Gambar (URL atau dari galeri)</label>
+                {formData.image && (
+                  <div className="mb-2">
+                    <img
+                      src={imageUrl(formData.image)}
+                      alt="Preview"
+                      className="h-20 w-auto rounded-lg border border-gray-200 object-cover"
+                      onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }}
+                    />
+                  </div>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setShowGalleryPicker(true); fetchGalleryImages(); }}
+                    className="inline-flex items-center gap-2 px-3 py-2 bg-[#2f4274]/10 text-[#2f4274] rounded-lg hover:bg-[#2f4274]/20 text-sm font-medium"
+                  >
+                    <ImageIcon size={16} />
+                    Pilih dari Galeri
+                  </button>
+                </div>
                 <input
-                  type="url"
+                  type="text"
                   value={formData.image}
                   onChange={(e) => setFormData({...formData, image: e.target.value})}
-                  placeholder="https://example.com/image.jpg"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                  placeholder="URL atau filename dari galeri"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 mt-2 text-sm"
                 />
               </div>
 
@@ -587,6 +632,49 @@ const ServiceModal = ({ service, onSubmit, onClose }) => {
           </div>
         </div>
       </div>
+
+      {showGalleryPicker && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+            <div className="flex justify-between items-center p-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-800">Pilih dari Galeri</h3>
+              <button type="button" onClick={() => setShowGalleryPicker(false)} className="text-gray-400 hover:text-gray-600">
+                <X size={24} />
+              </button>
+            </div>
+            <div className="p-4 overflow-y-auto flex-1">
+              {galleryImages.length === 0 ? (
+                <p className="text-gray-500 text-center py-8">Belum ada gambar di galeri.</p>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {galleryImages.map((img) => (
+                    <button
+                      key={img.id}
+                      type="button"
+                      onClick={() => {
+                        setFormData((prev) => ({ ...prev, image: img.image_url }));
+                        setShowGalleryPicker(false);
+                      }}
+                      className="rounded-lg overflow-hidden border-2 border-transparent hover:border-[#2f4274] focus:border-[#2f4274] focus:outline-none text-left"
+                    >
+                      <img
+                        src={imageUrl(img.image_url)}
+                        alt={img.title || ''}
+                        className="w-full h-24 object-cover"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="96"%3E%3Crect fill="%23f3f4f6" width="200" height="96"/%3E%3Ctext fill="%239ca3af" font-size="10" x="50%25" y="50%25" text-anchor="middle" dominant-baseline="middle"%3EError%3C/text%3E%3C/svg%3E';
+                        }}
+                      />
+                      <span className="block text-xs text-gray-600 truncate px-2 py-1">{img.title}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -601,6 +689,10 @@ const ServiceItemModal = ({ serviceItem, availableItems, onSubmit, onClose }) =>
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (!formData.item_id) {
+      toast.error('Pilih item terlebih dahulu');
+      return;
+    }
     onSubmit({
       ...formData,
       custom_price: formData.custom_price ? parseFloat(formData.custom_price) : null
@@ -623,19 +715,43 @@ const ServiceItemModal = ({ serviceItem, availableItems, onSubmit, onClose }) =>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Pilih Item</label>
-                <select
-                  value={formData.item_id}
-                  onChange={(e) => setFormData({...formData, item_id: e.target.value})}
-                  required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                >
-                  <option value="">Pilih item...</option>
-                  {availableItems.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name} - {formatRupiah(item.price)}
-                    </option>
-                  ))}
-                </select>
+                <Select
+                  placeholder="Pilih item..."
+                  value={formData.item_id
+                    ? (() => {
+                        const idx = availableItems.findIndex((i) => i.id == formData.item_id);
+                        const item = availableItems[idx];
+                        if (!item) return null;
+                        return {
+                          value: item.id,
+                          label: `${idx + 1}. ${item.name} - ${formatRupiah(item.price)}`,
+                        };
+                      })()
+                    : null}
+                  onChange={(option) =>
+                    setFormData({
+                      ...formData,
+                      item_id: option?.value ?? '',
+                      sort_order: option?.sortOrder ?? 0,
+                    })
+                  }
+                  options={availableItems.map((item, index) => ({
+                    value: item.id,
+                    label: `${index + 1}. ${item.name} - ${formatRupiah(item.price)}`,
+                    sortOrder: index + 1,
+                  }))}
+                  isClearable
+                  classNamePrefix="react-select"
+                  styles={{
+                    control: (base) => ({
+                      ...base,
+                      minHeight: 48,
+                      borderRadius: '0.5rem',
+                      borderColor: '#d1d5db',
+                    }),
+                    menu: (base) => ({ ...base, zIndex: 50 }),
+                  }}
+                />
               </div>
 
               {selectedItem && (

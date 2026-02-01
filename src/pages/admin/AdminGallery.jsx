@@ -1,8 +1,15 @@
 import { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Plus, Edit, Trash2, Image, Star, Eye, EyeOff } from 'lucide-react';
+import { Plus, Edit, Trash2, Image, Star, Eye, EyeOff, Upload } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import AdminLayout from '../../components/AdminLayout';
+
+const API_BASE = 'https://api-inventory.isavralabel.com/user-wedding';
+function imageUrl(value) {
+  if (!value) return '';
+  if (value.startsWith('http')) return value;
+  return `${API_BASE}/uploads-weddingsapp/${value}`;
+}
 
 const AdminGallery = () => {
   const [images, setImages] = useState([]);
@@ -38,8 +45,8 @@ const AdminGallery = () => {
   const fetchImages = async () => {
     try {
       const url = selectedCategory === 'all' 
-        ? 'https://api-inventory.isavralabel.com/user-wedding/api/gallery/images'
-        : `https://api-inventory.isavralabel.com/user-wedding/api/gallery/images?category_id=${selectedCategory}`;
+        ? `${API_BASE}/api/gallery/images`
+        : `${API_BASE}/api/gallery/images?category_id=${selectedCategory}`;
       
       const response = await fetch(url, {
         headers: {
@@ -55,7 +62,7 @@ const AdminGallery = () => {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch('https://api-inventory.isavralabel.com/user-wedding/api/gallery/categories', {
+      const response = await fetch(`${API_BASE}/api/gallery/categories`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
         }
@@ -67,13 +74,42 @@ const AdminGallery = () => {
     }
   };
 
+  const handleUploadFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!/image\/(jpeg|png|gif|webp)/.test(file.type)) {
+      toast.error('Hanya file gambar (JPEG, PNG, GIF, WebP) yang diizinkan.');
+      return;
+    }
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const response = await fetch(`${API_BASE}/api/upload`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` },
+        body: formData,
+      });
+      const data = await response.json();
+      if (data.filename) {
+        setImageForm((prev) => ({ ...prev, image_url: data.filename }));
+        toast.success('Gambar berhasil diunggah.');
+      } else {
+        toast.error(data.message || 'Upload gagal');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Upload gagal');
+    }
+    e.target.value = '';
+  };
+
   const handleImageSubmit = async (e) => {
     e.preventDefault();
     
     try {
       const url = editingImage 
-        ? `https://api-inventory.isavralabel.com/user-wedding/api/gallery/images/${editingImage.id}`
-        : 'https://api-inventory.isavralabel.com/user-wedding/api/gallery/images';
+        ? `${API_BASE}/api/gallery/images/${editingImage.id}`
+        : `${API_BASE}/api/gallery/images`;
       
       const method = editingImage ? 'PUT' : 'POST';
       
@@ -181,7 +217,7 @@ const AdminGallery = () => {
     if (!confirmed) return;
     
     try {
-      const response = await fetch(`https://api-inventory.isavralabel.com/user-wedding/api/gallery/images/${id}`, {
+      const response = await fetch(`${API_BASE}/api/gallery/images/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
@@ -235,7 +271,7 @@ const AdminGallery = () => {
     if (!confirmed) return;
     
     try {
-      const response = await fetch(`https://api-inventory.isavralabel.com/user-wedding/api/gallery/categories/${id}`, {
+      const response = await fetch(`${API_BASE}/api/gallery/categories/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
@@ -376,9 +412,13 @@ const AdminGallery = () => {
                 <div key={image.id} className="bg-white rounded-xl shadow-lg overflow-hidden">
                   <div className="relative">
                     <img
-                      src={image.image_url}
+                      src={imageUrl(image.image_url)}
                       alt={image.title}
                       className="w-full h-48 object-cover"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="192"%3E%3Crect fill="%23f3f4f6" width="400" height="192"/%3E%3Ctext fill="%239ca3af" x="50%25" y="50%25" text-anchor="middle" dominant-baseline="middle"%3EGambar tidak dapat dimuat%3C/text%3E%3C/svg%3E';
+                      }}
                     />
                     {!!image.is_featured && (
                       <div className="absolute top-2 right-2 bg-yellow-500 text-white px-2 py-1 rounded-full text-xs font-medium">
@@ -525,12 +565,35 @@ const AdminGallery = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">URL Gambar</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Gambar</label>
+                  {imageForm.image_url && (
+                    <div className="mb-2">
+                      <img
+                        src={imageUrl(imageForm.image_url)}
+                        alt="Preview"
+                        className="h-24 w-auto rounded-lg border border-gray-200 object-cover"
+                        onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }}
+                      />
+                    </div>
+                  )}
+                  <div className="flex flex-wrap gap-2">
+                    <label className="inline-flex items-center gap-2 px-3 py-2 bg-[#2f4274] text-white rounded-lg cursor-pointer hover:bg-[#2a3b68] text-sm font-medium">
+                      <Upload size={16} />
+                      Upload dari perangkat
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/gif,image/webp"
+                        className="hidden"
+                        onChange={handleUploadFile}
+                      />
+                    </label>
+                  </div>
                   <input
-                    type="url"
+                    type="text"
                     value={imageForm.image_url}
                     onChange={(e) => setImageForm({...imageForm, image_url: e.target.value})}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2"
+                    placeholder="URL atau pilih upload di atas (filename disimpan)"
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 mt-2 text-sm"
                     required
                   />
                 </div>

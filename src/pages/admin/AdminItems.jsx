@@ -1,10 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Package, Upload, X, Image as ImageIcon } from 'lucide-react';
 import PropTypes from 'prop-types';
 import toast, { Toaster } from 'react-hot-toast';
 import AdminLayout from '../../components/AdminLayout';
 import { formatRupiah } from '../../utils/formatters';
+
+const API_BASE = 'https://api-inventory.isavralabel.com/user-wedding';
+function itemImageUrl(filename) {
+  if (!filename || filename.startsWith('http')) return filename || '';
+  return `${API_BASE}/uploads-weddingsapp/${filename}`;
+}
 
 const AdminItems = () => {
   const [items, setItems] = useState([]);
@@ -20,7 +26,7 @@ const AdminItems = () => {
 
   const fetchItems = async () => {
     try {
-      const response = await fetch('https://api-inventory.isavralabel.com/user-wedding/api/items');
+      const response = await fetch(`${API_BASE}/api/items`);
       const data = await response.json();
       setItems(data);
     } catch (error) {
@@ -30,7 +36,7 @@ const AdminItems = () => {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch('https://api-inventory.isavralabel.com/user-wedding/api/items/categories');
+      const response = await fetch(`${API_BASE}/api/items/categories`);
       const data = await response.json();
       setCategories(data);
     } catch (error) {
@@ -40,9 +46,9 @@ const AdminItems = () => {
 
   const handleItemSubmit = async (itemData) => {
     try {
-      const url = itemData.id 
-        ? `https://api-inventory.isavralabel.com/user-wedding/api/items/${itemData.id}`
-        : 'https://api-inventory.isavralabel.com/user-wedding/api/items';
+      const url = itemData.id
+        ? `${API_BASE}/api/items/${itemData.id}`
+        : `${API_BASE}/api/items`;
       
       const method = itemData.id ? 'PUT' : 'POST';
       
@@ -104,7 +110,7 @@ const AdminItems = () => {
     if (!confirmed) return;
 
     try {
-      const response = await fetch(`https://api-inventory.isavralabel.com/user-wedding/api/items/${id}`, {
+      const response = await fetch(`${API_BASE}/api/items/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
@@ -173,88 +179,91 @@ const AdminItems = () => {
         </div>
 
         {/* Items Table */}
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Nama Item
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Kategori
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Harga
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Aksi
-                  </th>
+            <table className="w-full min-w-[640px]">
+              <thead>
+                <tr className="bg-gradient-to-r from-[#2f4274] to-[#3d5285] text-white">
+                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white/95 w-16">Gambar</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white/95">Nama Item</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white/95">Kategori</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white/95">Harga</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white/95">Status</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white/95 w-24">Aksi</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredItems.map((item) => (
-                  <tr key={item.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        {item.name}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="px-2 py-1 bg-primary-100 text-primary-800 text-xs font-medium rounded-full">
-                        {item.category}
-                      </span>
-                    </td>
-                      
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-semibold text-primary-600">
-                        {formatRupiah(item.price)}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        item.is_active !== false 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-red-100 text-red-800'
-                      }`}>
-                        {item.is_active !== false ? 'Aktif' : 'Nonaktif'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex space-x-3">
-                        <button
-                          onClick={() => {
-                            setSelectedItem(item);
-                            setShowItemModal(true);
-                          }}
-                          className="text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1"
-                        >
-                          <Edit size={16} />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteItem(item.id)}
-                          className="text-red-600 hover:text-red-700 font-medium flex items-center gap-1"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+              <tbody className="bg-white divide-y divide-gray-100">
+                {filteredItems.length === 0 ? (
+                  <tr>
+                    <td colSpan="6" className="px-6 py-16 text-center">
+                      <div className="flex flex-col items-center gap-2 text-gray-400">
+                        <Package size={32} className="text-gray-300" />
+                        <span className="text-sm font-medium">Tidak ada item yang ditemukan</span>
                       </div>
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  filteredItems.map((item, idx) => {
+                    const images = Array.isArray(item.images) ? item.images : [];
+                    const thumb = images[0];
+                    return (
+                    <tr
+                      key={item.id}
+                      className={`transition-colors duration-150 hover:bg-[#2f4274]/[0.04] ${idx % 2 === 1 ? "bg-gray-50/50" : ""}`}
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {thumb ? (
+                          <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 border border-gray-200 shrink-0">
+                            <img src={itemImageUrl(thumb)} alt="" className="w-full h-full object-cover" />
+                          </div>
+                        ) : (
+                          <div className="w-12 h-12 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center shrink-0">
+                            <ImageIcon className="w-5 h-5 text-gray-400" />
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-semibold text-gray-900">{item.name}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-gray-100 text-gray-800 text-xs font-medium">
+                          {item.category}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-bold text-[#2f4274]">{formatRupiah(item.price)}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex px-2.5 py-1 rounded-lg text-xs font-semibold ${
+                          item.is_active !== false ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                        }`}>
+                          {item.is_active !== false ? "Aktif" : "Nonaktif"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => { setSelectedItem(item); setShowItemModal(true); }}
+                            className="p-2 rounded-lg text-[#2f4274] bg-[#2f4274]/10 hover:bg-[#2f4274]/20 transition-colors"
+                            title="Edit"
+                          >
+                            <Edit size={16} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteItem(item.id)}
+                            className="p-2 rounded-lg text-red-600 bg-red-50 hover:bg-red-100 transition-colors"
+                            title="Hapus"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ); })
+                )}
               </tbody>
             </table>
           </div>
-          
-          {filteredItems.length === 0 && (
-            <div className="text-center py-12">
-              <div className="text-gray-500 text-sm">
-                Tidak ada item yang ditemukan
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Item Modal */}
@@ -274,12 +283,15 @@ const AdminItems = () => {
 };
 
 const ItemModal = ({ item, onSubmit, onClose }) => {
+  const fileInputRef = useRef(null);
+  const [uploading, setUploading] = useState(false);
   const [formData, setFormData] = useState({
     name: item?.name || '',
     description: item?.description || '',
     price: item?.price || '',
     category: item?.category || '',
-    is_active: item?.is_active !== false
+    is_active: item?.is_active !== false,
+    images: Array.isArray(item?.images) ? [...item.images] : []
   });
 
   const handleSubmit = (e) => {
@@ -287,8 +299,50 @@ const ItemModal = ({ item, onSubmit, onClose }) => {
     onSubmit({
       ...formData,
       id: item?.id,
-      price: parseFloat(formData.price)
+      price: parseFloat(formData.price),
+      images: formData.images
     });
+  };
+
+  const handleFileChange = async (e) => {
+    const files = e.target.files;
+    if (!files?.length) return;
+    setUploading(true);
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (!file.type.startsWith('image/')) {
+          toast.error(`${file.name} bukan gambar. Hanya JPEG, PNG, GIF, WebP.`);
+          continue;
+        }
+        const formDataUpload = new FormData();
+        formDataUpload.append('file', file);
+        const res = await fetch(`${API_BASE}/api/upload`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` },
+          body: formDataUpload
+        });
+        const data = await res.json();
+        if (data.filename) {
+          setFormData((prev) => ({ ...prev, images: [...prev.images, data.filename] }));
+        } else {
+          toast.error(data.message || 'Upload gagal');
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Upload gagal');
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  const removeImage = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      images: prev.images.filter((_, i) => i !== index)
+    }));
   };
 
   return (
@@ -347,6 +401,44 @@ const ItemModal = ({ item, onSubmit, onClose }) => {
                 />
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Gambar</label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/gif,image/webp"
+                  multiple
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+                <div className="flex flex-wrap gap-3">
+                  {formData.images.map((filename, idx) => (
+                    <div key={idx} className="relative group">
+                      <div className="w-20 h-20 rounded-lg overflow-hidden bg-gray-100 border border-gray-200 shrink-0">
+                        <img src={itemImageUrl(filename)} alt="" className="w-full h-full object-cover" />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeImage(idx)}
+                        className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center opacity-90 hover:opacity-100 shadow"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    className="w-20 h-20 rounded-lg border-2 border-dashed border-gray-300 hover:border-primary-500 flex flex-col items-center justify-center gap-1 text-gray-500 hover:text-primary-600 transition-colors shrink-0"
+                  >
+                    <Upload size={20} />
+                    <span className="text-xs">{uploading ? '...' : 'Tambah'}</span>
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">JPEG, PNG, GIF, WebP. Maks 10MB per file.</p>
+              </div>
+
               {item && (
                 <div>
                   <label className="flex items-center">
@@ -388,7 +480,8 @@ ItemModal.propTypes = {
     description: PropTypes.string,
     price: PropTypes.number,
     category: PropTypes.string,
-    is_active: PropTypes.bool
+    is_active: PropTypes.bool,
+    images: PropTypes.arrayOf(PropTypes.string)
   }),
   onSubmit: PropTypes.func.isRequired,
   onClose: PropTypes.func.isRequired

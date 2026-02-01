@@ -164,49 +164,37 @@ const AdminServiceFeatures = () => {
             </button>
           </div>
 
-          <div className="bg-white rounded-lg shadow-md overflow-hidden">
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Urutan
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Icon
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Judul
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Deskripsi
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Aksi
-                    </th>
+              <table className="w-full min-w-[700px]">
+                <thead>
+                  <tr className="bg-gradient-to-r from-[#2f4274] to-[#3d5285] text-white">
+                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white/95 w-16">Urutan</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white/95 w-16">Icon</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white/95">Judul</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white/95">Deskripsi</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white/95">Status</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white/95 w-24">Aksi</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {features.map((feature) => (
-                    <tr key={feature.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <tbody className="bg-white divide-y divide-gray-100">
+                  {features.map((feature, idx) => (
+                    <tr
+                      key={feature.id}
+                      className={`transition-colors duration-150 hover:bg-[#2f4274]/[0.04] ${idx % 2 === 1 ? "bg-gray-50/50" : ""}`}
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
                         {feature.sort_order}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-2xl">{feature.icon}</span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
                         {feature.title}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">
+                      <td className="px-6 py-4 text-sm text-gray-500 max-w-xs">
                         {feature.description ? (
-                          <span
-                            className="truncate max-w-xs block"
-                            title={feature.description}
-                          >
+                          <span className="truncate block" title={feature.description}>
                             {feature.description}
                           </span>
                         ) : (
@@ -214,29 +202,29 @@ const AdminServiceFeatures = () => {
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            feature.is_active
-                              ? "bg-green-100 text-green-800"
-                              : "bg-red-100 text-red-800"
-                          }`}
-                        >
+                        <span className={`inline-flex px-2.5 py-1 rounded-lg text-xs font-semibold ${
+                          feature.is_active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                        }`}>
                           {feature.is_active ? "Aktif" : "Nonaktif"}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <button
-                          onClick={() => handleEdit(feature)}
-                          className="text-primary-600 hover:text-primary-900 mr-3"
-                        >
-                          <Edit size={16} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(feature.id)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleEdit(feature)}
+                            className="p-2 rounded-lg text-[#2f4274] bg-[#2f4274]/10 hover:bg-[#2f4274]/20 transition-colors"
+                            title="Edit"
+                          >
+                            <Edit size={16} />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(feature.id)}
+                            className="p-2 rounded-lg text-red-600 bg-red-50 hover:bg-red-100 transition-colors"
+                            title="Hapus"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

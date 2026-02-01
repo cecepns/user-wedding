@@ -229,86 +229,94 @@ const AdminOrdersHistory = () => {
         </div>
 
         <div className="space-y-6">
-          <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <table className="w-full min-w-[900px]">
+                <thead>
+                  <tr className="bg-gradient-to-r from-[#2f4274] to-[#3d5285] text-white">
+                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white/95">
                       ID Pesanan
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white/95">
                       Pelanggan
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white/95">
                       Layanan
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white/95">
                       Tanggal Pernikahan
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white/95">
                       Total
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white/95">
                       Booking Amount
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white/95">
                       Status
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white/95 w-24">
                       Aksi
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white divide-y divide-gray-100">
                   {loading ? (
                     <tr>
                       <td
                         colSpan="8"
-                        className="px-6 py-4 text-center text-gray-500"
+                        className="px-6 py-16 text-center"
                       >
-                        Memuat data...
+                        <div className="flex flex-col items-center gap-3 text-gray-400">
+                          <div className="w-10 h-10 border-2 border-[#2f4274]/30 border-t-[#2f4274] rounded-full animate-spin" />
+                          <span className="text-sm font-medium">Memuat data...</span>
+                        </div>
                       </td>
                     </tr>
                   ) : orders.length > 0 ? (
-                    orders.map((order) => (
-                      <tr key={order.id} className="hover:bg-gray-50">
+                    orders.map((order, idx) => (
+                      <tr
+                        key={order.id}
+                        className={`transition-colors duration-150 hover:bg-[#2f4274]/[0.04] ${
+                          idx % 2 === 1 ? "bg-gray-50/50" : ""
+                        }`}
+                      >
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">
-                            #{order.id}
-                          </div>
-                          <div className="text-sm text-gray-500">
+                          <div className="text-xs text-gray-500 font-medium">
                             {formatDate(order.created_at)}
+                          </div>
+                          <div className="text-sm font-semibold text-gray-900 mt-0.5">
+                            #{order.id}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">
+                          <div className="text-sm font-semibold text-gray-900">
                             {order.name}
                           </div>
-                          <div className="text-sm text-gray-500">
+                          <div className="text-xs text-gray-500 truncate max-w-[180px]" title={order.email}>
                             {order.email}
                           </div>
-                          <div className="text-sm text-gray-500">
+                          <div className="text-xs text-gray-500">
                             {order.phone}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-gray-100 text-gray-800 text-sm font-medium">
                             {order.service_name}
-                          </div>
+                          </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
+                          <div className="text-sm text-gray-800 font-medium">
                             {formatDateTime(order.wedding_date)}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-bold text-primary-600">
+                          <div className="text-sm font-bold text-[#2f4274]">
                             {formatRupiah(order.total_amount)}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-bold text-primary-600">
+                          <div className="text-sm font-bold text-[#2f4274]">
                             {formatRupiah(order.booking_amount)}
                           </div>
                         </td>
@@ -318,7 +326,7 @@ const AdminOrdersHistory = () => {
                             onChange={(e) =>
                               handleStatusUpdate(order.id, e.target.value)
                             }
-                            className={`px-3 py-1 rounded-full text-sm font-medium border-0 ${getStatusColor(
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border-0 cursor-pointer focus:ring-2 focus:ring-offset-1 focus:ring-[#2f4274]/40 outline-none transition-shadow ${getStatusColor(
                               order.status
                             )}`}
                           >
@@ -328,18 +336,18 @@ const AdminOrdersHistory = () => {
                             <option value="cancelled">Dibatalkan</option>
                           </select>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <div className="flex space-x-3">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
                             <button
                               onClick={() => handleViewDetail(order)}
-                              className="text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                              className="p-2 rounded-lg text-[#2f4274] bg-[#2f4274]/10 hover:bg-[#2f4274]/20 transition-colors"
                               title="Lihat Detail"
                             >
                               <Eye size={16} />
                             </button>
                             <button
                               onClick={() => handleDeleteOrder(order.id)}
-                              className="text-red-600 hover:text-red-700 flex items-center gap-1"
+                              className="p-2 rounded-lg text-red-600 bg-red-50 hover:bg-red-100 transition-colors"
                               title="Hapus"
                             >
                               <Trash2 size={16} />
@@ -352,9 +360,15 @@ const AdminOrdersHistory = () => {
                     <tr>
                       <td
                         colSpan="8"
-                        className="px-6 py-4 text-center text-gray-500"
+                        className="px-6 py-16 text-center"
                       >
-                        Tidak ada pesanan selesai
+                        <div className="flex flex-col items-center gap-2 text-gray-400">
+                          <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center">
+                            <Eye size={24} className="text-gray-300" />
+                          </div>
+                          <span className="text-sm font-medium">Tidak ada pesanan selesai</span>
+                          <span className="text-xs">Pesanan yang selesai atau dibatalkan akan muncul di sini.</span>
+                        </div>
                       </td>
                     </tr>
                   )}
@@ -364,27 +378,27 @@ const AdminOrdersHistory = () => {
           </div>
 
           {ordersPagination.totalPages > 1 && (
-            <div className="flex items-center justify-between bg-white px-6 py-3 border-t border-gray-200">
-              <div className="flex items-center text-sm text-gray-700">
-                <span>
-                  Menampilkan{" "}
-                  {(ordersPagination.page - 1) * ordersPagination.limit + 1} -{" "}
-                  {Math.min(
+            <div className="flex flex-wrap items-center justify-between gap-4 bg-white rounded-xl border border-gray-100 px-6 py-4 shadow-sm">
+              <div className="text-sm text-gray-600">
+                <span className="font-medium text-gray-800">
+                  {(ordersPagination.page - 1) * ordersPagination.limit + 1}–{Math.min(
                     ordersPagination.page * ordersPagination.limit,
                     ordersPagination.total
-                  )}{" "}
-                  dari {ordersPagination.total} pesanan
+                  )}
                 </span>
+                <span className="mx-1">dari</span>
+                <span className="font-medium text-gray-800">{ordersPagination.total}</span>
+                <span className="ml-1">pesanan</span>
               </div>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center gap-1">
                 <button
                   onClick={() =>
                     handleOrdersPageChange(ordersPagination.page - 1)
                   }
                   disabled={ordersPagination.page === 1}
-                  className="px-3 py-1 rounded-md text-sm font-medium text-gray-500 bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="p-2 rounded-lg text-gray-600 bg-gray-100 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-gray-100 transition-colors"
                 >
-                  <ChevronLeft size={16} />
+                  <ChevronLeft size={18} />
                 </button>
 
                 {getPaginationPages(
@@ -395,9 +409,9 @@ const AdminOrdersHistory = () => {
                     return (
                       <span
                         key={`ellipsis-${index}`}
-                        className="px-2 text-gray-500"
+                        className="px-2 py-1 text-gray-400 text-sm"
                       >
-                        ...
+                        …
                       </span>
                     );
                   }
@@ -405,10 +419,10 @@ const AdminOrdersHistory = () => {
                     <button
                       key={page}
                       onClick={() => handleOrdersPageChange(page)}
-                      className={`px-3 py-1 rounded-md text-sm font-medium ${
+                      className={`min-w-[2.25rem] py-2 px-2.5 rounded-lg text-sm font-semibold transition-colors ${
                         page === ordersPagination.page
-                          ? "bg-primary-600 text-white"
-                          : "text-gray-500 bg-white border border-gray-300 hover:bg-gray-50"
+                          ? "bg-[#2f4274] text-white shadow-md shadow-[#2f4274]/25"
+                          : "text-gray-600 bg-gray-100 hover:bg-gray-200"
                       }`}
                     >
                       {page}
@@ -423,9 +437,9 @@ const AdminOrdersHistory = () => {
                   disabled={
                     ordersPagination.page === ordersPagination.totalPages
                   }
-                  className="px-3 py-1 rounded-md text-sm font-medium text-gray-500 bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="p-2 rounded-lg text-gray-600 bg-gray-100 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-gray-100 transition-colors"
                 >
-                  <ChevronRight size={16} />
+                  <ChevronRight size={18} />
                 </button>
               </div>
             </div>

@@ -4,8 +4,51 @@ const mysql = require('mysql2/promise');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const path = require('path');
+const fs = require('fs');
+const multer = require('multer');
 
 const app = express();
+
+// Upload directory: only filename stored in DB; folder = uploads-weddingsapp
+const UPLOAD_DIR = path.join(__dirname, 'uploads-weddingsapp');
+if (!fs.existsSync(UPLOAD_DIR)) {
+  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, UPLOAD_DIR),
+  filename: (req, file, cb) => {
+    const ext = (file.originalname && path.extname(file.originalname)) || '.jpg';
+    const name = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}${ext}`;
+    cb(null, name);
+  }
+});
+const uploadMiddleware = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowed = /image\/(jpeg|png|gif|webp)/.test(file.mimetype);
+    if (allowed) cb(null, true);
+    else cb(new Error('Hanya file gambar (JPEG, PNG, GIF, WebP) yang diizinkan.'), false);
+  }
+});
+
+function isStoredFilename(value) {
+  return value && typeof value === 'string' && !value.startsWith('http');
+}
+
+function unlinkUploadIfStored(value) {
+  if (!isStoredFilename(value)) return;
+  const filePath = path.join(UPLOAD_DIR, value);
+  try {
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+  } catch (e) {
+    console.error('Unlink upload error:', e);
+  }
+}
+
+// Serve uploaded files (only filename in DB; URL = /uploads-weddingsapp/filename)
+app.use('/uploads-weddingsapp', express.static(UPLOAD_DIR));
 const PORT = process.env.PORT || 3001;
 const JWT_SECRET = 'your-secret-key-change-in-production';
 
@@ -167,9 +210,33 @@ app.get('/api/admin/stats', authenticateToken, async (req, res) => {
   }
 });
 
+// Upload file (multer); store only filename; folder = uploads-weddingsapp
+app.post('/api/upload', authenticateToken, (req, res, next) => {
+  uploadMiddleware.single('file')(req, res, (err) => {
+    if (err) {
+      if (err.code === 'LIMIT_FILE_SIZE') return res.status(400).json({ message: 'File terlalu besar (maks 10MB)' });
+      if (err.message) return res.status(400).json({ message: err.message });
+      return res.status(400).json({ message: 'Upload gagal' });
+    }
+    if (!req.file || !req.file.filename) {
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
+    res.json({ filename: req.file.filename });
+  });
+});
+
 // Services routes
 app.get('/api/services', async (req, res) => {
   try {
+    const q = (req.query.q || req.query.search || '').trim();
+    if (q) {
+      const pattern = `%${q}%`;
+      const [services] = await db.execute(
+        'SELECT * FROM services WHERE name LIKE ? OR description LIKE ? ORDER BY created_at DESC',
+        [pattern, pattern]
+      );
+      return res.json(services);
+    }
     const [services] = await db.execute('SELECT * FROM services ORDER BY created_at DESC');
     res.json(services);
   } catch (error) {
@@ -216,6 +283,8 @@ app.put('/api/services/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   
   try {
+    const [rows] = await db.execute('SELECT image FROM services WHERE id = ?', [id]);
+    const oldImage = rows[0] && rows[0].image;
     const [result] = await db.execute(
       'UPDATE services SET name = ?, description = ?, base_price = ?, image = ? WHERE id = ?',
       [name, description, base_price, image, id]
@@ -224,7 +293,7 @@ app.put('/api/services/:id', authenticateToken, async (req, res) => {
     if (result.affectedRows === 0) {
       return res.status(404).json({ message: 'Service not found' });
     }
-    
+    if (oldImage && oldImage !== image && isStoredFilename(oldImage)) unlinkUploadIfStored(oldImage);
     res.json({ message: 'Service updated successfully' });
   } catch (error) {
     console.error('Update service error:', error);
@@ -236,18 +305,38 @@ app.delete('/api/services/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   
   try {
+    const [rows] = await db.execute('SELECT image FROM services WHERE id = ?', [id]);
+    const row = rows[0];
     const [result] = await db.execute('DELETE FROM services WHERE id = ?', [id]);
     
     if (result.affectedRows === 0) {
       return res.status(404).json({ message: 'Service not found' });
     }
-    
+    if (row && row.image) unlinkUploadIfStored(row.image);
     res.json({ message: 'Service deleted successfully' });
   } catch (error) {
     console.error('Delete service error:', error);
     res.status(500).json({ message: 'Database error' });
   }
 });
+
+// Helper: parse item images JSON to array
+function parseItemImages(rows) {
+  if (!rows || !Array.isArray(rows)) return rows;
+  return rows.map((row) => {
+    if (row.images != null && typeof row.images === 'string') {
+      try {
+        row.images = JSON.parse(row.images);
+        if (!Array.isArray(row.images)) row.images = [];
+      } catch (_) {
+        row.images = [];
+      }
+    } else if (row.images == null) {
+      row.images = [];
+    }
+    return row;
+  });
+}
 
 // Items routes (master items management)
 app.get('/api/items', async (req, res) => {
@@ -266,7 +355,7 @@ app.get('/api/items', async (req, res) => {
     query += ' ORDER BY category, name';
     
     const [items] = await db.execute(query, params);
-    res.json(items);
+    res.json(parseItemImages(items));
   } catch (error) {
     console.error('Items error:', error);
     res.status(500).json({ message: 'Database error' });
@@ -295,7 +384,8 @@ app.get('/api/items/:id', async (req, res) => {
       return res.status(404).json({ message: 'Item not found' });
     }
     
-    res.json(item);
+    const [parsed] = parseItemImages([item]);
+    res.json(parsed);
   } catch (error) {
     console.error('Item detail error:', error);
     res.status(500).json({ message: 'Database error' });
@@ -303,29 +393,56 @@ app.get('/api/items/:id', async (req, res) => {
 });
 
 app.post('/api/items', authenticateToken, async (req, res) => {
-  const { name, description, price, category } = req.body;
+  const { name, description, price, category, images } = req.body;
+  const imagesJson = Array.isArray(images) ? JSON.stringify(images) : (images && typeof images === 'string' ? images : '[]');
   
   try {
     const [result] = await db.execute(
-      'INSERT INTO items (name, description, price, category) VALUES (?, ?, ?, ?)',
-      [name, description, price, category]
+      'INSERT INTO items (name, description, price, category, images) VALUES (?, ?, ?, ?, ?)',
+      [name, description, price, category, imagesJson]
     );
     res.json({ id: result.insertId, message: 'Item created successfully' });
   } catch (error) {
+    if (error.code === 'ER_BAD_FIELD_ERROR') {
+      // Column images may not exist yet; insert without it
+      const [result] = await db.execute(
+        'INSERT INTO items (name, description, price, category) VALUES (?, ?, ?, ?)',
+        [name, description, price, category]
+      );
+      return res.json({ id: result.insertId, message: 'Item created successfully' });
+    }
     console.error('Create item error:', error);
     res.status(500).json({ message: 'Database error' });
   }
 });
 
 app.put('/api/items/:id', authenticateToken, async (req, res) => {
-  const { name, description, price, category, is_active } = req.body;
+  const { name, description, price, category, is_active, images } = req.body;
   const { id } = req.params;
+  const imagesJson = Array.isArray(images) ? JSON.stringify(images) : (images && typeof images === 'string' ? images : null);
   
   try {
-    const [result] = await db.execute(
-      'UPDATE items SET name = ?, description = ?, price = ?, category = ?, is_active = ? WHERE id = ?',
-      [name, description, price, category, is_active, id]
-    );
+    let result;
+    if (imagesJson !== null) {
+      try {
+        [result] = await db.execute(
+          'UPDATE items SET name = ?, description = ?, price = ?, category = ?, is_active = ?, images = ? WHERE id = ?',
+          [name, description, price, category, is_active, imagesJson, id]
+        );
+      } catch (err) {
+        if (err.code === 'ER_BAD_FIELD_ERROR') {
+          [result] = await db.execute(
+            'UPDATE items SET name = ?, description = ?, price = ?, category = ?, is_active = ? WHERE id = ?',
+            [name, description, price, category, is_active, id]
+          );
+        } else throw err;
+      }
+    } else {
+      [result] = await db.execute(
+        'UPDATE items SET name = ?, description = ?, price = ?, category = ?, is_active = ? WHERE id = ?',
+        [name, description, price, category, is_active, id]
+      );
+    }
     
     if (result.affectedRows === 0) {
       return res.status(404).json({ message: 'Item not found' });
@@ -1113,6 +1230,8 @@ app.put('/api/gallery/images/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   
   try {
+    const [rows] = await db.execute('SELECT image_url FROM gallery_images WHERE id = ?', [id]);
+    const oldUrl = rows[0] && rows[0].image_url;
     const [result] = await db.execute(
       'UPDATE gallery_images SET title = ?, description = ?, image_url = ?, category_id = ?, is_featured = ?, is_active = ?, sort_order = ? WHERE id = ?',
       [title, description, image_url, category_id, is_featured, is_active, sort_order, id]
@@ -1121,7 +1240,7 @@ app.put('/api/gallery/images/:id', authenticateToken, async (req, res) => {
     if (result.affectedRows === 0) {
       return res.status(404).json({ message: 'Gallery image not found' });
     }
-    
+    if (oldUrl && oldUrl !== image_url && isStoredFilename(oldUrl)) unlinkUploadIfStored(oldUrl);
     res.json({ message: 'Gallery image updated successfully' });
   } catch (error) {
     console.error('Update gallery image error:', error);
@@ -1133,12 +1252,14 @@ app.delete('/api/gallery/images/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   
   try {
+    const [rows] = await db.execute('SELECT image_url FROM gallery_images WHERE id = ?', [id]);
+    const row = rows[0];
     const [result] = await db.execute('DELETE FROM gallery_images WHERE id = ?', [id]);
     
     if (result.affectedRows === 0) {
       return res.status(404).json({ message: 'Gallery image not found' });
     }
-    
+    if (row && row.image_url) unlinkUploadIfStored(row.image_url);
     res.json({ message: 'Gallery image deleted successfully' });
   } catch (error) {
     console.error('Delete gallery image error:', error);
@@ -1447,19 +1568,34 @@ app.get('/api/orders/search', authenticateToken, async (req, res) => {
 // Surat Jalan routes
 app.get('/api/surat-jalan', authenticateToken, async (req, res) => {
   try {
+    // Auto-delete surat jalan whose event date has passed (e.g. event Feb 7, on Feb 8 it is deleted)
+    await db.execute('DELETE FROM surat_jalan WHERE wedding_date < CURDATE()');
+    
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const offset = (page - 1) * limit;
+    const search = (req.query.search || req.query.q || '').trim();
     
-    // Get total count
-    const [countResult] = await db.execute('SELECT COUNT(*) as total FROM surat_jalan');
+    let countSql = 'SELECT COUNT(*) as total FROM surat_jalan';
+    let listSql = 'SELECT * FROM surat_jalan';
+    const countParams = [];
+    const listParams = [];
+    
+    if (search) {
+      const pattern = `%${search}%`;
+      countSql += ' WHERE client_name LIKE ?';
+      listSql += ' WHERE client_name LIKE ?';
+      countParams.push(pattern);
+      listParams.push(pattern);
+    }
+    
+    listSql += ' ORDER BY wedding_date ASC, created_at DESC LIMIT ? OFFSET ?';
+    listParams.push(limit, offset);
+    
+    const [countResult] = await db.execute(countSql, countParams);
     const total = countResult[0].total;
     
-    // Get paginated surat jalan
-    const [suratJalan] = await db.execute(
-      'SELECT * FROM surat_jalan ORDER BY created_at DESC LIMIT ? OFFSET ?',
-      [limit, offset]
-    );
+    const [suratJalan] = await db.execute(listSql, listParams);
     
     res.json({
       suratJalan,
@@ -1577,12 +1713,18 @@ app.delete('/api/surat-jalan/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   
   try {
+    const [rows] = await db.execute('SELECT plaminan_image, pintu_masuk_image, dekorasi_image FROM surat_jalan WHERE id = ?', [id]);
+    const row = rows[0];
     const [result] = await db.execute('DELETE FROM surat_jalan WHERE id = ?', [id]);
     
     if (result.affectedRows === 0) {
       return res.status(404).json({ message: 'Surat jalan not found' });
     }
-    
+    if (row) {
+      unlinkUploadIfStored(row.plaminan_image);
+      unlinkUploadIfStored(row.pintu_masuk_image);
+      unlinkUploadIfStored(row.dekorasi_image);
+    }
     res.json({ message: 'Surat jalan deleted successfully' });
   } catch (error) {
     console.error('Delete surat jalan error:', error);

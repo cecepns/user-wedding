@@ -777,7 +777,9 @@ const AdminOrders = () => {
                             {d}
                           </span>
                           {hasBookings && (
-                            <span className="mt-1 w-2 h-2 rounded-full bg-red-500" />
+                            <span className="bg-blue-600 rounded md:py-1 px-2 mt-1 text-[7px] md:text-xs font-semibold text-white">
+                              {ordersForDay.length} Client
+                            </span>
                           )}
                         </button>
                       );
