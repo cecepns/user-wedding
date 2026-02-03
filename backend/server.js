@@ -422,6 +422,18 @@ app.put('/api/items/:id', authenticateToken, async (req, res) => {
   const imagesJson = Array.isArray(images) ? JSON.stringify(images) : (images && typeof images === 'string' ? images : null);
   
   try {
+    const [oldRows] = await db.execute('SELECT images FROM items WHERE id = ?', [id]);
+    const oldImagesRaw = oldRows[0] && oldRows[0].images;
+    let oldFilenames = [];
+    if (oldImagesRaw) {
+      try {
+        const arr = typeof oldImagesRaw === 'string' ? JSON.parse(oldImagesRaw) : oldImagesRaw;
+        if (Array.isArray(arr)) oldFilenames = arr.map((f) => (typeof f === 'string' ? f : (f && (f.url || f.filename)) || '')).filter(Boolean);
+      } catch (_) { /* ignore */ }
+    }
+    const newFilenames = Array.isArray(images) ? images.map((f) => (typeof f === 'string' ? f : (f && (f.url || f.filename)) || '')).filter(Boolean) : [];
+    const removed = oldFilenames.filter((f) => !newFilenames.includes(f));
+
     let result;
     if (imagesJson !== null) {
       try {
@@ -447,7 +459,7 @@ app.put('/api/items/:id', authenticateToken, async (req, res) => {
     if (result.affectedRows === 0) {
       return res.status(404).json({ message: 'Item not found' });
     }
-    
+    removed.forEach((f) => unlinkUploadIfStored(f));
     res.json({ message: 'Item updated successfully' });
   } catch (error) {
     console.error('Update item error:', error);
@@ -466,12 +478,21 @@ app.delete('/api/items/:id', authenticateToken, async (req, res) => {
       return res.status(400).json({ message: 'Cannot delete item that is used in services. Deactivate it instead.' });
     }
     
+    const [rows] = await db.execute('SELECT images FROM items WHERE id = ?', [id]);
+    const row = rows[0];
     const [result] = await db.execute('DELETE FROM items WHERE id = ?', [id]);
     
     if (result.affectedRows === 0) {
       return res.status(404).json({ message: 'Item not found' });
     }
-    
+    if (row && row.images) {
+      try {
+        const arr = typeof row.images === 'string' ? JSON.parse(row.images) : row.images;
+        if (Array.isArray(arr)) {
+          arr.forEach((f) => unlinkUploadIfStored(typeof f === 'string' ? f : (f && (f.url || f.filename))));
+        }
+      } catch (_) { /* ignore parse errors */ }
+    }
     res.json({ message: 'Item deleted successfully' });
   } catch (error) {
     console.error('Delete item error:', error);
@@ -1051,6 +1072,8 @@ app.put('/api/articles/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   
   try {
+    const [rows] = await db.execute('SELECT image FROM articles WHERE id = ?', [id]);
+    const oldImage = rows[0] && rows[0].image;
     const [result] = await db.execute(
       'UPDATE articles SET title = ?, content = ?, excerpt = ?, image = ?, category = ? WHERE id = ?',
       [title, content, excerpt, image, category, id]
@@ -1059,7 +1082,7 @@ app.put('/api/articles/:id', authenticateToken, async (req, res) => {
     if (result.affectedRows === 0) {
       return res.status(404).json({ message: 'Article not found' });
     }
-    
+    if (oldImage && oldImage !== image && isStoredFilename(oldImage)) unlinkUploadIfStored(oldImage);
     res.json({ message: 'Article updated successfully' });
   } catch (error) {
     console.error('Update article error:', error);
@@ -1071,12 +1094,14 @@ app.delete('/api/articles/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   
   try {
+    const [rows] = await db.execute('SELECT image FROM articles WHERE id = ?', [id]);
+    const row = rows[0];
     const [result] = await db.execute('DELETE FROM articles WHERE id = ?', [id]);
     
     if (result.affectedRows === 0) {
       return res.status(404).json({ message: 'Article not found' });
     }
-    
+    if (row && row.image) unlinkUploadIfStored(row.image);
     res.json({ message: 'Article deleted successfully' });
   } catch (error) {
     console.error('Delete article error:', error);
@@ -1320,6 +1345,8 @@ app.put('/api/content-sections/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   
   try {
+    const [rows] = await db.execute('SELECT image_url FROM content_sections WHERE id = ?', [id]);
+    const oldUrl = rows[0] && rows[0].image_url;
     const [result] = await db.execute(
       'UPDATE content_sections SET title = ?, subtitle = ?, description = ?, image_url = ?, button_text = ?, button_url = ?, is_active = ?, sort_order = ? WHERE id = ?',
       [title, subtitle, description, image_url, button_text, button_url, is_active, sort_order, id]
@@ -1328,7 +1355,7 @@ app.put('/api/content-sections/:id', authenticateToken, async (req, res) => {
     if (result.affectedRows === 0) {
       return res.status(404).json({ message: 'Content section not found' });
     }
-    
+    if (oldUrl && oldUrl !== image_url && isStoredFilename(oldUrl)) unlinkUploadIfStored(oldUrl);
     res.json({ message: 'Content section updated successfully' });
   } catch (error) {
     console.error('Update content section error:', error);
@@ -1340,12 +1367,14 @@ app.delete('/api/content-sections/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   
   try {
+    const [rows] = await db.execute('SELECT image_url FROM content_sections WHERE id = ?', [id]);
+    const row = rows[0];
     const [result] = await db.execute('DELETE FROM content_sections WHERE id = ?', [id]);
     
     if (result.affectedRows === 0) {
       return res.status(404).json({ message: 'Content section not found' });
     }
-    
+    if (row && row.image_url) unlinkUploadIfStored(row.image_url);
     res.json({ message: 'Content section deleted successfully' });
   } catch (error) {
     console.error('Delete content section error:', error);
@@ -1415,6 +1444,8 @@ app.put('/api/service-cards/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   
   try {
+    const [rows] = await db.execute('SELECT image_url FROM service_cards WHERE id = ?', [id]);
+    const oldUrl = rows[0] && rows[0].image_url;
     const [result] = await db.execute(
       'UPDATE service_cards SET title = ?, description = ?, icon = ?, image_url = ?, button_text = ?, button_url = ?, card_type = ?, is_active = ?, sort_order = ? WHERE id = ?',
       [title, description, icon, image_url, button_text, button_url, card_type, is_active, sort_order, id]
@@ -1423,7 +1454,7 @@ app.put('/api/service-cards/:id', authenticateToken, async (req, res) => {
     if (result.affectedRows === 0) {
       return res.status(404).json({ message: 'Card not found' });
     }
-    
+    if (oldUrl && oldUrl !== image_url && isStoredFilename(oldUrl)) unlinkUploadIfStored(oldUrl);
     res.json({ message: 'Card updated successfully' });
   } catch (error) {
     console.error('Update card error:', error);
@@ -1435,12 +1466,14 @@ app.delete('/api/service-cards/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   
   try {
+    const [rows] = await db.execute('SELECT image_url FROM service_cards WHERE id = ?', [id]);
+    const row = rows[0];
     const [result] = await db.execute('DELETE FROM service_cards WHERE id = ?', [id]);
     
     if (result.affectedRows === 0) {
       return res.status(404).json({ message: 'Service card not found' });
     }
-    
+    if (row && row.image_url) unlinkUploadIfStored(row.image_url);
     res.json({ message: 'Service card deleted successfully' });
   } catch (error) {
     console.error('Delete service card error:', error);
@@ -1569,6 +1602,12 @@ app.get('/api/orders/search', authenticateToken, async (req, res) => {
 app.get('/api/surat-jalan', authenticateToken, async (req, res) => {
   try {
     // Auto-delete surat jalan whose event date has passed (e.g. event Feb 7, on Feb 8 it is deleted)
+    const [expiredRows] = await db.execute('SELECT plaminan_image, pintu_masuk_image, dekorasi_image FROM surat_jalan WHERE wedding_date < CURDATE()');
+    for (const row of expiredRows) {
+      unlinkUploadIfStored(row.plaminan_image);
+      unlinkUploadIfStored(row.pintu_masuk_image);
+      unlinkUploadIfStored(row.dekorasi_image);
+    }
     await db.execute('DELETE FROM surat_jalan WHERE wedding_date < CURDATE()');
     
     const page = parseInt(req.query.page) || 1;
@@ -1685,6 +1724,8 @@ app.put('/api/surat-jalan/:id', authenticateToken, async (req, res) => {
   } = req.body;
   
   try {
+    const [oldRows] = await db.execute('SELECT plaminan_image, pintu_masuk_image, dekorasi_image FROM surat_jalan WHERE id = ?', [id]);
+    const old = oldRows[0];
     const [result] = await db.execute(
       `UPDATE surat_jalan SET 
         client_name = ?, client_phone = ?, client_address = ?, wedding_date = ?,
@@ -1701,7 +1742,11 @@ app.put('/api/surat-jalan/:id', authenticateToken, async (req, res) => {
     if (result.affectedRows === 0) {
       return res.status(404).json({ message: 'Surat jalan not found' });
     }
-    
+    if (old) {
+      if (old.plaminan_image !== plaminan_image && isStoredFilename(old.plaminan_image)) unlinkUploadIfStored(old.plaminan_image);
+      if (old.pintu_masuk_image !== pintu_masuk_image && isStoredFilename(old.pintu_masuk_image)) unlinkUploadIfStored(old.pintu_masuk_image);
+      if (old.dekorasi_image !== dekorasi_image && isStoredFilename(old.dekorasi_image)) unlinkUploadIfStored(old.dekorasi_image);
+    }
     res.json({ message: 'Surat jalan updated successfully' });
   } catch (error) {
     console.error('Update surat jalan error:', error);

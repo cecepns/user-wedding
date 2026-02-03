@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Helmet } from "react-helmet-async";
 import {
   Plus,
@@ -13,7 +13,7 @@ import {
   Search,
   Calendar,
   List,
-  Image as ImageIcon,
+  Upload,
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 import Select from "react-select";
@@ -39,9 +39,7 @@ const AdminSuratJalan = () => {
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
-  const [showGalleryPicker, setShowGalleryPicker] = useState(false);
-  const [galleryPickerField, setGalleryPickerField] = useState(null);
-  const [galleryImages, setGalleryImages] = useState([]);
+  const fileInputRef = useRef(null);
   const [editingItem, setEditingItem] = useState(null);
   const [selectedItem, setSelectedItem] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -199,32 +197,42 @@ const AdminSuratJalan = () => {
     return acc;
   }, {});
 
-  const fetchGalleryImages = async () => {
+  const uploadTargetRef = useRef(null);
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    const field = uploadTargetRef.current;
+    if (!file || !field) return;
+    if (!/image\/(jpeg|png|gif|webp)/.test(file.type)) {
+      toast.error("Hanya file gambar (JPEG, PNG, GIF, WebP) yang diizinkan.");
+      return;
+    }
+    const fd = new FormData();
+    fd.append("file", file);
     try {
-      const response = await fetch(`${API_BASE}/api/gallery/images`, {
+      const response = await fetch(`${API_BASE}/api/upload`, {
+        method: "POST",
         headers: { Authorization: `Bearer ${localStorage.getItem("admin_token")}` },
+        body: fd,
       });
       const data = await response.json();
-      setGalleryImages(Array.isArray(data) ? data : []);
-    } catch (e) {
-      console.error("Error fetching gallery:", e);
-      setGalleryImages([]);
+      if (data.filename) {
+        setFormData((prev) => ({ ...prev, [field]: data.filename }));
+        toast.success("Gambar berhasil diunggah.");
+      } else {
+        toast.error(data.message || "Upload gagal");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Upload gagal");
     }
+    uploadTargetRef.current = null;
+    e.target.value = "";
   };
 
-  const openGalleryPicker = (field) => {
-    setGalleryPickerField(field);
-    setShowGalleryPicker(true);
-    fetchGalleryImages();
-  };
-
-  const onGalleryImageSelect = (img) => {
-    const url = img.image_url && img.image_url.startsWith("http") ? img.image_url : imageUrl(img.image_url);
-    if (galleryPickerField && url) {
-      setFormData((prev) => ({ ...prev, [galleryPickerField]: img.image_url }));
-    }
-    setShowGalleryPicker(false);
-    setGalleryPickerField(null);
+  const triggerFileUpload = (field) => {
+    uploadTargetRef.current = field;
+    fileInputRef.current?.click();
   };
 
   const loadOrderOptions = async (inputValue = "") => {
@@ -1270,12 +1278,20 @@ const AdminSuratJalan = () => {
                     </>
                   )}
 
-                  {/* Gambar Dekorasi - Pilih dari Galeri atau URL */}
+                  {/* Gambar Dekorasi - Upload langsung */}
                   <div className="md:col-span-2 mt-4">
                     <h3 className="text-lg font-semibold text-gray-800 mb-4">
                       Gambar Dekorasi
                     </h3>
                   </div>
+
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/gif,image/webp"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
 
                   {["plaminan_image", "pintu_masuk_image", "dekorasi_image"].map((field) => {
                     const labels = {
@@ -1306,20 +1322,12 @@ const AdminSuratJalan = () => {
                           <div className="flex flex-col gap-2 flex-1 min-w-0">
                             <button
                               type="button"
-                              onClick={() => openGalleryPicker(field)}
+                              onClick={() => triggerFileUpload(field)}
                               className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-[#2f4274]/10 text-[#2f4274] hover:bg-[#2f4274]/20 text-sm font-medium"
                             >
-                              <ImageIcon size={16} />
-                              Pilih dari Galeri
+                              <Upload size={16} />
+                              Upload Gambar
                             </button>
-                            <input
-                              type="text"
-                              name={field}
-                              value={formData[field]}
-                              onChange={handleInputChange}
-                              placeholder="URL atau filename dari galeri"
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                            />
                           </div>
                         </div>
                       </div>
@@ -1402,51 +1410,6 @@ const AdminSuratJalan = () => {
                   </button>
                 </div>
               </form>
-            </div>
-          </div>
-        )}
-
-        {/* Gallery Picker Modal */}
-        {showGalleryPicker && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
-            <div className="bg-white rounded-xl shadow-xl max-w-3xl w-full max-h-[85vh] overflow-hidden flex flex-col">
-              <div className="flex justify-between items-center p-4 border-b border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-800">Pilih dari Galeri</h3>
-                <button
-                  type="button"
-                  onClick={() => { setShowGalleryPicker(false); setGalleryPickerField(null); }}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <X size={24} />
-                </button>
-              </div>
-              <div className="p-4 overflow-y-auto flex-1">
-                {galleryImages.length === 0 ? (
-                  <p className="text-gray-500 text-center py-8">Belum ada gambar di galeri.</p>
-                ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                    {galleryImages.map((img) => (
-                      <button
-                        key={img.id}
-                        type="button"
-                        onClick={() => onGalleryImageSelect(img)}
-                        className="rounded-lg overflow-hidden border-2 border-transparent hover:border-[#2f4274] focus:border-[#2f4274] focus:outline-none"
-                      >
-                        <img
-                          src={imageUrl(img.image_url)}
-                          alt={img.title || ""}
-                          className="w-full h-28 object-cover"
-                          onError={(e) => {
-                            e.target.onerror = null;
-                            e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='112'%3E%3Crect fill='%23f3f4f6' width='200' height='112'/%3E%3Ctext fill='%239ca3af' font-size='12' x='50%25' y='50%25' text-anchor='middle' dominant-baseline='middle'%3EError%3C/text%3E%3C/svg%3E";
-                          }}
-                        />
-                        <span className="block text-xs text-gray-600 truncate px-2 py-1">{img.title}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
             </div>
           </div>
         )}
