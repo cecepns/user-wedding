@@ -682,7 +682,7 @@ const CustomService = () => {
                         {/* Image - only below content when images exist, no placeholder */}
                         {hasImages && (
                           <div
-                            className="relative w-full h-48 sm:h-56 bg-primary-700/50 cursor-pointer group"
+                            className="relative w-full mx-auto md:w-64 rounded overflow-hidden h-48 sm:h-56 bg-primary-700/50 cursor-pointer group"
                             onClick={() => openImageLightbox(service)}
                             role="button"
                             onKeyDown={(e) =>
@@ -703,7 +703,7 @@ const CustomService = () => {
                                 {images.length}
                               </span>
                             )}
-                            <span className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30">
+                            <span className="absolute bottom-2 left-2 md:bottom-auto md:left-auto md:inset-0 md:flex md:items-center md:justify-center md:opacity-0 md:group-hover:opacity-100 transition-opacity md:bg-black/30">
                               <span className="px-3 py-1.5 rounded-lg bg-white/90 text-primary-700 text-sm font-medium">
                                 Lihat galeri
                               </span>

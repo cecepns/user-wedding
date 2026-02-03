@@ -496,6 +496,9 @@ const AdminServices = () => {
           <ServiceItemModal
             serviceItem={editingServiceItem}
             availableItems={availableItems}
+            existingItemIds={serviceItems
+              .filter((si) => !editingServiceItem || si.item_id != editingServiceItem.item_id)
+              .map((si) => si.item_id)}
             onSubmit={editingServiceItem ? handleUpdateServiceItem : handleAddItemToService}
             onClose={() => {
               setShowItemModal(false);
@@ -650,7 +653,7 @@ const ServiceModal = ({ service, onSubmit, onClose }) => {
   );
 };
 
-const ServiceItemModal = ({ serviceItem, availableItems, onSubmit, onClose }) => {
+const ServiceItemModal = ({ serviceItem, availableItems, existingItemIds = [], onSubmit, onClose }) => {
   const [formData, setFormData] = useState({
     item_id: serviceItem?.item_id || '',
     custom_price: serviceItem?.custom_price || '',
@@ -711,6 +714,7 @@ const ServiceItemModal = ({ serviceItem, availableItems, onSubmit, onClose }) =>
                     label: `${index + 1}. ${item.name} - ${formatRupiah(item.price)}`,
                     sortOrder: index + 1,
                   }))}
+                  isOptionDisabled={(option) => existingItemIds.some((id) => id == option.value)}
                   isClearable
                   classNamePrefix="react-select"
                   styles={{
@@ -721,6 +725,12 @@ const ServiceItemModal = ({ serviceItem, availableItems, onSubmit, onClose }) =>
                       borderColor: '#d1d5db',
                     }),
                     menu: (base) => ({ ...base, zIndex: 50 }),
+                    option: (base, state) => ({
+                      ...base,
+                      backgroundColor: state.isDisabled ? '#fef2f2' : state.isFocused ? '#f3f4f6' : base.backgroundColor,
+                      color: state.isDisabled ? '#9ca3af' : base.color,
+                      cursor: state.isDisabled ? 'not-allowed' : 'default',
+                    }),
                   }}
                 />
               </div>
