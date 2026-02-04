@@ -1269,7 +1269,9 @@ const AdminSuratJalan = () => {
                             <div>
                               <span className="text-xs font-medium text-gray-500">Tanggal Acara</span>
                               <p className="text-sm text-gray-900 mt-1">
-                                {formData.wedding_date ? formatDate(formData.wedding_date) : "-"}
+                                {(selectedOrder?.order?.wedding_date || formData.wedding_date)
+                                  ? formatDate(selectedOrder?.order?.wedding_date || formData.wedding_date)
+                                  : "-"}
                               </p>
                             </div>
                             <div>
