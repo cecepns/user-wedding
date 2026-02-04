@@ -18,7 +18,7 @@ import {
 import toast, { Toaster } from "react-hot-toast";
 import Select from "react-select";
 import AdminLayout from "../../components/AdminLayout";
-import { formatDate } from "../../utils/formatters";
+import { formatDate, toLocalDate } from "../../utils/formatters";
 import jsPDF from "jspdf";
 
 const API_BASE = "https://api-inventory.isavralabel.com/user-wedding";
@@ -143,7 +143,7 @@ const AdminSuratJalan = () => {
       const filtered = all.filter((item) => {
         const rawDate = item.wedding_date;
         if (!rawDate) return false;
-        const d = new Date(rawDate);
+        const d = toLocalDate(rawDate);
         if (isNaN(d.getTime())) return false;
         return d.getFullYear() === year && d.getMonth() === month;
       });
@@ -186,7 +186,7 @@ const AdminSuratJalan = () => {
   const suratJalanByDate = calendarSuratJalan.reduce((acc, item) => {
     const rawDate = item.wedding_date;
     if (!rawDate) return acc;
-    const dateObj = new Date(rawDate);
+    const dateObj = toLocalDate(rawDate);
     if (isNaN(dateObj.getTime())) return acc;
     const y = dateObj.getFullYear();
     const m = dateObj.getMonth() + 1;
