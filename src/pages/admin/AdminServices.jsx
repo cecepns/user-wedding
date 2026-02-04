@@ -4,13 +4,7 @@ import { Plus, Edit, Trash2, Package, Search, Upload } from 'lucide-react';
 import Select from 'react-select';
 import toast, { Toaster } from 'react-hot-toast';
 import AdminLayout from '../../components/AdminLayout';
-
-const API_BASE = 'https://api-inventory.isavralabel.com/user-wedding';
-function imageUrl(value) {
-  if (!value) return '';
-  if (value.startsWith('http')) return value;
-  return `${API_BASE}/uploads-weddingsapp/${value}`;
-}
+import { API_BASE, imageUrl } from '../../utils/imageUrl';
 
 // Utility function for Indonesian Rupiah formatting
 const formatRupiah = (amount) => {

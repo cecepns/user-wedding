@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import AOS from 'aos';
 import 'aos/dist/aos.css';
 import PaymentInstructions from '../components/PaymentInstructions';
+import { imageUrl } from '../utils/imageUrl';
 
 // Helper function to format price in Indonesian Rupiah format
 const formatPrice = (price) => {
@@ -179,7 +180,11 @@ const ServiceDetail = () => {
               <div className="relative" data-aos="fade-left" data-aos-delay="300">
                 <div className="absolute inset-0 bg-gradient-to-r from-primary-200 to-secondary-200 rounded-full blur-3xl opacity-30 animate-float"></div>
                 <img
-                  src={service.image || `https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=800`}
+                  src={
+                    service.image
+                      ? imageUrl(service.image)
+                      : `https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=800`
+                  }
                   alt={service.name}
                   className="relative z-10 w-full h-64 sm:h-80 lg:h-96 object-cover rounded-2xl shadow-2xl"
                 />

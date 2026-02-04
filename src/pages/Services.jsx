@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
 import PropTypes from "prop-types";
+import { imageUrl } from "../utils/imageUrl";
 
 // Helper function to format price in Indonesian Rupiah format
 const formatPrice = (price) => {
@@ -102,8 +103,9 @@ const ServiceCard = ({ service, index }) => {
       <div className="relative">
         <img
           src={
-            service.image ||
-            `https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=400`
+            service.image
+              ? imageUrl(service.image)
+              : `https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=400`
           }
           alt={service.name}
           className="w-full h-48 object-cover"
