@@ -28,6 +28,17 @@ export const toLocalDate = (date) => {
   return new Date(date);
 };
 
+// Return YYYY-MM-DD for the intended calendar day (for API payloads; avoids timezone shift on save)
+export const toDateOnlyString = (date) => {
+  if (!date) return '';
+  const d = toLocalDate(date);
+  if (isNaN(d.getTime())) return '';
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
 // Date formatter for Indonesian locale (date-only strings shown as intended calendar day)
 export const formatDate = (date) => {
   if (!date) return '-';

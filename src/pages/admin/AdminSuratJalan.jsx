@@ -18,7 +18,7 @@ import {
 import toast, { Toaster } from "react-hot-toast";
 import Select from "react-select";
 import AdminLayout from "../../components/AdminLayout";
-import { formatDate, toLocalDate } from "../../utils/formatters";
+import { formatDate, toLocalDate, toDateOnlyString } from "../../utils/formatters";
 import jsPDF from "jspdf";
 
 const API_BASE = "https://api-inventory.isavralabel.com/user-wedding";
@@ -290,7 +290,7 @@ const AdminSuratJalan = () => {
             name: item.client_name,
             phone: item.client_phone,
             address: item.client_address,
-            wedding_date: item.wedding_date,
+            wedding_date: toDateOnlyString(item.wedding_date) || item.wedding_date,
             service_name: item.package_name
           }
         };
@@ -304,7 +304,7 @@ const AdminSuratJalan = () => {
         client_name: item.client_name || "",
         client_phone: item.client_phone || "",
         client_address: item.client_address || "",
-        wedding_date: item.wedding_date || "",
+        wedding_date: toDateOnlyString(item.wedding_date) || "",
         package_name: item.package_name || "",
         plaminan_image: item.plaminan_image || "",
         pintu_masuk_image: item.pintu_masuk_image || "",
@@ -361,7 +361,7 @@ const AdminSuratJalan = () => {
       client_name: order.name || "",
       client_phone: order.phone || "",
       client_address: order.address || "",
-      wedding_date: order.wedding_date || "",
+      wedding_date: toDateOnlyString(order.wedding_date) || "",
       package_name: order.service_name || "",
     }));
   };
@@ -384,13 +384,17 @@ const AdminSuratJalan = () => {
         ? `${API_BASE}/api/surat-jalan/${editingItem.id}`
         : `${API_BASE}/api/surat-jalan`;
 
+      const payload = {
+        ...formData,
+        wedding_date: toDateOnlyString(formData.wedding_date) || formData.wedding_date || "",
+      };
       const response = await fetch(url, {
         method: editingItem ? "PUT" : "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${localStorage.getItem("admin_token")}`,
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
