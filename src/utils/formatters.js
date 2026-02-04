@@ -17,14 +17,19 @@ export const formatRupiah = (amount) => {
 // Parse date-only string (YYYY-MM-DD) as local calendar date to avoid timezone shift (exported for calendar key grouping)
 export const toLocalDate = (date) => {
   if (!date) return null;
+  // If string and *only* YYYY-MM-DD, treat as pure calendar date in local time
   const s = typeof date === 'string' ? date.trim() : String(date);
-  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
-  if (match) {
-    const y = parseInt(match[1], 10);
-    const m = parseInt(match[2], 10) - 1;
-    const d = parseInt(match[3], 10);
+
+  const pureDateMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if (pureDateMatch) {
+    const y = parseInt(pureDateMatch[1], 10);
+    const m = parseInt(pureDateMatch[2], 10) - 1;
+    const d = parseInt(pureDateMatch[3], 10);
     return new Date(y, m, d);
   }
+
+  // For full datetime strings or Date objects, rely on JS Date to
+  // compute the correct local calendar day from the actual instant.
   return new Date(date);
 };
 
