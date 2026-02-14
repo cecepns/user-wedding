@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
 import { Eye, Trash2, ChevronLeft, ChevronRight, X, Edit, Download } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
@@ -6,8 +6,11 @@ import AdminLayout from "../../components/AdminLayout";
 import { formatRupiah, formatDate, formatDateTime } from "../../utils/formatters";
 import jsPDF from "jspdf";
 
+const API_BASE = "https://api-inventory.isavralabel.com/user-wedding/api";
+
 const AdminOrders = () => {
   const [orders, setOrders] = useState([]);
+  const [customRequests, setCustomRequests] = useState([]);
   const [ordersPagination, setOrdersPagination] = useState({
     page: 1,
     limit: 10,
@@ -25,30 +28,73 @@ const AdminOrders = () => {
   const [selectedBankMethod, setSelectedBankMethod] = useState(null);
   const [pendingInvoiceItem, setPendingInvoiceItem] = useState(null);
   const [calendarMonth, setCalendarMonth] = useState(new Date());
-  const [calendarOrders, setCalendarOrders] = useState([]);
   const [calendarLoading, setCalendarLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null);
   const [tableFilteredOrders, setTableFilteredOrders] = useState(null);
+  const [showDuplicatesOnly, setShowDuplicatesOnly] = useState(false);
+
+  // Kunci duplikat: email + wedding_date sama = kemungkinan pesanan ganda
+  const duplicateKey = (order) =>
+    `${(order.email || "").trim().toLowerCase()}|${order.wedding_date || ""}`;
+
+  // Gabung order biasa + custom-request, urutkan created_at desc
+  const combinedOrders = useMemo(() => {
+    const fromOrders = (orders || []).map((o) => ({ ...o, orderType: "order" }));
+    const fromRequests = (customRequests || []).map((r) => ({
+      ...r,
+      orderType: "custom_request",
+      service_name: r.services || "-",
+      address: r.additional_requests || "",
+      notes: r.additional_requests || r.notes,
+    }));
+    return [...fromOrders, ...fromRequests].sort(
+      (a, b) => new Date(b.created_at) - new Date(a.created_at)
+    );
+  }, [orders, customRequests]);
+
+  // Kalender: pesanan (order + custom request) untuk bulan yang dipilih
+  const calendarOrders = useMemo(() => {
+    const year = calendarMonth.getFullYear();
+    const month = calendarMonth.getMonth();
+    return combinedOrders.filter((order) => {
+      const rawDate = order.wedding_date;
+      if (!rawDate) return false;
+      const d = new Date(rawDate);
+      if (isNaN(d.getTime())) return false;
+      return d.getFullYear() === year && d.getMonth() === month;
+    });
+  }, [combinedOrders, calendarMonth]);
+
+  // Set kunci yang punya lebih dari satu pesanan (kemungkinan duplikat)
+  const duplicateKeysSet = useMemo(() => {
+    const countByKey = {};
+    combinedOrders.forEach((o) => {
+      const k = duplicateKey(o);
+      countByKey[k] = (countByKey[k] || 0) + 1;
+    });
+    return new Set(Object.keys(countByKey).filter((k) => countByKey[k] > 1));
+  }, [combinedOrders]);
+
+  // Filter untuk tampilkan hanya kemungkinan duplikat (tetap pakai combined untuk konsistensi)
+  const filteredCombined = useMemo(
+    () =>
+      showDuplicatesOnly
+        ? combinedOrders.filter((o) => duplicateKeysSet.has(duplicateKey(o)))
+        : combinedOrders,
+    [combinedOrders, showDuplicatesOnly, duplicateKeysSet]
+  );
 
   useEffect(() => {
-    // Intentionally only depend on page to avoid ref changes of fetchOrders
     fetchOrders();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ordersPagination.page]);
+  }, []);
 
   useEffect(() => {
     fetchPaymentMethods();
   }, []);
 
-  useEffect(() => {
-    fetchCalendarOrders(calendarMonth);
-  }, [calendarMonth]);
-
   const fetchPaymentMethods = async () => {
     try {
-      const response = await fetch(
-        "https://api-inventory.isavralabel.com/user-wedding/api/payment-methods"
-      );
+      const response = await fetch(`${API_BASE}/payment-methods`);
       const data = await response.json();
       setPaymentMethods(data);
       if (data.length > 0) {
@@ -61,38 +107,40 @@ const AdminOrders = () => {
 
   const fetchOrders = async () => {
     setLoading(true);
+    setCalendarLoading(true);
+    const token = localStorage.getItem("admin_token");
+    const headers = { Authorization: `Bearer ${token}` };
     try {
-      const response = await fetch(
-        `https://api-inventory.isavralabel.com/user-wedding/api/orders?page=${ordersPagination.page}&limit=${ordersPagination.limit}&status=pending`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("admin_token")}`,
-          },
-        }
-      );
-      const data = await response.json();
+      const [ordersRes, requestsRes] = await Promise.all([
+        fetch(
+          `${API_BASE}/orders?page=1&limit=500&status=pending`,
+          { headers }
+        ),
+        fetch(
+          `${API_BASE}/custom-requests?page=1&limit=500&status=pending`,
+          { headers }
+        ),
+      ]);
+      const ordersData = await ordersRes.json();
+      const requestsData = await requestsRes.json();
 
-      // Handle both old format (array) and new format (object with pagination)
-      if (Array.isArray(data)) {
-        // Old format - no pagination
-        setOrders(data);
-        setOrdersPagination((prev) => ({
-          ...prev,
-          total: data.length,
-          totalPages: 1,
-        }));
-      } else {
-        // New format - with pagination
-        setOrders(data.orders || []);
-        setOrdersPagination((prev) => ({
-          ...prev,
-          total: data.pagination?.total || 0,
-          totalPages: data.pagination?.totalPages || 1,
-        }));
-      }
+      const ordersList = Array.isArray(ordersData)
+        ? ordersData
+        : ordersData.orders || [];
+      const requestsList = requestsData.requests || [];
+
+      setOrders(ordersList);
+      setCustomRequests(requestsList);
+      const total = ordersList.length + requestsList.length;
+      setOrdersPagination((prev) => ({
+        ...prev,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / prev.limit)),
+      }));
     } catch (error) {
       console.error("Error fetching orders:", error);
       setOrders([]);
+      setCustomRequests([]);
       setOrdersPagination((prev) => ({
         ...prev,
         total: 0,
@@ -100,76 +148,38 @@ const AdminOrders = () => {
       }));
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchCalendarOrders = async (monthDate) => {
-    setCalendarLoading(true);
-    try {
-      const response = await fetch(
-        `https://api-inventory.isavralabel.com/user-wedding/api/orders?page=1&limit=5000&status=pending`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("admin_token")}`,
-          },
-        }
-      );
-      const data = await response.json();
-
-      const allOrders = Array.isArray(data) ? data : data.orders || [];
-
-      const year = monthDate.getFullYear();
-      const month = monthDate.getMonth();
-
-      const filtered = allOrders.filter((order) => {
-        const rawDate = order.wedding_date;
-        if (!rawDate) return false;
-        const d = new Date(rawDate);
-        if (isNaN(d.getTime())) return false;
-        return d.getFullYear() === year && d.getMonth() === month;
-      });
-
-      setCalendarOrders(filtered);
-      setSelectedDate(null);
-    } catch (error) {
-      console.error("Error fetching calendar orders:", error);
-      setCalendarOrders([]);
-      setSelectedDate(null);
-    } finally {
       setCalendarLoading(false);
     }
   };
 
 
-  const handleStatusUpdate = async (orderId, newStatus) => {
+  const handleStatusUpdate = async (order, newStatus) => {
+    const isCustom = order.orderType === "custom_request";
+    const url = isCustom
+      ? `${API_BASE}/custom-requests/${order.id}/status`
+      : `${API_BASE}/orders/${order.id}/status`;
     try {
-      const response = await fetch(
-        `https://api-inventory.isavralabel.com/user-wedding/api/orders/${orderId}/status`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("admin_token")}`,
-          },
-          body: JSON.stringify({ status: newStatus }),
-        }
-      );
+      const response = await fetch(url, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("admin_token")}`,
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
 
       if (response.ok) {
-        // Optimistic update: hapus order yang sudah bukan pending dari semua list lokal
-        setOrders((prev) => prev.filter((order) => order.id !== orderId));
-        setCalendarOrders((prev) =>
-          prev.filter((order) => order.id !== orderId)
-        );
+        if (isCustom) {
+          setCustomRequests((prev) => prev.filter((r) => r.id !== order.id));
+        } else {
+          setOrders((prev) => prev.filter((o) => o.id !== order.id));
+        }
         setTableFilteredOrders((prev) =>
           Array.isArray(prev)
-            ? prev.filter((order) => order.id !== orderId)
+            ? prev.filter((o) => !(o.orderType === order.orderType && o.id === order.id))
             : prev
         );
-
-        // Refetch untuk sinkron dengan server & filter status=pending
         fetchOrders();
-        fetchCalendarOrders(calendarMonth);
         toast.success("Status pesanan berhasil diperbarui!");
       } else {
         toast.error("Error memperbarui status pesanan");
@@ -181,7 +191,7 @@ const AdminOrders = () => {
   };
 
 
-  const handleDeleteOrder = async (orderId) => {
+  const handleDeleteOrder = async (order) => {
     const confirmed = await new Promise((resolve) => {
       toast(
         (t) => (
@@ -218,38 +228,36 @@ const AdminOrders = () => {
 
     if (!confirmed) return;
 
+    const isCustom = order.orderType === "custom_request";
+    const url = isCustom
+      ? `${API_BASE}/custom-requests/${order.id}`
+      : `${API_BASE}/orders/${order.id}`;
     try {
-      const response = await fetch(
-        `https://api-inventory.isavralabel.com/user-wedding/api/orders/${orderId}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("admin_token")}`,
-          },
-        }
-      );
+      const response = await fetch(url, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("admin_token")}`,
+        },
+      });
 
       if (response.ok) {
-        // Optimistic update: hapus order dari semua list lokal
-        setOrders((prev) => prev.filter((order) => order.id !== orderId));
-        setCalendarOrders((prev) =>
-          prev.filter((order) => order.id !== orderId)
-        );
+        if (isCustom) {
+          setCustomRequests((prev) => prev.filter((r) => r.id !== order.id));
+        } else {
+          setOrders((prev) => prev.filter((o) => o.id !== order.id));
+        }
         setTableFilteredOrders((prev) =>
           Array.isArray(prev)
-            ? prev.filter((order) => order.id !== orderId)
+            ? prev.filter((o) => !(o.orderType === order.orderType && o.id === order.id))
             : prev
         );
 
-        // Tutup modal detail jika order yang dihapus sedang dilihat
-        if (selectedOrder && selectedOrder.id === orderId) {
+        if (selectedOrder && selectedOrder.id === order.id && selectedOrder.orderType === order.orderType) {
           setShowDetailModal(false);
           setSelectedOrder(null);
         }
 
-        // Refetch untuk sinkron dengan server
         fetchOrders();
-        fetchCalendarOrders(calendarMonth);
         toast.success("Pesanan berhasil dihapus!");
       } else {
         toast.error("Error menghapus pesanan");
@@ -372,7 +380,15 @@ const AdminOrders = () => {
     setTableFilteredOrders(null);
   };
 
-  const tableOrders = tableFilteredOrders ?? orders;
+  const paginatedCombined = useMemo(
+    () =>
+      filteredCombined.slice(
+        (ordersPagination.page - 1) * ordersPagination.limit,
+        ordersPagination.page * ordersPagination.limit
+      ),
+    [filteredCombined, ordersPagination.page, ordersPagination.limit]
+  );
+  const tableOrders = tableFilteredOrders ?? paginatedCombined;
 
 
   const handleEditBookingAmount = (item) => {
@@ -387,20 +403,21 @@ const AdminOrders = () => {
       return;
     }
 
+    const isCustom = editingItem.orderType === "custom_request";
+    const url = isCustom
+      ? `${API_BASE}/custom-requests/${editingItem.id}/booking-amount`
+      : `${API_BASE}/orders/${editingItem.id}/booking-amount`;
     try {
-      const response = await fetch(
-        `https://api-inventory.isavralabel.com/user-wedding/api/orders/${editingItem.id}/booking-amount`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("admin_token")}`,
-          },
-          body: JSON.stringify({
-            booking_amount: parseFloat(newBookingAmount),
-          }),
-        }
-      );
+      const response = await fetch(url, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("admin_token")}`,
+        },
+        body: JSON.stringify({
+          booking_amount: parseFloat(newBookingAmount),
+        }),
+      });
 
       if (response.ok) {
         fetchOrders();
@@ -516,45 +533,60 @@ const AdminOrders = () => {
     let currentY = startY + 15;
     let itemNumber = 1;
 
-    // Main service item (base price)
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.text(itemNumber.toString(), 25, currentY);
-    doc.text(item.service_name, 40, currentY);
-    doc.text("1", 140, currentY);
-    doc.text(formatRupiah(item.base_price || 0), 170, currentY);
+    if (item.orderType === "custom_request") {
+      // Custom request: list items_details or single line service_name
+      const details = Array.isArray(item.items_details) && item.items_details.length > 0
+        ? item.items_details
+        : [{ name: item.service_name || item.services || "Layanan custom", price: item.total_amount || 0 }];
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      details.forEach((row, idx) => {
+        const name = row.name || row.item_name || "Item";
+        const price = typeof row.price === "number" ? row.price : parseFloat(row.price) || 0;
+        doc.text((idx + 1).toString(), 25, currentY);
+        doc.text(name, 40, currentY);
+        doc.text("1", 140, currentY);
+        doc.text(formatRupiah(price), 170, currentY);
+        currentY += 6;
+      });
+    } else {
+      // Order biasa: base price + selected_items
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.text(itemNumber.toString(), 25, currentY);
+      doc.text(item.service_name, 40, currentY);
+      doc.text("1", 140, currentY);
+      doc.text(formatRupiah(item.base_price || 0), 170, currentY);
 
-    // Selected items as sub-items
-    if (item.selected_items) {
-      try {
-        const selectedItems = JSON.parse(item.selected_items);
-        if (Array.isArray(selectedItems) && selectedItems.length > 0) {
-          currentY += 8;
-          selectedItems.forEach((selectedItem) => {
-            const itemName =
-              selectedItem.name ||
-              selectedItem.item_name ||
-              selectedItem.title ||
-              "Item tidak dikenal";
-            const itemPrice =
-              selectedItem.final_price ||
-              selectedItem.item_price ||
-              selectedItem.price ||
-              selectedItem.custom_price ||
-              0;
-
-            const quantity = selectedItem.quantity || 1;
-            const subtotal = (typeof itemPrice === 'number' ? itemPrice : parseFloat(itemPrice) || 0) * quantity;
-            
-            doc.setFontSize(8);
-            doc.text(`  ${itemName}`, 40, currentY);
-            doc.text(quantity.toString(), 140, currentY);
-            doc.text(formatRupiah(subtotal), 170, currentY);
-            currentY += 5;
-          });
+      if (item.selected_items) {
+        try {
+          const selectedItems = JSON.parse(item.selected_items);
+          if (Array.isArray(selectedItems) && selectedItems.length > 0) {
+            currentY += 8;
+            selectedItems.forEach((selectedItem) => {
+              const itemName =
+                selectedItem.name ||
+                selectedItem.item_name ||
+                selectedItem.title ||
+                "Item tidak dikenal";
+              const itemPrice =
+                selectedItem.final_price ||
+                selectedItem.item_price ||
+                selectedItem.price ||
+                selectedItem.custom_price ||
+                0;
+              const quantity = selectedItem.quantity || 1;
+              const subtotal = (typeof itemPrice === "number" ? itemPrice : parseFloat(itemPrice) || 0) * quantity;
+              doc.setFontSize(8);
+              doc.text(`  ${itemName}`, 40, currentY);
+              doc.text(quantity.toString(), 140, currentY);
+              doc.text(formatRupiah(subtotal), 170, currentY);
+              currentY += 5;
+            });
+          }
+        } catch (error) {
+          console.error("Error parsing selected items:", error);
         }
-      } catch (error) {
-        console.error("Error parsing selected items:", error);
       }
     }
 
@@ -813,6 +845,29 @@ const AdminOrders = () => {
                 </button>
               </div>
             )}
+            {!tableFilteredOrders && (
+              <div className="flex items-center justify-between bg-gray-50 border border-gray-100 px-4 py-2 rounded-lg mb-2">
+                <span className="text-sm text-gray-700">
+                  {duplicateKeysSet.size > 0 && (
+                    <span className="text-red-600 font-medium">
+                      {duplicateKeysSet.size} grup dengan email & tanggal sama
+                    </span>
+                  )}
+                </span>
+                <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showDuplicatesOnly}
+                    onChange={(e) => {
+                      setShowDuplicatesOnly(e.target.checked);
+                      setOrdersPagination((p) => ({ ...p, page: 1 }));
+                    }}
+                    className="rounded border-gray-300"
+                  />
+                  Hanya tampilkan kemungkinan duplikat
+                </label>
+              </div>
+            )}
             {/* Orders Table */}
             <div className="bg-white rounded-xl shadow-lg overflow-hidden">
               <div className="overflow-x-auto">
@@ -857,7 +912,7 @@ const AdminOrders = () => {
                       </tr>
                     ) : tableOrders.length > 0 ? (
                       tableOrders.map((order) => (
-                        <tr key={order.id} className="hover:bg-gray-50 bg-green-50">
+                        <tr key={`${order.orderType}-${order.id}`} className="hover:bg-gray-50 bg-green-50">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="rounded-lg px-3 py-2 inline-flex flex-col">
                               <span className="text-xs font-semibold text-green-800">
@@ -866,6 +921,14 @@ const AdminOrders = () => {
                               <span className="text-xs text-green-700 mt-1">
                                 {formatDate(order.created_at)}
                               </span>
+                              <span className={`text-[10px] mt-0.5 px-1.5 py-0.5 rounded ${order.orderType === "custom_request" ? "bg-amber-100 text-amber-800" : "bg-blue-100 text-blue-800"}`}>
+                                {order.orderType === "custom_request" ? "Custom" : "Pesan Biasa"}
+                              </span>
+                              {duplicateKeysSet.has(duplicateKey(order)) && (
+                                <span className="text-[10px] mt-0.5 px-1.5 py-0.5 rounded bg-red-100 text-red-800" title="Email & tanggal pernikahan sama dengan pesanan lain">
+                                  Duplikat?
+                                </span>
+                              )}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -891,19 +954,19 @@ const AdminOrders = () => {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm font-bold text-primary-600">
-                              {formatRupiah(order.total_amount)}
+                              {formatRupiah(order.total_amount ?? 0)}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm font-bold text-primary-600">
-                              {formatRupiah(order.booking_amount)}
+                              {formatRupiah(order.booking_amount ?? 0)}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <select
                               value={order.status}
                               onChange={(e) =>
-                                handleStatusUpdate(order.id, e.target.value)
+                                handleStatusUpdate(order, e.target.value)
                               }
                               className={`px-3 py-1 rounded-full text-sm font-medium border-0 ${getStatusColor(
                                 order.status
@@ -911,7 +974,6 @@ const AdminOrders = () => {
                             >
                               <option value="pending">Menunggu</option>
                               <option value="confirmed">Dikonfirmasi</option>
-                              {/* <option value="completed">Selesai</option> */}
                               <option value="cancelled">Dibatalkan</option>
                             </select>
                           </td>
@@ -943,7 +1005,7 @@ const AdminOrders = () => {
                                 <Download size={16} />
                               </button>
                               <button
-                                onClick={() => handleDeleteOrder(order.id)}
+                                onClick={() => handleDeleteOrder(order)}
                                 className="text-red-600 hover:text-red-700 flex items-center gap-1"
                                 title="Hapus"
                               >
@@ -969,7 +1031,7 @@ const AdminOrders = () => {
             </div>
 
             {/* Pagination */}
-            {!tableFilteredOrders && ordersPagination.totalPages > 1 && (
+            {!tableFilteredOrders && filteredCombined.length > ordersPagination.limit && (
               <div className="flex items-center justify-between bg-white px-6 py-3 border-t border-gray-200">
                 <div className="flex items-center text-sm text-gray-700">
                   <span>
@@ -977,15 +1039,15 @@ const AdminOrders = () => {
                     {(ordersPagination.page - 1) * ordersPagination.limit + 1} -{" "}
                     {Math.min(
                       ordersPagination.page * ordersPagination.limit,
-                      ordersPagination.total
+                      filteredCombined.length
                     )}{" "}
-                    dari {ordersPagination.total} pesanan
+                    dari {filteredCombined.length} pesanan
                   </span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <button
                     onClick={() =>
-                      handleOrdersPageChange(ordersPagination.page - 1)
+                      handleOrdersPageChange(Math.max(1, ordersPagination.page - 1))
                     }
                     disabled={ordersPagination.page === 1}
                     className="px-3 py-1 rounded-md text-sm font-medium text-gray-500 bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -995,7 +1057,7 @@ const AdminOrders = () => {
 
                   {getPaginationPages(
                     ordersPagination.page,
-                    ordersPagination.totalPages
+                    Math.max(1, Math.ceil(filteredCombined.length / ordersPagination.limit))
                   ).map((page, index) => {
                     if (page === "ellipsis") {
                       return (
@@ -1024,10 +1086,15 @@ const AdminOrders = () => {
 
                   <button
                     onClick={() =>
-                      handleOrdersPageChange(ordersPagination.page + 1)
+                      handleOrdersPageChange(
+                        Math.min(
+                          Math.ceil(filteredCombined.length / ordersPagination.limit),
+                          ordersPagination.page + 1
+                        )
+                      )
                     }
                     disabled={
-                      ordersPagination.page === ordersPagination.totalPages
+                      ordersPagination.page >= Math.ceil(filteredCombined.length / ordersPagination.limit)
                     }
                     className="px-3 py-1 rounded-md text-sm font-medium text-gray-500 bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
@@ -1046,6 +1113,9 @@ const AdminOrders = () => {
               <div className="flex justify-between items-center p-6 border-b border-gray-200">
                 <h2 className="text-2xl font-bold text-gray-800">
                   Detail Pesanan #{selectedOrder.id}
+                  {selectedOrder.orderType === "custom_request" && (
+                    <span className="ml-2 text-sm font-normal text-amber-600 bg-amber-100 px-2 py-0.5 rounded">Custom Request</span>
+                  )}
                 </h2>
                 <button
                   onClick={() => setShowDetailModal(false)}
@@ -1080,9 +1150,9 @@ const AdminOrders = () => {
                       </div>
                       <div>
                         <span className="font-medium text-gray-700">
-                          Alamat:
+                          {selectedOrder.orderType === "custom_request" ? "Permintaan tambahan:" : "Alamat:"}
                         </span>
-                        <p className="text-gray-900">{selectedOrder.address}</p>
+                        <p className="text-gray-900">{selectedOrder.address || "-"}</p>
                       </div>
                     </div>
                   </div>
@@ -1121,20 +1191,20 @@ const AdminOrders = () => {
                           Total:
                         </span>
                         <p className="text-2xl font-bold text-primary-600">
-                          {formatRupiah(selectedOrder.total_amount)}
+                          {formatRupiah(selectedOrder.total_amount ?? 0)}
                         </p>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {selectedOrder.notes && (
+                {(selectedOrder.notes || selectedOrder.additional_requests) && (
                   <div className="mb-6">
                     <h3 className="text-lg font-semibold text-gray-800 mb-2">
                       Catatan
                     </h3>
                     <p className="text-gray-700 bg-gray-50 p-4 rounded-lg">
-                      {selectedOrder.notes}
+                      {selectedOrder.notes || selectedOrder.additional_requests}
                     </p>
                   </div>
                 )}
@@ -1144,68 +1214,83 @@ const AdminOrders = () => {
                     Item yang Dipilih
                   </h3>
                   <div className="bg-gray-50 rounded-lg p-4">
-                    {(() => {
-                      try {
-                        const items = JSON.parse(
-                          selectedOrder.selected_items || "[]"
-                        );
-                        console.log("Selected items structure:", items); // Debug log
-
-                        if (!Array.isArray(items) || items.length === 0) {
-                          return (
-                            <div className="text-gray-500 text-center py-4">
-                              Tidak ada item yang dipilih
-                            </div>
-                          );
-                        }
-
-                        return items.map((item, index) => {
-                          // Handle different item structures
-                          const itemName =
-                            item.name ||
-                            item.item_name ||
-                            item.title ||
-                            "Item tidak dikenal";
-                          // Check for all possible price fields in order of preference
-                          const itemPrice =
-                            item.final_price ||
-                            item.item_price ||
-                            item.price ||
-                            item.custom_price ||
-                            0;
-                          const quantity = item.quantity || 1;
-                          const subtotal = (typeof itemPrice === 'number' ? itemPrice : parseFloat(itemPrice) || 0) * quantity;
-
+                    {selectedOrder.orderType === "custom_request" ? (
+                      Array.isArray(selectedOrder.items_details) && selectedOrder.items_details.length > 0 ? (
+                        selectedOrder.items_details.map((item, index) => {
+                          const itemName = item.name || item.item_name || "Item";
+                          const itemPrice = typeof item.price === "number" ? item.price : parseFloat(item.price) || 0;
                           return (
                             <div
                               key={index}
                               className="flex justify-between items-center py-2 border-b border-gray-200 last:border-b-0"
                             >
-                              <span className="text-gray-900">
-                                {itemName} {quantity > 1 && <span className="text-gray-500">(x{quantity})</span>}
+                              <span className="text-gray-900">{itemName}</span>
+                              <span className="font-medium text-primary-600">
+                                {formatRupiah(itemPrice)}
                               </span>
-                              <div className="text-right">
-                                {quantity > 1 && (
-                                  <div className="text-xs text-gray-500">
-                                    {formatRupiah(itemPrice)} × {quantity}
-                                  </div>
-                                )}
-                                <span className="font-medium text-primary-600">
-                                  {formatRupiah(subtotal)}
-                                </span>
-                              </div>
                             </div>
                           );
-                        });
-                      } catch (error) {
-                        console.error("Error parsing selected items:", error);
-                        return (
-                          <div className="text-gray-500 text-center py-4">
-                            Error memuat item yang dipilih
-                          </div>
-                        );
-                      }
-                    })()}
+                        })
+                      ) : (
+                        <p className="text-gray-600 whitespace-pre-wrap">{selectedOrder.services || "-"}</p>
+                      )
+                    ) : (
+                      (() => {
+                        try {
+                          const items = JSON.parse(
+                            selectedOrder.selected_items || "[]"
+                          );
+                          if (!Array.isArray(items) || items.length === 0) {
+                            return (
+                              <div className="text-gray-500 text-center py-4">
+                                Tidak ada item yang dipilih
+                              </div>
+                            );
+                          }
+                          return items.map((item, index) => {
+                            const itemName =
+                              item.name ||
+                              item.item_name ||
+                              item.title ||
+                              "Item tidak dikenal";
+                            const itemPrice =
+                              item.final_price ||
+                              item.item_price ||
+                              item.price ||
+                              item.custom_price ||
+                              0;
+                            const quantity = item.quantity || 1;
+                            const subtotal = (typeof itemPrice === "number" ? itemPrice : parseFloat(itemPrice) || 0) * quantity;
+                            return (
+                              <div
+                                key={index}
+                                className="flex justify-between items-center py-2 border-b border-gray-200 last:border-b-0"
+                              >
+                                <span className="text-gray-900">
+                                  {itemName} {quantity > 1 && <span className="text-gray-500">(x{quantity})</span>}
+                                </span>
+                                <div className="text-right">
+                                  {quantity > 1 && (
+                                    <div className="text-xs text-gray-500">
+                                      {formatRupiah(itemPrice)} × {quantity}
+                                    </div>
+                                  )}
+                                  <span className="font-medium text-primary-600">
+                                    {formatRupiah(subtotal)}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          });
+                        } catch {
+                          return (
+                            <div className="text-gray-500 text-center py-4">
+                              Error memuat item yang dipilih
+                            </div>
+                          );
+                        }
+                      })()
+                    )}
                   </div>
                 </div>
 
@@ -1255,7 +1340,7 @@ const AdminOrders = () => {
                       });
 
                       if (confirmed) {
-                        await handleDeleteOrder(selectedOrder.id);
+                        await handleDeleteOrder(selectedOrder);
                         setShowDetailModal(false);
                       }
                     }}

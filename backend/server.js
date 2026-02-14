@@ -920,15 +920,38 @@ app.get('/api/custom-requests', authenticateToken, async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const offset = (page - 1) * limit;
-    
+    const { status } = req.query;
+
+    const whereClauses = [];
+    const countParams = [];
+    const listParams = [];
+
+    if (status) {
+      const statuses = status.split(',').map(s => s.trim()).filter(Boolean);
+      if (statuses.length === 1) {
+        whereClauses.push('status = ?');
+        countParams.push(statuses[0]);
+        listParams.push(statuses[0]);
+      } else if (statuses.length > 1) {
+        whereClauses.push(`status IN (${statuses.map(() => '?').join(',')})`);
+        countParams.push(...statuses);
+        listParams.push(...statuses);
+      }
+    }
+
+    const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+
     // Get total count
-    const [countResult] = await db.execute('SELECT COUNT(*) as total FROM custom_requests');
+    const [countResult] = await db.execute(
+      `SELECT COUNT(*) as total FROM custom_requests ${whereSql}`,
+      countParams
+    );
     const total = countResult[0].total;
-    
+
     // Get paginated custom requests
     const [requests] = await db.execute(
-      'SELECT * FROM custom_requests ORDER BY created_at DESC LIMIT ? OFFSET ?',
-      [limit, offset]
+      `SELECT * FROM custom_requests ${whereSql} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+      [...listParams, limit, offset]
     );
     
     // Calculate total_amount and items details for each request based on services
