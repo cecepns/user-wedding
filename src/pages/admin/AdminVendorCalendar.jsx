@@ -162,7 +162,31 @@ const AdminVendorCalendar = () => {
     }, {});
   }, [monthlyEvents]);
 
-  const selectedDateEvents = selectedDate ? eventsByDate[selectedDate] || [] : [];
+  const selectedDateEvents = useMemo(
+    () => (selectedDate ? eventsByDate[selectedDate] || [] : []),
+    [selectedDate, eventsByDate]
+  );
+  const dedupedSelectedDateEvents = useMemo(() => {
+    if (!selectedDateEvents.length) return [];
+
+    const seen = new Set();
+    const result = [];
+
+    for (const event of selectedDateEvents) {
+      const dedupeKey = [
+        normalizeText(event.vendor_key || event.vendor_name),
+        normalizeText(event.client_name),
+        normalizeText(event.client_phone),
+        normalizeText(event.client_email),
+      ].join("|");
+
+      if (seen.has(dedupeKey)) continue;
+      seen.add(dedupeKey);
+      result.push(event);
+    }
+
+    return result;
+  }, [selectedDateEvents]);
 
   const getCalendarDays = () => {
     const year = calendarMonth.getFullYear();
@@ -325,7 +349,7 @@ const AdminVendorCalendar = () => {
               </button>
             </div>
 
-            {selectedDateEvents.length === 0 ? (
+            {dedupedSelectedDateEvents.length === 0 ? (
               <p className="text-sm text-gray-500">Tidak ada jadwal vendor di tanggal ini.</p>
             ) : (
               <div className="overflow-x-auto">
@@ -340,7 +364,7 @@ const AdminVendorCalendar = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {selectedDateEvents.map((event, idx) => (
+                    {dedupedSelectedDateEvents.map((event, idx) => (
                       <tr
                         key={`${event.event_type}-${event.source_id}-${event.vendor_key}-${idx}`}
                         className="border-t border-gray-100 cursor-pointer hover:bg-blue-50"
