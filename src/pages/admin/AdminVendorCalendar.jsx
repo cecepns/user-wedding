@@ -5,15 +5,17 @@ import AdminLayout from "../../components/AdminLayout";
 
 const API_BASE = "https://api-inventory.isavralabel.com/user-wedding/api";
 
-const VENDOR_COLORS = {
-  orgen_tunggal: "bg-green-600 text-white",
-  fotografer: "bg-sky-600 text-white",
-  video: "bg-indigo-600 text-white",
-  mc: "bg-amber-700 text-white",
-  adat: "bg-purple-700 text-white",
-  crew_wo: "bg-orange-600 text-white",
-  akustik: "bg-emerald-700 text-white",
-};
+const VENDOR_COLOR_POOL = [
+  "bg-green-600 text-white",
+  "bg-sky-600 text-white",
+  "bg-indigo-600 text-white",
+  "bg-amber-700 text-white",
+  "bg-purple-700 text-white",
+  "bg-orange-600 text-white",
+  "bg-emerald-700 text-white",
+  "bg-rose-600 text-white",
+  "bg-cyan-700 text-white",
+];
 
 const statusLabel = {
   pending: "Pending",
@@ -21,24 +23,94 @@ const statusLabel = {
   completed: "Completed",
 };
 
+const normalizeCategory = (value) =>
+  (value || "").toString().trim().toLowerCase();
+
+const normalizeText = (value) =>
+  (value || "").toString().trim().toLowerCase();
+
 const AdminVendorCalendar = () => {
   const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [events, setEvents] = useState([]);
+  const [toppingVendorsMap, setToppingVendorsMap] = useState({});
   const [loading, setLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null);
+
+  const getVendorColorClass = (vendorKey) => {
+    const key = (vendorKey || "").toString();
+    if (!key) return "bg-gray-700 text-white";
+    let hash = 0;
+    for (let i = 0; i < key.length; i += 1) {
+      hash = (hash + key.charCodeAt(i) * (i + 1)) % 100000;
+    }
+    return VENDOR_COLOR_POOL[hash % VENDOR_COLOR_POOL.length];
+  };
 
   const fetchVendorCalendar = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE}/vendor-calendar`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("admin_token")}`,
-        },
-      });
-      const data = await response.json();
-      setEvents(Array.isArray(data?.events) ? data.events : []);
+      const [itemsRes, calendarRes] = await Promise.all([
+        fetch(`${API_BASE}/items`),
+        fetch(`${API_BASE}/vendor-calendar`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("admin_token")}`,
+          },
+        }),
+      ]);
+
+      const itemsData = await itemsRes.json();
+      const calendarData = await calendarRes.json();
+
+      const toppingItems = Array.isArray(itemsData)
+        ? itemsData.filter((item) => normalizeCategory(item?.category) === "topping")
+        : [];
+
+      const toppingMap = toppingItems.reduce((acc, item) => {
+        const id = Number(item?.id);
+        if (!Number.isFinite(id)) return acc;
+        const key = `item_${id}`;
+        acc[key] = {
+          key,
+          id,
+          name: item?.name || `Item ${id}`,
+          nameNormalized: normalizeText(item?.name),
+        };
+        return acc;
+      }, {});
+
+      const filteredEvents = (Array.isArray(calendarData?.events) ? calendarData.events : [])
+        .filter((event) => {
+          const key = (event?.vendor_key || "").toString();
+          if (key && toppingMap[key]) return true;
+
+          const eventVendorName = normalizeText(event?.vendor_name);
+          if (!eventVendorName) return false;
+          return Object.values(toppingMap).some(
+            (vendor) => vendor.nameNormalized === eventVendorName
+          );
+        })
+        .map((event) => {
+          const key = (event?.vendor_key || "").toString();
+          if (key && toppingMap[key]) return event;
+
+          const eventVendorName = normalizeText(event?.vendor_name);
+          const matchedByName = Object.values(toppingMap).find(
+            (vendor) => vendor.nameNormalized === eventVendorName
+          );
+          if (!matchedByName) return event;
+
+          return {
+            ...event,
+            vendor_key: matchedByName.key,
+            vendor_name: matchedByName.name,
+          };
+        });
+
+      setToppingVendorsMap(toppingMap);
+      setEvents(filteredEvents);
     } catch (error) {
       console.error("Error fetching vendor calendar:", error);
+      setToppingVendorsMap({});
       setEvents([]);
     } finally {
       setLoading(false);
@@ -109,6 +181,9 @@ const AdminVendorCalendar = () => {
           <h1 className="text-3xl font-bold text-gray-800 mb-2">Kalender Vendor</h1>
           <p className="text-gray-600">
             Jadwal topping vendor otomatis dari pesanan client.
+          </p>
+          <p className="text-xs text-gray-500 mt-1">
+            Filter aktif: hanya item kategori TOPPING ({Object.keys(toppingVendorsMap).length} vendor aktif).
           </p>
         </div>
 
@@ -185,7 +260,7 @@ const AdminVendorCalendar = () => {
                       <div className="space-y-1">
                         {vendorsForDay.slice(0, 3).map((vendorKey) => {
                           const vendorEvent = eventsForDay.find((e) => e.vendor_key === vendorKey);
-                          const colorClass = VENDOR_COLORS[vendorKey] || "bg-gray-700 text-white";
+                          const colorClass = getVendorColorClass(vendorKey);
                           return (
                             <span
                               key={vendorKey}
@@ -247,7 +322,7 @@ const AdminVendorCalendar = () => {
                     {selectedDateEvents.map((event, idx) => (
                       <tr key={`${event.event_type}-${event.source_id}-${event.vendor_key}-${idx}`} className="border-t border-gray-100">
                         <td className="px-4 py-2">
-                          <span className={`inline-flex rounded px-2 py-1 text-xs font-semibold ${VENDOR_COLORS[event.vendor_key] || "bg-gray-700 text-white"}`}>
+                          <span className={`inline-flex rounded px-2 py-1 text-xs font-semibold ${getVendorColorClass(event.vendor_key)}`}>
                             {event.vendor_name}
                           </span>
                         </td>

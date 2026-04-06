@@ -751,7 +751,14 @@ app.get('/api/vendor-calendar', authenticateToken, async (req, res) => {
         const selectedItemId = Number(selectedItem?.id ?? selectedItem?.item_id);
         const selectedItemName = selectedItem?.name || selectedItem?.item_name || selectedItem?.title || '';
 
-        const matchedTopping = toppingById.get(selectedItemId) || findToppingByName(selectedItemName, toppingItems);
+        let matchedTopping = null;
+        if (Number.isFinite(selectedItemId) && selectedItemId > 0) {
+          // Strict by ID: hanya item dengan category TOPPING yang masuk vendor calendar.
+          matchedTopping = toppingById.get(selectedItemId) || null;
+        } else {
+          // Fallback untuk data legacy tanpa item_id.
+          matchedTopping = findToppingByName(selectedItemName, toppingItems);
+        }
         if (!matchedTopping) continue;
 
         events.push({
@@ -1050,12 +1057,6 @@ function findToppingByName(value, toppings) {
 
   const exact = toppings.find((item) => normalizeVendorText(item.name) === normalized);
   if (exact) return exact;
-
-  const includes = toppings.find((item) => {
-    const itemName = normalizeVendorText(item.name);
-    return itemName.includes(normalized) || normalized.includes(itemName);
-  });
-  if (includes) return includes;
 
   return null;
 }
