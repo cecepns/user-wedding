@@ -33,6 +33,14 @@ const normalizeCategory = (value) =>
 const normalizeText = (value) =>
   (value || "").toString().trim().toLowerCase();
 
+const normalizeIdentityText = (value) =>
+  (value || "")
+    .toString()
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
 const AdminVendorCalendar = () => {
   const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [events, setEvents] = useState([]);
@@ -173,11 +181,13 @@ const AdminVendorCalendar = () => {
     const result = [];
 
     for (const event of selectedDateEvents) {
+      const normalizedVendor = normalizeIdentityText(
+        event.vendor_name || event.vendor_key
+      );
+      const normalizedClientName = normalizeIdentityText(event.client_name);
       const dedupeKey = [
-        normalizeText(event.vendor_key || event.vendor_name),
-        normalizeText(event.client_name),
-        normalizeText(event.client_phone),
-        normalizeText(event.client_email),
+        normalizedVendor,
+        normalizedClientName,
       ].join("|");
 
       if (seen.has(dedupeKey)) continue;
