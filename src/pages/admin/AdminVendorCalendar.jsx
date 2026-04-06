@@ -17,6 +17,10 @@ const VENDOR_COLOR_POOL = [
   "bg-cyan-700 text-white",
 ];
 
+const SPECIAL_VENDOR_COLORS = {
+  "video cinematic": "bg-red-700 text-white",
+};
+
 const statusLabel = {
   pending: "Pending",
   confirmed: "Confirmed",
@@ -37,7 +41,12 @@ const AdminVendorCalendar = () => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedEventDetail, setSelectedEventDetail] = useState(null);
 
-  const getVendorColorClass = (vendorKey) => {
+  const getVendorColorClass = (vendorKey, vendorName = "") => {
+    const vendorNameNormalized = normalizeText(vendorName);
+    if (vendorNameNormalized && SPECIAL_VENDOR_COLORS[vendorNameNormalized]) {
+      return SPECIAL_VENDOR_COLORS[vendorNameNormalized];
+    }
+
     const key = (vendorKey || "").toString();
     if (!key) return "bg-gray-700 text-white";
     let hash = 0;
@@ -269,7 +278,10 @@ const AdminVendorCalendar = () => {
                       <div className="space-y-1">
                         {vendorsForDay.slice(0, 3).map((vendorKey) => {
                           const vendorEvent = eventsForDay.find((e) => e.vendor_key === vendorKey);
-                          const colorClass = getVendorColorClass(vendorKey);
+                          const colorClass = getVendorColorClass(
+                            vendorKey,
+                            vendorEvent?.vendor_name || ""
+                          );
                           return (
                             <span
                               key={vendorKey}
@@ -336,7 +348,7 @@ const AdminVendorCalendar = () => {
                         title="Klik untuk lihat deskripsi vendor"
                       >
                         <td className="px-4 py-2">
-                          <span className={`inline-flex rounded px-2 py-1 text-xs font-semibold ${getVendorColorClass(event.vendor_key)}`}>
+                          <span className={`inline-flex rounded px-2 py-1 text-xs font-semibold ${getVendorColorClass(event.vendor_key, event.vendor_name)}`}>
                             {event.vendor_name}
                           </span>
                         </td>
@@ -373,7 +385,7 @@ const AdminVendorCalendar = () => {
               </div>
               <div className="p-5 space-y-4">
                 <div>
-                  <span className={`inline-flex rounded px-2 py-1 text-xs font-semibold ${getVendorColorClass(selectedEventDetail.vendor_key)}`}>
+                  <span className={`inline-flex rounded px-2 py-1 text-xs font-semibold ${getVendorColorClass(selectedEventDetail.vendor_key, selectedEventDetail.vendor_name)}`}>
                     {selectedEventDetail.vendor_name}
                   </span>
                 </div>
