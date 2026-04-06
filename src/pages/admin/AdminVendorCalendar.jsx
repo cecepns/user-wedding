@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import AdminLayout from "../../components/AdminLayout";
 
 const API_BASE = "https://api-inventory.isavralabel.com/user-wedding/api";
@@ -35,6 +35,7 @@ const AdminVendorCalendar = () => {
   const [toppingVendorsMap, setToppingVendorsMap] = useState({});
   const [loading, setLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedEventDetail, setSelectedEventDetail] = useState(null);
 
   const getVendorColorClass = (vendorKey) => {
     const key = (vendorKey || "").toString();
@@ -73,6 +74,7 @@ const AdminVendorCalendar = () => {
           key,
           id,
           name: item?.name || `Item ${id}`,
+          description: item?.description || "",
           nameNormalized: normalizeText(item?.name),
         };
         return acc;
@@ -91,7 +93,13 @@ const AdminVendorCalendar = () => {
         })
         .map((event) => {
           const key = (event?.vendor_key || "").toString();
-          if (key && toppingMap[key]) return event;
+          if (key && toppingMap[key]) {
+            return {
+              ...event,
+              vendor_name: toppingMap[key].name,
+              vendor_description: toppingMap[key].description || event?.vendor_description || "",
+            };
+          }
 
           const eventVendorName = normalizeText(event?.vendor_name);
           const matchedByName = Object.values(toppingMap).find(
@@ -103,6 +111,7 @@ const AdminVendorCalendar = () => {
             ...event,
             vendor_key: matchedByName.key,
             vendor_name: matchedByName.name,
+            vendor_description: matchedByName.description || event?.vendor_description || "",
           };
         });
 
@@ -320,7 +329,12 @@ const AdminVendorCalendar = () => {
                   </thead>
                   <tbody>
                     {selectedDateEvents.map((event, idx) => (
-                      <tr key={`${event.event_type}-${event.source_id}-${event.vendor_key}-${idx}`} className="border-t border-gray-100">
+                      <tr
+                        key={`${event.event_type}-${event.source_id}-${event.vendor_key}-${idx}`}
+                        className="border-t border-gray-100 cursor-pointer hover:bg-blue-50"
+                        onClick={() => setSelectedEventDetail(event)}
+                        title="Klik untuk lihat deskripsi vendor"
+                      >
                         <td className="px-4 py-2">
                           <span className={`inline-flex rounded px-2 py-1 text-xs font-semibold ${getVendorColorClass(event.vendor_key)}`}>
                             {event.vendor_name}
@@ -341,6 +355,58 @@ const AdminVendorCalendar = () => {
                 </table>
               </div>
             )}
+          </div>
+        )}
+
+        {selectedEventDetail && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between p-5 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-800">Detail Vendor</h3>
+                <button
+                  type="button"
+                  onClick={() => setSelectedEventDetail(null)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="p-5 space-y-4">
+                <div>
+                  <span className={`inline-flex rounded px-2 py-1 text-xs font-semibold ${getVendorColorClass(selectedEventDetail.vendor_key)}`}>
+                    {selectedEventDetail.vendor_name}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p className="text-gray-500">Client</p>
+                    <p className="font-medium text-gray-900">{selectedEventDetail.client_name || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Kontak</p>
+                    <p className="font-medium text-gray-900">{selectedEventDetail.client_phone || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Sumber</p>
+                    <p className="font-medium text-gray-900">
+                      {selectedEventDetail.event_type === "custom_request" ? "Custom Request" : "Order"} #{selectedEventDetail.source_id}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Status</p>
+                    <p className="font-medium text-gray-900">{statusLabel[selectedEventDetail.status] || selectedEventDetail.status}</p>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-gray-500 text-sm mb-1">Deskripsi Vendor</p>
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm text-gray-800 whitespace-pre-wrap">
+                    {selectedEventDetail.vendor_description?.trim()
+                      ? selectedEventDetail.vendor_description
+                      : "Deskripsi vendor belum tersedia."}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </AdminLayout>

@@ -748,7 +748,12 @@ app.get('/api/vendor-calendar', authenticateToken, async (req, res) => {
     for (const order of orders) {
       const selectedItems = parseSelectedItemsArray(order.selected_items);
       for (const selectedItem of selectedItems) {
-        const selectedItemId = Number(selectedItem?.id ?? selectedItem?.item_id);
+        // IMPORTANT:
+        // selected_items bisa punya:
+        // - id      => id dari tabel relasi service_items
+        // - item_id => id dari tabel master items
+        // Vendor calendar harus pakai item_id terlebih dulu.
+        const selectedItemId = Number(selectedItem?.item_id ?? selectedItem?.id);
         const selectedItemName = selectedItem?.name || selectedItem?.item_name || selectedItem?.title || '';
 
         let matchedTopping = null;
