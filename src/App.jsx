@@ -28,6 +28,7 @@ import AdminContactMessages from './pages/admin/AdminContactMessages';
 import AdminContent from './pages/admin/AdminContent';
 import AdminServiceCards from './pages/admin/AdminServiceCards';
 import AdminServiceFeatures from './pages/admin/AdminServiceFeatures';
+import AdminVendorCalendar from './pages/admin/AdminVendorCalendar';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -102,6 +103,11 @@ function App() {
             <Route path="/admin/service-features" element={
               <ProtectedRoute>
                 <AdminServiceFeatures />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/vendor-calendar" element={
+              <ProtectedRoute>
+                <AdminVendorCalendar />
               </ProtectedRoute>
             } />
 

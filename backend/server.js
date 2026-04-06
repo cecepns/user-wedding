@@ -712,6 +712,113 @@ app.get('/api/orders', authenticateToken, async (req, res) => {
   }
 });
 
+app.get('/api/vendor-calendar', authenticateToken, async (req, res) => {
+  try {
+    const [toppingItems] = await db.execute(
+      `SELECT id, name, category
+       FROM items
+       WHERE is_active = true
+         AND LOWER(TRIM(COALESCE(category, ''))) = 'topping'`
+    );
+
+    const toppingById = new Map(
+      toppingItems
+        .map((item) => [Number(item.id), item])
+        .filter(([id]) => Number.isFinite(id))
+    );
+
+    const [orders] = await db.execute(
+      `SELECT id, name, phone, email, wedding_date, status, selected_items
+       FROM orders
+       WHERE wedding_date IS NOT NULL
+         AND status IN ('pending', 'confirmed', 'completed')
+       ORDER BY wedding_date ASC`
+    );
+
+    const [customRequests] = await db.execute(
+      `SELECT id, name, phone, email, wedding_date, status, services
+       FROM custom_requests
+       WHERE wedding_date IS NOT NULL
+         AND status IN ('pending', 'confirmed', 'completed')
+       ORDER BY wedding_date ASC`
+    );
+
+    const events = [];
+
+    for (const order of orders) {
+      const selectedItems = parseSelectedItemsArray(order.selected_items);
+      for (const selectedItem of selectedItems) {
+        const selectedItemId = Number(selectedItem?.id ?? selectedItem?.item_id);
+        const selectedItemName = selectedItem?.name || selectedItem?.item_name || selectedItem?.title || '';
+
+        const matchedTopping = toppingById.get(selectedItemId) || findToppingByName(selectedItemName, toppingItems);
+        if (!matchedTopping) continue;
+
+        events.push({
+          event_type: 'order',
+          source_id: order.id,
+          client_name: order.name,
+          client_phone: order.phone,
+          client_email: order.email,
+          wedding_date: order.wedding_date,
+          status: order.status,
+          vendor_key: `item_${matchedTopping.id}`,
+          vendor_name: matchedTopping.name,
+          source_item_name: selectedItemName || matchedTopping.name
+        });
+      }
+    }
+
+    for (const request of customRequests) {
+      const servicesText = request.services || '';
+      const chunks = servicesText
+        .split(',')
+        .map((chunk) => chunk.trim())
+        .filter(Boolean);
+
+      for (const chunk of chunks) {
+        const matchedTopping = findToppingByName(chunk, toppingItems);
+        if (!matchedTopping) continue;
+
+        events.push({
+          event_type: 'custom_request',
+          source_id: request.id,
+          client_name: request.name,
+          client_phone: request.phone,
+          client_email: request.email,
+          wedding_date: request.wedding_date,
+          status: request.status,
+          vendor_key: `item_${matchedTopping.id}`,
+          vendor_name: matchedTopping.name,
+          source_item_name: chunk
+        });
+      }
+    }
+
+    const uniqueEvents = [];
+    const seenKeys = new Set();
+    for (const event of events) {
+      const key = [
+        event.event_type,
+        event.source_id,
+        event.vendor_key,
+        event.wedding_date
+      ].join('|');
+      if (seenKeys.has(key)) continue;
+      seenKeys.add(key);
+      uniqueEvents.push(event);
+    }
+
+    res.json({
+      vendors: toppingItems.map((item) => ({ key: `item_${item.id}`, label: item.name })),
+      events: uniqueEvents
+    });
+  } catch (error) {
+    console.error('Vendor calendar error:', error);
+    res.status(500).json({ message: 'Database error' });
+  }
+});
+
 app.post('/api/orders', async (req, res) => {
   const { name, email, phone, address, wedding_date, notes, service_id, service_name, selected_items, total_amount, booking_amount } = req.body;
   
@@ -913,6 +1020,44 @@ async function getItemsDetailsFromServices(servicesString) {
 async function calculateTotalAmountFromServices(servicesString) {
   const { totalAmount } = await getItemsDetailsFromServices(servicesString);
   return totalAmount;
+}
+
+function normalizeVendorText(value) {
+  if (!value || typeof value !== 'string') return '';
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function parseSelectedItemsArray(rawSelectedItems) {
+  if (!rawSelectedItems) return [];
+  if (Array.isArray(rawSelectedItems)) return rawSelectedItems;
+  if (typeof rawSelectedItems !== 'string') return [];
+
+  try {
+    const parsed = JSON.parse(rawSelectedItems);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function findToppingByName(value, toppings) {
+  const normalized = normalizeVendorText(value);
+  if (!normalized) return null;
+
+  const exact = toppings.find((item) => normalizeVendorText(item.name) === normalized);
+  if (exact) return exact;
+
+  const includes = toppings.find((item) => {
+    const itemName = normalizeVendorText(item.name);
+    return itemName.includes(normalized) || normalized.includes(itemName);
+  });
+  if (includes) return includes;
+
+  return null;
 }
 
 app.get('/api/custom-requests', authenticateToken, async (req, res) => {
