@@ -73,6 +73,8 @@ const AdminSuratJalan = () => {
     dekorasi_image: "",
     warna_kain: "",
     ukuran_tenda: "",
+    piring: "",
+    nama_pasangan: "",
     vendor_name: "User Wedding Organizer",
     notes: "",
   });
@@ -311,6 +313,8 @@ const AdminSuratJalan = () => {
         dekorasi_image: item.dekorasi_image || "",
         warna_kain: item.warna_kain || "",
         ukuran_tenda: item.ukuran_tenda || "",
+        piring: item.piring || "",
+        nama_pasangan: item.nama_pasangan || "",
         vendor_name: item.vendor_name || "User Wedding Organizer",
         notes: item.notes || "",
       });
@@ -329,6 +333,8 @@ const AdminSuratJalan = () => {
         dekorasi_image: "",
         warna_kain: "",
         ukuran_tenda: "",
+        piring: "",
+        nama_pasangan: "",
         vendor_name: "User Wedding Organizer",
         notes: "",
       });
@@ -762,6 +768,16 @@ const AdminSuratJalan = () => {
       
       if (item.ukuran_tenda) {
         doc.text(`Ukuran Tenda: ${item.ukuran_tenda}`, 20, currentY);
+        currentY += 6;
+      }
+
+      if (item.piring) {
+        doc.text(`Piring: ${item.piring}`, 20, currentY);
+        currentY += 6;
+      }
+
+      if (item.nama_pasangan) {
+        doc.text(`Nama Pasangan: ${item.nama_pasangan}`, 20, currentY);
         currentY += 6;
       }
 
@@ -1373,6 +1389,32 @@ const AdminSuratJalan = () => {
                     />
                   </div>
 
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Piring
+                    </label>
+                    <input
+                      type="text"
+                      name="piring"
+                      value={formData.piring}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Nama pasangan
+                    </label>
+                    <input
+                      type="text"
+                      name="nama_pasangan"
+                      value={formData.nama_pasangan}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
+
                   <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Nama Vendor
@@ -1599,6 +1641,14 @@ const AdminSuratJalan = () => {
                     <p className="text-gray-900">
                       <span className="font-medium">Ukuran Tenda:</span>{" "}
                       {selectedItem.ukuran_tenda || "-"}
+                    </p>
+                    <p className="text-gray-900">
+                      <span className="font-medium">Piring:</span>{" "}
+                      {selectedItem.piring || "-"}
+                    </p>
+                    <p className="text-gray-900">
+                      <span className="font-medium">Nama Pasangan:</span>{" "}
+                      {selectedItem.nama_pasangan || "-"}
                     </p>
                     {selectedItem.notes && (
                       <p className="text-gray-900 mt-3">

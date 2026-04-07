@@ -139,6 +139,16 @@ async function initializeDatabase() {
       )
     `);
 
+    // Backward compatible migration for new surat_jalan fields
+    await db.execute(`
+      ALTER TABLE surat_jalan
+      ADD COLUMN IF NOT EXISTS piring TEXT
+    `);
+    await db.execute(`
+      ALTER TABLE surat_jalan
+      ADD COLUMN IF NOT EXISTS nama_pasangan TEXT
+    `);
+
     console.log('Database initialized successfully');
   } catch (error) {
     console.error('Database initialization error:', error);
@@ -1856,6 +1866,8 @@ app.post('/api/surat-jalan', authenticateToken, async (req, res) => {
     dekorasi_image,
     warna_kain,
     ukuran_tenda,
+    piring,
+    nama_pasangan,
     vendor_name,
     notes
   } = req.body;
@@ -1865,12 +1877,12 @@ app.post('/api/surat-jalan', authenticateToken, async (req, res) => {
       `INSERT INTO surat_jalan (
         order_id, client_name, client_phone, client_address, wedding_date,
         package_name, plaminan_image, pintu_masuk_image, dekorasi_image,
-        warna_kain, ukuran_tenda, vendor_name, notes
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        warna_kain, ukuran_tenda, piring, nama_pasangan, vendor_name, notes
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         order_id, client_name, client_phone, client_address, wedding_date,
         package_name, plaminan_image, pintu_masuk_image, dekorasi_image,
-        warna_kain, ukuran_tenda, vendor_name, notes
+        warna_kain, ukuran_tenda, piring, nama_pasangan, vendor_name, notes
       ]
     );
     res.json({ id: result.insertId, message: 'Surat jalan created successfully' });
@@ -1893,6 +1905,8 @@ app.put('/api/surat-jalan/:id', authenticateToken, async (req, res) => {
     dekorasi_image,
     warna_kain,
     ukuran_tenda,
+    piring,
+    nama_pasangan,
     vendor_name,
     notes
   } = req.body;
@@ -1904,12 +1918,12 @@ app.put('/api/surat-jalan/:id', authenticateToken, async (req, res) => {
       `UPDATE surat_jalan SET 
         client_name = ?, client_phone = ?, client_address = ?, wedding_date = ?,
         package_name = ?, plaminan_image = ?, pintu_masuk_image = ?, dekorasi_image = ?,
-        warna_kain = ?, ukuran_tenda = ?, vendor_name = ?, notes = ?
+        warna_kain = ?, ukuran_tenda = ?, piring = ?, nama_pasangan = ?, vendor_name = ?, notes = ?
       WHERE id = ?`,
       [
         client_name, client_phone, client_address, wedding_date,
         package_name, plaminan_image, pintu_masuk_image, dekorasi_image,
-        warna_kain, ukuran_tenda, vendor_name, notes, id
+        warna_kain, ukuran_tenda, piring, nama_pasangan, vendor_name, notes, id
       ]
     );
     
