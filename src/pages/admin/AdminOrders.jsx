@@ -441,6 +441,10 @@ const AdminOrders = () => {
 
   const generateInvoicePDF = (item, selectedBank = null) => {
     const doc = new jsPDF();
+    const toNumber = (value) => {
+      const n = typeof value === "number" ? value : parseFloat(value);
+      return Number.isFinite(n) ? n : 0;
+    };
 
     // Hitung lebar halaman dan margin
     const pageWidth = doc.internal.pageSize.getWidth();
@@ -532,6 +536,9 @@ const AdminOrders = () => {
     // Service items
     let currentY = startY + 15;
     let itemNumber = 1;
+    let invoiceBasePrice = toNumber(item.base_price || 0);
+    let selectedItemsTotal = 0;
+    let invoiceTotal = toNumber(item.total_amount || 0);
 
     if (item.orderType === "custom_request") {
       // Custom request: list items_details or single line service_name
@@ -540,15 +547,19 @@ const AdminOrders = () => {
         : [{ name: item.service_name || item.services || "Layanan custom", price: item.total_amount || 0 }];
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
+      invoiceBasePrice = 0;
+      let customTotal = 0;
       details.forEach((row, idx) => {
         const name = row.name || row.item_name || "Item";
         const price = typeof row.price === "number" ? row.price : parseFloat(row.price) || 0;
+        customTotal += price;
         doc.text((idx + 1).toString(), 25, currentY);
         doc.text(name, 40, currentY);
         doc.text("1", 140, currentY);
         doc.text(formatRupiah(price), 170, currentY);
         currentY += 6;
       });
+      invoiceTotal = customTotal > 0 ? customTotal : toNumber(item.total_amount || 0);
     } else {
       // Order biasa: base price + selected_items
       doc.setFontSize(10);
@@ -577,6 +588,7 @@ const AdminOrders = () => {
                 0;
               const quantity = selectedItem.quantity || 1;
               const subtotal = (typeof itemPrice === "number" ? itemPrice : parseFloat(itemPrice) || 0) * quantity;
+              selectedItemsTotal += subtotal;
               doc.setFontSize(8);
               doc.text(`  ${itemName}`, 40, currentY);
               doc.text(quantity.toString(), 140, currentY);
@@ -588,6 +600,12 @@ const AdminOrders = () => {
           console.error("Error parsing selected items:", error);
         }
       }
+
+      // Gunakan total hasil perhitungan item invoice agar konsisten dengan baris detail.
+      const recalculatedTotal = invoiceBasePrice + selectedItemsTotal;
+      if (recalculatedTotal > 0) {
+        invoiceTotal = recalculatedTotal;
+      }
     }
 
     // Add total service row
@@ -598,7 +616,7 @@ const AdminOrders = () => {
     doc.text("Total Harga Layanan:", 40, currentY);
     doc.text("", 140, currentY); // Empty quantity
     doc.text(
-      formatRupiah(item.total_amount || 0),
+      formatRupiah(invoiceTotal),
       170,
       currentY
     );
@@ -611,12 +629,12 @@ const AdminOrders = () => {
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
     doc.text(
-      `Harga Layanan: ${formatRupiah(item.base_price || 0)}`,
+      `Harga Layanan: ${formatRupiah(invoiceBasePrice)}`,
       20,
       currentY + 30
     );
     doc.text(
-      `Total Harga Layanan: ${formatRupiah(item.total_amount || 0)}`,
+      `Total Harga Layanan: ${formatRupiah(invoiceTotal)}`,
       20,
       currentY + 37
     );
@@ -628,7 +646,7 @@ const AdminOrders = () => {
     );
     doc.text(
       `Sisa Pembayaran: ${formatRupiah(
-        (item.total_amount || 0) - (item.booking_amount || 0)
+        invoiceTotal - toNumber(item.booking_amount || 0)
       )}`,
       20,
       currentY + 58
