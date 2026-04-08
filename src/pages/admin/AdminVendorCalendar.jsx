@@ -425,6 +425,21 @@ const AdminVendorCalendar = () => {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                   <div>
+                    <p className="text-gray-500">Tanggal Acara</p>
+                    <p className="font-medium text-gray-900">
+                      {selectedEventDetail.wedding_date
+                        ? new Date(selectedEventDetail.wedding_date).toLocaleDateString(
+                            "id-ID",
+                            {
+                              day: "2-digit",
+                              month: "long",
+                              year: "numeric",
+                            }
+                          )
+                        : "-"}
+                    </p>
+                  </div>
+                  <div>
                     <p className="text-gray-500">Client</p>
                     <p className="font-medium text-gray-900">{selectedEventDetail.client_name || "-"}</p>
                   </div>
