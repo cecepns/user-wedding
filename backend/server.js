@@ -6,6 +6,7 @@ const jwt = require('jsonwebtoken');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
+const { runMigrations } = require('./lib/runMigrations');
 
 const app = express();
 
@@ -139,15 +140,7 @@ async function initializeDatabase() {
       )
     `);
 
-    // Backward compatible migration for new surat_jalan fields
-    await db.execute(`
-      ALTER TABLE surat_jalan
-      ADD COLUMN IF NOT EXISTS piring TEXT
-    `);
-    await db.execute(`
-      ALTER TABLE surat_jalan
-      ADD COLUMN IF NOT EXISTS nama_pasangan TEXT
-    `);
+    await runMigrations(db);
 
     console.log('Database initialized successfully');
   } catch (error) {
@@ -192,6 +185,29 @@ app.post('/api/admin/login', async (req, res) => {
     res.json({ token, admin: { id: admin.id, email: admin.email } });
   } catch (error) {
     console.error('Login error:', error);
+    res.status(500).json({ message: 'Database error' });
+  }
+});
+
+app.put('/api/admin/password', authenticateToken, async (req, res) => {
+  const { currentPassword, newPassword } = req.body || {};
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ message: 'Password saat ini dan password baru wajib diisi' });
+  }
+  if (String(newPassword).length < 6) {
+    return res.status(400).json({ message: 'Password baru minimal 6 karakter' });
+  }
+  try {
+    const [rows] = await db.execute('SELECT id, password FROM admins WHERE id = ?', [req.user.id]);
+    const admin = rows[0];
+    if (!admin || !bcrypt.compareSync(currentPassword, admin.password)) {
+      return res.status(401).json({ message: 'Password saat ini tidak benar' });
+    }
+    const hashed = bcrypt.hashSync(newPassword, 10);
+    await db.execute('UPDATE admins SET password = ? WHERE id = ?', [hashed, req.user.id]);
+    res.json({ message: 'Password berhasil diubah' });
+  } catch (error) {
+    console.error('Change password error:', error);
     res.status(500).json({ message: 'Database error' });
   }
 });
@@ -1749,33 +1765,79 @@ app.delete('/api/service-features/:id', authenticateToken, async (req, res) => {
 
 // About cards routes - REMOVED (now handled by unified service-cards endpoint)
 
-// Orders search route (for surat jalan dropdown)
+// Orders search route (for surat jalan dropdown) — orders + custom_requests
 app.get('/api/orders/search', authenticateToken, async (req, res) => {
   try {
     const { q } = req.query;
-    
-    let query = `
-      SELECT id, name, email, phone, address, wedding_date, service_name, total_amount, booking_amount, status
+    const hasQ = q && String(q).trim();
+    const searchTerm = hasQ ? `%${String(q).trim()}%` : null;
+    const limitEach = 15;
+
+    let orderSql = `
+      SELECT id, name, email, phone, address, wedding_date, service_name, total_amount, booking_amount, status, created_at
       FROM orders
     `;
-    let params = [];
-    
-    if (q && q.trim()) {
-      query += ` WHERE 
+    let orderParams = [];
+    if (hasQ) {
+      orderSql += ` WHERE 
         name LIKE ? OR 
         email LIKE ? OR 
         phone LIKE ? OR 
         service_name LIKE ? OR
-        id LIKE ?
+        CAST(id AS CHAR) LIKE ?
       `;
-      const searchTerm = `%${q.trim()}%`;
-      params = [searchTerm, searchTerm, searchTerm, searchTerm, searchTerm];
+      orderParams = [searchTerm, searchTerm, searchTerm, searchTerm, searchTerm];
     }
-    
-    query += ' ORDER BY created_at DESC LIMIT 10';
-    
-    const [orders] = await db.execute(query, params);
-    res.json(orders);
+    orderSql += ` ORDER BY created_at DESC LIMIT ${limitEach}`;
+
+    let customSql = `
+      SELECT id, name, email, phone, wedding_date, services, additional_requests, booking_amount, status, created_at
+      FROM custom_requests
+    `;
+    let customParams = [];
+    if (hasQ) {
+      customSql += ` WHERE 
+        name LIKE ? OR 
+        email LIKE ? OR 
+        phone LIKE ? OR 
+        services LIKE ? OR
+        additional_requests LIKE ? OR
+        CAST(id AS CHAR) LIKE ?
+      `;
+      customParams = [searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm];
+    }
+    customSql += ` ORDER BY created_at DESC LIMIT ${limitEach}`;
+
+    const [[orderRows], [customRows]] = await Promise.all([
+      db.execute(orderSql, orderParams),
+      db.execute(customSql, customParams)
+    ]);
+
+    const normalizedOrders = (orderRows || []).map((row) => ({
+      ...row,
+      order_source: 'order'
+    }));
+
+    const normalizedCustom = (customRows || []).map((row) => ({
+      id: row.id,
+      name: row.name,
+      email: row.email,
+      phone: row.phone,
+      address: row.additional_requests || '',
+      wedding_date: row.wedding_date,
+      service_name: row.services || 'Layanan custom',
+      total_amount: row.booking_amount,
+      booking_amount: row.booking_amount,
+      status: row.status,
+      created_at: row.created_at,
+      order_source: 'custom_request'
+    }));
+
+    const merged = [...normalizedOrders, ...normalizedCustom].sort(
+      (a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)
+    );
+
+    res.json(merged.slice(0, 25));
   } catch (error) {
     console.error('Orders search error:', error);
     res.status(500).json({ message: 'Database error' });
@@ -1856,6 +1918,7 @@ app.get('/api/surat-jalan/:id', authenticateToken, async (req, res) => {
 app.post('/api/surat-jalan', authenticateToken, async (req, res) => {
   const { 
     order_id, 
+    custom_request_id,
     client_name, 
     client_phone, 
     client_address, 
@@ -1871,16 +1934,32 @@ app.post('/api/surat-jalan', authenticateToken, async (req, res) => {
     vendor_name,
     notes
   } = req.body;
+
+  const oid = order_id !== undefined && order_id !== '' && order_id != null
+    ? parseInt(order_id, 10)
+    : null;
+  const crid = custom_request_id !== undefined && custom_request_id !== '' && custom_request_id != null
+    ? parseInt(custom_request_id, 10)
+    : null;
+
+  if ((!oid || Number.isNaN(oid)) && (!crid || Number.isNaN(crid))) {
+    return res.status(400).json({ message: 'Pilih pesanan (biasa atau custom) terlebih dahulu' });
+  }
+  if (oid && crid) {
+    return res.status(400).json({ message: 'Hanya satu jenis pesanan yang boleh dipilih' });
+  }
+  const finalOrderId = oid && !Number.isNaN(oid) ? oid : null;
+  const finalCustomId = crid && !Number.isNaN(crid) ? crid : null;
   
   try {
     const [result] = await db.execute(
       `INSERT INTO surat_jalan (
-        order_id, client_name, client_phone, client_address, wedding_date,
+        order_id, custom_request_id, client_name, client_phone, client_address, wedding_date,
         package_name, plaminan_image, pintu_masuk_image, dekorasi_image,
         warna_kain, ukuran_tenda, piring, nama_pasangan, vendor_name, notes
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        order_id, client_name, client_phone, client_address, wedding_date,
+        finalOrderId, finalCustomId, client_name, client_phone, client_address, wedding_date,
         package_name, plaminan_image, pintu_masuk_image, dekorasi_image,
         warna_kain, ukuran_tenda, piring, nama_pasangan, vendor_name, notes
       ]

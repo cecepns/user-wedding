@@ -63,6 +63,7 @@ const AdminSuratJalan = () => {
 
   const [formData, setFormData] = useState({
     order_id: "",
+    custom_request_id: "",
     client_name: "",
     client_phone: "",
     client_address: "",
@@ -248,13 +249,31 @@ const AdminSuratJalan = () => {
           },
         }
       );
-      const orders = await response.json();
-      
-      const options = orders.map(order => ({
-        value: order.id,
-        label: `#${order.id} - ${order.name} - ${order.service_name} (${order.wedding_date ? formatDate(order.wedding_date) : 'Tanggal tidak tersedia'})`,
-        order: order
-      }));
+      const data = await response.json();
+      const rows = Array.isArray(data) ? data : [];
+
+      const options = rows.map((row) => {
+        const isCustom = row.order_source === "custom_request";
+        const datePart = row.wedding_date
+          ? formatDate(row.wedding_date)
+          : "Tanggal tidak tersedia";
+        const svc = row.service_name || (isCustom ? "Layanan custom" : "-");
+        const prefix = isCustom ? "C" : "";
+        const tag = isCustom ? "Custom" : "Pesan biasa";
+        return {
+          value: isCustom ? `custom:${row.id}` : `order:${row.id}`,
+          label: `#${prefix}${row.id} — ${row.name || "-"} — ${svc} (${tag}) (${datePart})`,
+          order: {
+            id: row.id,
+            source: isCustom ? "custom_request" : "order",
+            name: row.name,
+            phone: row.phone,
+            address: row.address || "",
+            wedding_date: row.wedding_date,
+            service_name: svc,
+          },
+        };
+      });
       
       setOrderOptions(options);
       return options;
@@ -267,9 +286,10 @@ const AdminSuratJalan = () => {
     }
   };
 
-  const handleSearchOrders = (inputValue) => {
+  const handleSearchOrders = (inputValue, meta) => {
+    if (meta?.action && meta.action !== "input-change") return;
     if (!inputValue || inputValue.length < 2) {
-      loadOrderOptions();
+      loadOrderOptions("");
       return;
     }
     loadOrderOptions(inputValue);
@@ -282,19 +302,34 @@ const AdminSuratJalan = () => {
   const handleOpenModal = async (item = null) => {
     if (item) {
       setEditingItem(item);
-      // If editing, create the selected option from item data
-      if (item.order_id) {
+      if (item.custom_request_id) {
         const selectedOption = {
-          value: item.order_id,
-          label: `#${item.order_id} - ${item.client_name} - ${item.package_name}`,
+          value: `custom:${item.custom_request_id}`,
+          label: `#C${item.custom_request_id} — ${item.client_name} — ${item.package_name} (Custom)`,
           order: {
-            id: item.order_id,
+            id: item.custom_request_id,
+            source: "custom_request",
             name: item.client_name,
             phone: item.client_phone,
             address: item.client_address,
             wedding_date: toDateOnlyString(item.wedding_date) || item.wedding_date,
-            service_name: item.package_name
-          }
+            service_name: item.package_name,
+          },
+        };
+        setSelectedOrder(selectedOption);
+      } else if (item.order_id) {
+        const selectedOption = {
+          value: `order:${item.order_id}`,
+          label: `#${item.order_id} — ${item.client_name} — ${item.package_name}`,
+          order: {
+            id: item.order_id,
+            source: "order",
+            name: item.client_name,
+            phone: item.client_phone,
+            address: item.client_address,
+            wedding_date: toDateOnlyString(item.wedding_date) || item.wedding_date,
+            service_name: item.package_name,
+          },
         };
         setSelectedOrder(selectedOption);
       } else {
@@ -303,6 +338,7 @@ const AdminSuratJalan = () => {
       
       setFormData({
         order_id: item.order_id || "",
+        custom_request_id: item.custom_request_id || "",
         client_name: item.client_name || "",
         client_phone: item.client_phone || "",
         client_address: item.client_address || "",
@@ -323,6 +359,7 @@ const AdminSuratJalan = () => {
       setSelectedOrder(null);
       setFormData({
         order_id: "",
+        custom_request_id: "",
         client_name: "",
         client_phone: "",
         client_address: "",
@@ -350,6 +387,7 @@ const AdminSuratJalan = () => {
       setFormData(prev => ({
         ...prev,
         order_id: "",
+        custom_request_id: "",
         client_name: "",
         client_phone: "",
         client_address: "",
@@ -360,10 +398,12 @@ const AdminSuratJalan = () => {
     }
 
     const order = selectedOption.order;
+    const isCustom = order.source === "custom_request";
     setSelectedOrder(selectedOption);
     setFormData(prev => ({
       ...prev,
-      order_id: order.id,
+      order_id: isCustom ? "" : String(order.id),
+      custom_request_id: isCustom ? String(order.id) : "",
       client_name: order.name || "",
       client_phone: order.phone || "",
       client_address: order.address || "",
@@ -380,7 +420,9 @@ const AdminSuratJalan = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.order_id) {
+    const hasOrder = formData.order_id !== "" && formData.order_id != null;
+    const hasCustom = formData.custom_request_id !== "" && formData.custom_request_id != null;
+    if (!hasOrder && !hasCustom) {
       toast.error("Silakan pilih pesanan terlebih dahulu");
       return;
     }
@@ -392,6 +434,8 @@ const AdminSuratJalan = () => {
 
       const payload = {
         ...formData,
+        order_id: hasOrder ? Number(formData.order_id) : null,
+        custom_request_id: hasCustom ? Number(formData.custom_request_id) : null,
         wedding_date: toDateOnlyString(formData.wedding_date) || formData.wedding_date || "",
       };
       const response = await fetch(url, {
@@ -1210,6 +1254,7 @@ const AdminSuratJalan = () => {
                       isLoading={isLoadingOrders}
                       isDisabled={!!editingItem}
                       isClearable
+                      filterOption={() => true}
                       placeholder="Ketik untuk mencari pesanan..."
                       noOptionsMessage={() => "Tidak ada pesanan ditemukan"}
                       loadingMessage={() => "Memuat data..."}

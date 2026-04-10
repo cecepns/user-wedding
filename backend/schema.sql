@@ -166,6 +166,7 @@ CREATE TABLE IF NOT EXISTS contact_messages (
 CREATE TABLE IF NOT EXISTS surat_jalan (
   id INT AUTO_INCREMENT PRIMARY KEY,
   order_id INT,
+  custom_request_id INT NULL,
   client_name VARCHAR(255) NOT NULL,
   client_phone VARCHAR(50),
   client_address TEXT,
@@ -181,7 +182,9 @@ CREATE TABLE IF NOT EXISTS surat_jalan (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE SET NULL,
+  FOREIGN KEY (custom_request_id) REFERENCES custom_requests(id) ON DELETE SET NULL,
   INDEX idx_surat_jalan_order_id (order_id),
+  INDEX idx_surat_jalan_custom_request_id (custom_request_id),
   INDEX idx_surat_jalan_created_at (created_at)
 );
 
