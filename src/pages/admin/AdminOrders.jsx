@@ -107,13 +107,28 @@ const AdminOrders = () => {
 
   const duplicateOrderRankMap = useMemo(() => {
     const rankMap = {};
-    const indexByKey = {};
+    const groupedOrders = {};
+
     combinedOrders.forEach((order) => {
       const key = duplicateKey(order);
       if (!duplicateKeysSet.has(key)) return;
-      indexByKey[key] = (indexByKey[key] || 0) + 1;
-      rankMap[`${order.orderType}-${order.id}`] = indexByKey[key];
+      if (!groupedOrders[key]) groupedOrders[key] = [];
+      groupedOrders[key].push(order);
     });
+
+    Object.values(groupedOrders).forEach((group) => {
+      const orderedOldestFirst = [...group].sort((a, b) => {
+        const aTime = new Date(a.created_at).getTime();
+        const bTime = new Date(b.created_at).getTime();
+        if (aTime !== bTime) return aTime - bTime;
+        return Number(a.id) - Number(b.id);
+      });
+
+      orderedOldestFirst.forEach((order, index) => {
+        rankMap[`${order.orderType}-${order.id}`] = index + 1;
+      });
+    });
+
     return rankMap;
   }, [combinedOrders, duplicateKeysSet]);
 
