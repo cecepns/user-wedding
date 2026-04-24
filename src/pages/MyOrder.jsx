@@ -388,6 +388,14 @@ const MyOrder = () => {
                       <span>Total terbaru</span>
                       <span>{formatRupiah(totalAmount)}</span>
                     </div>
+                    <div className="flex justify-between text-sm font-semibold text-[#2f4274] pt-1">
+                      <span>Sisa pelunasan terbaru</span>
+                      <span>
+                        {formatRupiah(
+                          Math.max(0, totalAmount - toNumber(order.booking_amount))
+                        )}
+                      </span>
+                    </div>
                   </div>
 
                   <button
