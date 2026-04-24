@@ -20,16 +20,16 @@ const CLIENT_COLOR_POOL = [
   "bg-blue-700 text-white",
 ];
 const CLIENT_ROW_COLOR_POOL = [
-  "bg-green-50",
-  "bg-blue-50",
-  "bg-purple-50",
-  "bg-amber-50",
-  "bg-pink-50",
-  "bg-cyan-50",
-  "bg-lime-50",
-  "bg-indigo-50",
-  "bg-orange-50",
-  "bg-emerald-50",
+  "bg-green-700",
+  "bg-blue-700",
+  "bg-purple-700",
+  "bg-amber-700",
+  "bg-pink-700",
+  "bg-cyan-700",
+  "bg-lime-700",
+  "bg-indigo-700",
+  "bg-orange-700",
+  "bg-emerald-700",
 ];
 
 const normalizePhone = (value) =>
@@ -370,15 +370,15 @@ const AdminOrders = () => {
   const getStatusColor = (status) => {
     switch (status) {
       case "pending":
-        return "bg-yellow-100 text-yellow-800";
+        return "bg-yellow-600 text-white";
       case "confirmed":
-        return "bg-blue-100 text-blue-800";
+        return "bg-blue-600 text-white";
       case "completed":
-        return "bg-green-100 text-green-800";
+        return "bg-green-600 text-white";
       case "cancelled":
-        return "bg-red-100 text-red-800";
+        return "bg-red-600 text-white";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-gray-700 text-white";
     }
   };
 
@@ -1043,21 +1043,21 @@ const AdminOrders = () => {
                       tableOrders.map((order) => (
                         <tr
                           key={`${order.orderType}-${order.id}`}
-                          className={`${getClientRowColor(order.phone)} hover:bg-gray-100`}
+                          className={`${getClientRowColor(order.phone)} text-white hover:brightness-110`}
                         >
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="rounded-lg px-3 py-2 inline-flex flex-col">
-                              <span className="text-xs font-semibold text-green-800">
+                              <span className="text-xs font-semibold text-white">
                                 #{order.id}
                               </span>
-                              <span className="text-xs text-green-700 mt-1">
+                              <span className="text-xs text-white/80 mt-1">
                                 {formatDate(order.created_at)}
                               </span>
-                              <span className={`text-[10px] mt-0.5 px-1.5 py-0.5 rounded ${order.orderType === "custom_request" ? "bg-amber-100 text-amber-800" : "bg-blue-100 text-blue-800"}`}>
+                              <span className={`text-[10px] mt-0.5 px-1.5 py-0.5 rounded ${order.orderType === "custom_request" ? "bg-amber-700 text-white" : "bg-blue-700 text-white"}`}>
                                 {order.orderType === "custom_request" ? "Custom" : "Pesan Biasa"}
                               </span>
                               {duplicateKeysSet.has(duplicateKey(order)) && (
-                                <span className="text-[10px] mt-0.5 px-1.5 py-0.5 rounded bg-red-100 text-red-800" title="Email & tanggal pernikahan sama dengan pesanan lain">
+                                <span className="text-[10px] mt-0.5 px-1.5 py-0.5 rounded bg-red-700 text-white" title="Email & tanggal pernikahan sama dengan pesanan lain">
                                   Duplikat ke-
                                   {duplicateOrderRankMap[`${order.orderType}-${order.id}`]}
                                 </span>
@@ -1065,33 +1065,33 @@ const AdminOrders = () => {
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">
+                            <div className="text-sm font-medium text-white">
                               {order.name}
                             </div>
-                            <div className="text-sm text-gray-500">
+                            <div className="text-sm text-white/85">
                               {order.email}
                             </div>
-                            <div className="text-sm text-gray-500">
+                            <div className="text-sm text-white/85">
                               {order.phone}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">
+                            <div className="text-sm font-medium text-white">
                               {order.service_name}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">
+                            <div className="text-sm text-white">
                               {formatDateTime(order.wedding_date)}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-bold text-primary-600">
+                            <div className="text-sm font-bold text-white">
                               {formatRupiah(order.total_amount ?? 0)}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-bold text-primary-600">
+                            <div className="text-sm font-bold text-white">
                               {formatRupiah(order.booking_amount ?? 0)}
                             </div>
                           </td>
@@ -1114,7 +1114,7 @@ const AdminOrders = () => {
                             <div className="flex space-x-3">
                               <button
                                 onClick={() => handleViewDetail(order)}
-                                className="text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                                className="text-white/90 hover:text-white flex items-center gap-1"
                                 title="Lihat Detail"
                               >
                                 <Eye size={16} />
@@ -1123,7 +1123,7 @@ const AdminOrders = () => {
                                 onClick={() =>
                                   handleEditBookingAmount(order)
                                 }
-                                className="text-green-600 hover:text-green-700 flex items-center gap-1"
+                                className="text-white/90 hover:text-white flex items-center gap-1"
                                 title="Edit Booking Amount"
                               >
                                 <Edit size={16} />
@@ -1132,14 +1132,14 @@ const AdminOrders = () => {
                                 onClick={() =>
                                   handleGenerateInvoice(order)
                                 }
-                                className="text-purple-600 hover:text-purple-700 flex items-center gap-1"
+                                className="text-white/90 hover:text-white flex items-center gap-1"
                                 title="Download Invoice"
                               >
                                 <Download size={16} />
                               </button>
                               <button
                                 onClick={() => handleDeleteOrder(order)}
-                                className="text-red-600 hover:text-red-700 flex items-center gap-1"
+                                className="text-white/90 hover:text-white flex items-center gap-1"
                                 title="Hapus"
                               >
                                 <Trash2 size={16} />
