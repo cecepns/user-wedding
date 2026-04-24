@@ -7,6 +7,24 @@ import { formatRupiah, formatDate, formatDateTime } from "../../utils/formatters
 import jsPDF from "jspdf";
 
 const API_BASE = "https://api-inventory.isavralabel.com/user-wedding/api";
+const CLIENT_COLOR_POOL = [
+  "bg-green-100 text-green-800 border border-green-200",
+  "bg-blue-100 text-blue-800 border border-blue-200",
+  "bg-purple-100 text-purple-800 border border-purple-200",
+  "bg-amber-100 text-amber-800 border border-amber-200",
+  "bg-pink-100 text-pink-800 border border-pink-200",
+  "bg-cyan-100 text-cyan-800 border border-cyan-200",
+  "bg-lime-100 text-lime-800 border border-lime-200",
+  "bg-indigo-100 text-indigo-800 border border-indigo-200",
+  "bg-orange-100 text-orange-800 border border-orange-200",
+  "bg-emerald-100 text-emerald-800 border border-emerald-200",
+];
+
+const normalizePhone = (value) =>
+  (value || "")
+    .toString()
+    .replace(/\D/g, "")
+    .trim();
 
 const AdminOrders = () => {
   const [orders, setOrders] = useState([]);
@@ -74,6 +92,39 @@ const AdminOrders = () => {
     });
     return new Set(Object.keys(countByKey).filter((k) => countByKey[k] > 1));
   }, [combinedOrders]);
+
+  const duplicateOrderRankMap = useMemo(() => {
+    const rankMap = {};
+    const indexByKey = {};
+    combinedOrders.forEach((order) => {
+      const key = duplicateKey(order);
+      if (!duplicateKeysSet.has(key)) return;
+      indexByKey[key] = (indexByKey[key] || 0) + 1;
+      rankMap[`${order.orderType}-${order.id}`] = indexByKey[key];
+    });
+    return rankMap;
+  }, [combinedOrders, duplicateKeysSet]);
+
+  const clientColorByPhone = useMemo(() => {
+    const map = {};
+    let colorIndex = 0;
+    combinedOrders.forEach((order) => {
+      const phoneKey = normalizePhone(order.phone);
+      if (!phoneKey || map[phoneKey]) return;
+      map[phoneKey] = CLIENT_COLOR_POOL[colorIndex % CLIENT_COLOR_POOL.length];
+      colorIndex += 1;
+    });
+    return map;
+  }, [combinedOrders]);
+
+  const uniqueCalendarClients = useMemo(() => {
+    const phones = new Set();
+    calendarOrders.forEach((order) => {
+      const phoneKey = normalizePhone(order.phone);
+      if (phoneKey) phones.add(phoneKey);
+    });
+    return phones.size;
+  }, [calendarOrders]);
 
   // Filter untuk tampilkan hanya kemungkinan duplikat (tetap pakai combined untuk konsistensi)
   const filteredCombined = useMemo(
@@ -478,7 +529,12 @@ const AdminOrders = () => {
 
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
-    doc.text(`No. Invoice: ${item.id || "N/A"}`, 150, 30);
+    const duplicateLabelNumber =
+      duplicateOrderRankMap[`${item.orderType}-${item.id}`] || null;
+    const invoiceNo = duplicateLabelNumber
+      ? `${item.id || "N/A"}-D${duplicateLabelNumber}`
+      : item.id || "N/A";
+    doc.text(`No. Invoice: ${invoiceNo}`, 150, 30);
     doc.text(
       `Tanggal Invoice: ${new Date().toLocaleDateString("id-ID", {
         day: "2-digit",
@@ -761,6 +817,9 @@ const AdminOrders = () => {
                   </button>
                 </div>
               </div>
+              <p className="text-xs text-gray-500 mb-3">
+                Total client: {uniqueCalendarClients} (berdasarkan nomor HP berbeda).
+              </p>
 
               <div className="border border-gray-200 rounded-xl overflow-hidden">
                 <div className="grid grid-cols-7 bg-gray-50 text-xs font-semibold text-gray-600">
@@ -813,24 +872,35 @@ const AdminOrders = () => {
                             setSelectedDate(key);
                             handleFilterTableBySelectedDate(key);
                           }}
-                          className={`h-14 border border-gray-100 flex flex-col items-center justify-center relative transition ${
+                            className={`min-h-24 border border-gray-100 p-1 text-left align-top transition ${
                             hasBookings
-                              ? "bg-red-200 hover:bg-red-100"
+                              ? "bg-red-50 hover:bg-red-100"
                               : "bg-blue-50 hover:bg-blue-100"
                           } ${isSelected ? "ring-2 ring-primary-500 z-10" : ""}`}
                         >
-                          <span
-                            className={`text-sm font-medium ${
-                              hasBookings ? "text-red-700" : "text-blue-700"
-                            }`}
-                          >
+                          <div className="text-sm text-blue-700 font-medium mb-1 text-center">
                             {d}
-                          </span>
-                          {hasBookings && (
-                            <span className="bg-blue-600 rounded md:py-1 px-2 mt-1 text-[7px] md:text-xs font-semibold text-white">
-                              {ordersForDay.length} Client
-                            </span>
-                          )}
+                          </div>
+                          <div className="space-y-1">
+                            {ordersForDay.slice(0, 2).map((order) => {
+                              const colorClass =
+                                clientColorByPhone[normalizePhone(order.phone)] ||
+                                "bg-gray-100 text-gray-700 border border-gray-200";
+                              return (
+                                <span
+                                  key={`${order.orderType}-${order.id}`}
+                                  className={`block w-full rounded px-2 py-0.5 text-[10px] font-semibold truncate ${colorClass}`}
+                                >
+                                  {order.name || "Client"}
+                                </span>
+                              );
+                            })}
+                            {ordersForDay.length > 2 && (
+                              <span className="block text-[10px] text-gray-600 text-center">
+                                +{ordersForDay.length - 2} client
+                              </span>
+                            )}
+                          </div>
                         </button>
                       );
                     })
@@ -930,7 +1000,10 @@ const AdminOrders = () => {
                       </tr>
                     ) : tableOrders.length > 0 ? (
                       tableOrders.map((order) => (
-                        <tr key={`${order.orderType}-${order.id}`} className="hover:bg-gray-50 bg-green-50">
+                        <tr
+                          key={`${order.orderType}-${order.id}`}
+                          className="hover:bg-gray-50 bg-green-50"
+                        >
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="rounded-lg px-3 py-2 inline-flex flex-col">
                               <span className="text-xs font-semibold text-green-800">
@@ -944,7 +1017,8 @@ const AdminOrders = () => {
                               </span>
                               {duplicateKeysSet.has(duplicateKey(order)) && (
                                 <span className="text-[10px] mt-0.5 px-1.5 py-0.5 rounded bg-red-100 text-red-800" title="Email & tanggal pernikahan sama dengan pesanan lain">
-                                  Duplikat?
+                                  Duplikat ke-
+                                  {duplicateOrderRankMap[`${order.orderType}-${order.id}`]}
                                 </span>
                               )}
                             </div>

@@ -45,7 +45,7 @@ const AdminSuratJalan = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [orderOptions, setOrderOptions] = useState([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
-  const [viewMode, setViewMode] = useState("table");
+  const [viewMode, setViewMode] = useState("calendar");
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [calendarMonth, setCalendarMonth] = useState(new Date());
@@ -199,6 +199,16 @@ const AdminSuratJalan = () => {
     acc[key].push(item);
     return acc;
   }, {});
+  const totalUniqueCalendarClients = new Set(
+    calendarSuratJalan
+      .map((item) =>
+        (item.client_phone || "")
+          .toString()
+          .replace(/\D/g, "")
+          .trim()
+      )
+      .filter(Boolean)
+  ).size;
 
   const uploadTargetRef = useRef(null);
 
@@ -957,6 +967,9 @@ const AdminSuratJalan = () => {
                     </button>
                   </div>
                 </div>
+                <p className="text-xs text-gray-500 mb-3">
+                  Total client: {totalUniqueCalendarClients} (berdasarkan nomor HP berbeda).
+                </p>
 
                 <div className="border border-gray-200 rounded-xl overflow-hidden">
                   <div className="grid grid-cols-7 bg-gray-50 text-xs font-semibold text-gray-600">

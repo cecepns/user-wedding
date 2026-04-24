@@ -48,6 +48,8 @@ const AdminVendorCalendar = () => {
   const [loading, setLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedEventDetail, setSelectedEventDetail] = useState(null);
+  const [vendorInputName, setVendorInputName] = useState("");
+  const [savingVendorName, setSavingVendorName] = useState(false);
 
   const getVendorColorClass = (vendorKey, vendorName = "") => {
     const vendorNameNormalized = normalizeText(vendorName);
@@ -113,7 +115,7 @@ const AdminVendorCalendar = () => {
           if (key && toppingMap[key]) {
             return {
               ...event,
-              vendor_name: toppingMap[key].name,
+              vendor_name: event?.vendor_name || toppingMap[key].name,
               vendor_description: toppingMap[key].description || event?.vendor_description || "",
             };
           }
@@ -220,6 +222,66 @@ const AdminVendorCalendar = () => {
       return next;
     });
     setSelectedDate(null);
+  };
+
+  const handleOpenEventDetail = (event) => {
+    setSelectedEventDetail(event);
+    setVendorInputName(event?.vendor_name || "");
+  };
+
+  const handleApplyVendorName = () => {
+    if (!selectedEventDetail || savingVendorName) return;
+    const nextVendorName = vendorInputName.trim();
+    if (!nextVendorName) return;
+
+    const applyLocalUpdate = (updatedName) => {
+      const matcher = (event) =>
+        event.event_type === selectedEventDetail.event_type &&
+        event.source_id === selectedEventDetail.source_id &&
+        event.vendor_key === selectedEventDetail.vendor_key &&
+        event.wedding_date === selectedEventDetail.wedding_date;
+
+      setEvents((prev) =>
+        prev.map((event) =>
+          matcher(event) ? { ...event, vendor_name: updatedName } : event
+        )
+      );
+      setSelectedEventDetail((prev) =>
+        prev ? { ...prev, vendor_name: updatedName } : prev
+      );
+    };
+
+    const previousName = selectedEventDetail.vendor_name || "";
+    applyLocalUpdate(nextVendorName);
+    setSavingVendorName(true);
+
+    fetch(`${API_BASE}/vendor-calendar/vendor-name`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("admin_token")}`,
+      },
+      body: JSON.stringify({
+        event_type: selectedEventDetail.event_type,
+        source_id: selectedEventDetail.source_id,
+        vendor_key: selectedEventDetail.vendor_key,
+        wedding_date: selectedEventDetail.wedding_date,
+        vendor_name: nextVendorName,
+      }),
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error("Gagal menyimpan nama vendor");
+        }
+      })
+      .catch((error) => {
+        console.error("Error saving vendor name:", error);
+        applyLocalUpdate(previousName);
+        setVendorInputName(previousName);
+      })
+      .finally(() => {
+        setSavingVendorName(false);
+      });
   };
 
   return (
@@ -378,7 +440,7 @@ const AdminVendorCalendar = () => {
                       <tr
                         key={`${event.event_type}-${event.source_id}-${event.vendor_key}-${idx}`}
                         className="border-t border-gray-100 cursor-pointer hover:bg-blue-50"
-                        onClick={() => setSelectedEventDetail(event)}
+                        onClick={() => handleOpenEventDetail(event)}
                         title="Klik untuk lihat deskripsi vendor"
                       >
                         <td className="px-4 py-2">
@@ -438,6 +500,26 @@ const AdminVendorCalendar = () => {
                           )
                         : "-"}
                     </p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Nama Vendor (Input Admin)</p>
+                    <div className="mt-1 flex gap-2">
+                      <input
+                        type="text"
+                        value={vendorInputName}
+                        onChange={(e) => setVendorInputName(e.target.value)}
+                        placeholder="Masukkan nama vendor"
+                        className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleApplyVendorName}
+                        disabled={savingVendorName}
+                        className="rounded-lg bg-primary-600 px-3 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-60"
+                      >
+                        {savingVendorName ? "Menyimpan..." : "Simpan"}
+                      </button>
+                    </div>
                   </div>
                   <div>
                     <p className="text-gray-500">Client</p>

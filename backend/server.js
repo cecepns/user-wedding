@@ -833,9 +833,39 @@ app.get('/api/vendor-calendar', authenticateToken, async (req, res) => {
       }
     }
 
+    const [overrideRows] = await db.execute(
+      `SELECT event_type, source_id, vendor_key, wedding_date, custom_vendor_name
+       FROM vendor_calendar_overrides`
+    );
+    const overrideByKey = new Map(
+      overrideRows.map((row) => [
+        [
+          row.event_type,
+          Number(row.source_id),
+          row.vendor_key,
+          new Date(row.wedding_date).toISOString().slice(0, 10)
+        ].join('|'),
+        row.custom_vendor_name
+      ])
+    );
+
     const uniqueEvents = [];
     const seenKeys = new Set();
     for (const event of events) {
+      const weddingDateKey = event.wedding_date
+        ? new Date(event.wedding_date).toISOString().slice(0, 10)
+        : '';
+      const overrideKey = [
+        event.event_type,
+        Number(event.source_id),
+        event.vendor_key,
+        weddingDateKey
+      ].join('|');
+      const customVendorName = overrideByKey.get(overrideKey);
+      if (customVendorName && String(customVendorName).trim()) {
+        event.vendor_name = String(customVendorName).trim();
+      }
+
       const key = [
         event.event_type,
         event.source_id,
@@ -853,6 +883,55 @@ app.get('/api/vendor-calendar', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Vendor calendar error:', error);
+    res.status(500).json({ message: 'Database error' });
+  }
+});
+
+app.put('/api/vendor-calendar/vendor-name', authenticateToken, async (req, res) => {
+  const { event_type, source_id, vendor_key, wedding_date, vendor_name } = req.body || {};
+  const normalizedEventType = String(event_type || '').trim();
+  const normalizedVendorKey = String(vendor_key || '').trim();
+  const normalizedVendorName = String(vendor_name || '').trim();
+  const parsedSourceId = Number(source_id);
+  const parsedWeddingDate = wedding_date ? new Date(wedding_date) : null;
+
+  if (!['order', 'custom_request'].includes(normalizedEventType)) {
+    return res.status(400).json({ message: 'event_type tidak valid' });
+  }
+  if (!Number.isFinite(parsedSourceId) || parsedSourceId <= 0) {
+    return res.status(400).json({ message: 'source_id tidak valid' });
+  }
+  if (!normalizedVendorKey) {
+    return res.status(400).json({ message: 'vendor_key wajib diisi' });
+  }
+  if (!normalizedVendorName) {
+    return res.status(400).json({ message: 'vendor_name wajib diisi' });
+  }
+  if (!parsedWeddingDate || Number.isNaN(parsedWeddingDate.getTime())) {
+    return res.status(400).json({ message: 'wedding_date tidak valid' });
+  }
+
+  const weddingDateSql = parsedWeddingDate.toISOString().slice(0, 10);
+
+  try {
+    await db.execute(
+      `INSERT INTO vendor_calendar_overrides (
+        event_type, source_id, vendor_key, wedding_date, custom_vendor_name
+      ) VALUES (?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+        custom_vendor_name = VALUES(custom_vendor_name),
+        updated_at = CURRENT_TIMESTAMP`,
+      [
+        normalizedEventType,
+        parsedSourceId,
+        normalizedVendorKey,
+        weddingDateSql,
+        normalizedVendorName
+      ]
+    );
+    res.json({ message: 'Nama vendor berhasil disimpan' });
+  } catch (error) {
+    console.error('Vendor calendar override upsert error:', error);
     res.status(500).json({ message: 'Database error' });
   }
 });
