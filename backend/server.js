@@ -752,7 +752,7 @@ app.get('/api/orders/public/:id', async (req, res) => {
 
   try {
     const [rows] = await db.execute(
-      `SELECT o.*, s.base_price
+      `SELECT o.*, s.base_price, s.image AS service_image
        FROM orders o
        LEFT JOIN services s ON o.service_id = s.id
        WHERE o.id = ?
@@ -791,7 +791,8 @@ app.put('/api/orders/public/:id', async (req, res) => {
     wedding_date,
     notes,
     selected_items,
-    verification_phone
+    verification_phone,
+    service_id
   } = req.body || {};
 
   if (!name || !email || !wedding_date) {
@@ -817,23 +818,30 @@ app.put('/api/orders/public/:id', async (req, res) => {
       return res.status(403).json({ message: 'Nomor HP verifikasi tidak sesuai' });
     }
 
+    const nextServiceId = Number(service_id || existingOrder.service_id);
+    if (!Number.isFinite(nextServiceId) || nextServiceId <= 0) {
+      return res.status(400).json({ message: 'Layanan tidak valid' });
+    }
     const [serviceRows] = await db.execute(
-      'SELECT base_price FROM services WHERE id = ? LIMIT 1',
-      [existingOrder.service_id]
+      'SELECT id, name, base_price FROM services WHERE id = ? LIMIT 1',
+      [nextServiceId]
     );
-    const basePrice = Number(serviceRows[0]?.base_price || 0);
+    const selectedService = serviceRows[0];
+    if (!selectedService) {
+      return res.status(404).json({ message: 'Layanan tidak ditemukan' });
+    }
+    const basePrice = Number(selectedService.base_price || 0);
 
     const incomingItems = Array.isArray(selected_items) ? selected_items : [];
     const normalizedItems = incomingItems
       .map((item) => {
-        const quantity = Math.max(1, parseInt(item?.quantity, 10) || 1);
         const parsedPrice = Number(
           item?.final_price ?? item?.item_price ?? item?.price ?? item?.custom_price ?? 0
         );
         const itemPrice = Number.isFinite(parsedPrice) ? parsedPrice : 0;
         return {
           ...item,
-          quantity,
+          quantity: 1,
           final_price: itemPrice
         };
       })
@@ -844,7 +852,7 @@ app.put('/api/orders/public/:id', async (req, res) => {
       });
 
     const selectedItemsTotal = normalizedItems.reduce(
-      (sum, item) => sum + Number(item.final_price || 0) * Number(item.quantity || 1),
+      (sum, item) => sum + Number(item.final_price || 0),
       0
     );
     const totalAmount = basePrice + selectedItemsTotal;
@@ -852,7 +860,7 @@ app.put('/api/orders/public/:id', async (req, res) => {
     await db.execute(
       `UPDATE orders
        SET name = ?, email = ?, phone = ?, address = ?, wedding_date = ?, notes = ?,
-           selected_items = ?, total_amount = ?, updated_at = CURRENT_TIMESTAMP
+           service_id = ?, service_name = ?, selected_items = ?, total_amount = ?, updated_at = CURRENT_TIMESTAMP
        WHERE id = ?`,
       [
         String(name).trim(),
@@ -861,6 +869,8 @@ app.put('/api/orders/public/:id', async (req, res) => {
         address || '',
         wedding_date,
         notes || '',
+        selectedService.id,
+        selectedService.name,
         JSON.stringify(normalizedItems),
         totalAmount,
         orderId

@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import toast from "react-hot-toast";
 import { formatRupiah } from "../utils/formatters";
+import { imageUrl } from "../utils/imageUrl";
 
 const API_BASE = "https://api-inventory.isavralabel.com/user-wedding/api";
 
@@ -15,6 +16,8 @@ const MyOrder = () => {
   const [lookupPhone, setLookupPhone] = useState("");
   const [order, setOrder] = useState(null);
   const [serviceItems, setServiceItems] = useState([]);
+  const [services, setServices] = useState([]);
+  const [selectedServiceId, setSelectedServiceId] = useState("");
   const [selectedItems, setSelectedItems] = useState([]);
   const [formData, setFormData] = useState({
     name: "",
@@ -31,7 +34,7 @@ const MyOrder = () => {
     if (!order) return 0;
     const basePrice = toNumber(order.base_price);
     const extras = selectedItems.reduce(
-      (sum, item) => sum + toNumber(item.final_price) * (item.quantity || 1),
+      (sum, item) => sum + toNumber(item.final_price),
       0
     );
     return basePrice + extras;
@@ -39,6 +42,7 @@ const MyOrder = () => {
 
   const hydrateOrderForm = (orderData) => {
     setOrder(orderData);
+    setSelectedServiceId(orderData?.service_id ? String(orderData.service_id) : "");
     setFormData({
       name: orderData?.name || "",
       email: orderData?.email || "",
@@ -50,7 +54,6 @@ const MyOrder = () => {
     const normalizedSelected = (Array.isArray(orderData?.selected_items) ? orderData.selected_items : []).map(
       (item) => ({
         ...item,
-        quantity: Math.max(1, parseInt(item?.quantity, 10) || 1),
         final_price: toNumber(item?.final_price ?? item?.item_price ?? item?.price ?? item?.custom_price ?? 0),
       })
     );
@@ -84,10 +87,14 @@ const MyOrder = () => {
       } else {
         setServiceItems([]);
       }
+      const servicesRes = await fetch(`${API_BASE}/services`);
+      const servicesData = await servicesRes.json();
+      setServices(Array.isArray(servicesData) ? servicesData : []);
     } catch (error) {
       setOrder(null);
       setServiceItems([]);
       setSelectedItems([]);
+      setServices([]);
       toast.error(error.message || "Gagal memuat pesanan");
     } finally {
       setLoading(false);
@@ -122,23 +129,12 @@ const MyOrder = () => {
           item_id: serviceItem.item_id,
           name: serviceItem.name || serviceItem.item_name,
           item_name: serviceItem.name || serviceItem.item_name,
-          quantity: 1,
-          final_price: toNumber(serviceItem.custom_price ?? serviceItem.price ?? 0),
+          final_price: toNumber(
+            serviceItem.final_price ?? serviceItem.custom_price ?? serviceItem.item_price ?? serviceItem.price ?? 0
+          ),
         },
       ];
     });
-  };
-
-  const updateItemQuantity = (serviceItem, delta) => {
-    setSelectedItems((prev) =>
-      prev.map((item) => {
-        const matched =
-          Number(item?.id) === Number(serviceItem?.id) ||
-          Number(item?.item_id) === Number(serviceItem?.item_id);
-        if (!matched) return item;
-        return { ...item, quantity: Math.max(1, (item.quantity || 1) + delta) };
-      })
-    );
   };
 
   const handleSave = async () => {
@@ -154,6 +150,7 @@ const MyOrder = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
+          service_id: selectedServiceId ? Number(selectedServiceId) : null,
           selected_items: selectedItems,
           verification_phone: lookupPhone.trim(),
         }),
@@ -178,6 +175,40 @@ const MyOrder = () => {
     }
   };
 
+  const handleServiceChange = async (serviceIdValue) => {
+    setSelectedServiceId(serviceIdValue);
+    if (!serviceIdValue) {
+      setServiceItems([]);
+      setSelectedItems([]);
+      return;
+    }
+    try {
+      const itemsRes = await fetch(`${API_BASE}/services/${serviceIdValue}/items`);
+      const itemsData = await itemsRes.json();
+      setServiceItems(Array.isArray(itemsData) ? itemsData : []);
+      setSelectedItems([]);
+
+      const selectedService = services.find((svc) => String(svc.id) === String(serviceIdValue));
+      if (selectedService) {
+        setOrder((prev) =>
+          prev
+            ? {
+                ...prev,
+                service_id: selectedService.id,
+                service_name: selectedService.name,
+                base_price: selectedService.base_price,
+                service_image: selectedService.image || "",
+              }
+            : prev
+        );
+      }
+    } catch {
+      toast.error("Gagal memuat item layanan");
+      setServiceItems([]);
+      setSelectedItems([]);
+    }
+  };
+
   return (
     <>
       <Helmet>
@@ -186,7 +217,7 @@ const MyOrder = () => {
 
       <section className="pt-28 pb-16 bg-gray-50 min-h-screen">
         <div className="container-custom">
-          <div className="max-w-5xl mx-auto">
+          <div className="max-w-6xl mx-auto">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Pesanan Saya</h1>
             <p className="text-gray-600 mb-6">
               Cek dan edit pesanan Anda dengan nomor invoice/pesanan.
@@ -289,6 +320,30 @@ const MyOrder = () => {
                 </div>
 
                 <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
+                  <div className="mb-4">
+                    <label className="block text-sm text-gray-600 mb-1">Layanan</label>
+                    <select
+                      value={selectedServiceId}
+                      onChange={(e) => handleServiceChange(e.target.value)}
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    >
+                      <option value="">Pilih layanan</option>
+                      {services.map((service) => (
+                        <option key={service.id} value={service.id}>
+                          {service.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {order?.service_image && (
+                    <div className="mb-4">
+                      <img
+                        src={imageUrl(order.service_image)}
+                        alt={order.service_name || "Layanan"}
+                        className="h-64 w-full rounded-lg object-cover border border-gray-200"
+                      />
+                    </div>
+                  )}
                   <h2 className="text-lg font-semibold text-gray-900 mb-3">
                     Item Tambahan ({order.service_name || "Layanan"})
                   </h2>
@@ -298,12 +353,9 @@ const MyOrder = () => {
                     <div className="space-y-2 max-h-[380px] overflow-auto pr-1">
                       {serviceItems.map((item) => {
                         const active = isSelected(item);
-                        const selected = selectedItems.find(
-                          (row) =>
-                            Number(row?.id) === Number(item?.id) ||
-                            Number(row?.item_id) === Number(item?.item_id)
+                        const unitPrice = toNumber(
+                          item.final_price ?? item.custom_price ?? item.item_price ?? item.price ?? 0
                         );
-                        const unitPrice = toNumber(item.custom_price ?? item.price ?? 0);
                         return (
                           <div
                             key={item.id}
@@ -328,27 +380,6 @@ const MyOrder = () => {
                                 {active ? "Hapus" : "Tambah"}
                               </button>
                             </div>
-                            {active && (
-                              <div className="mt-2 flex items-center gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => updateItemQuantity(item, -1)}
-                                  className="h-7 w-7 rounded border border-gray-300 text-sm"
-                                >
-                                  -
-                                </button>
-                                <span className="text-sm font-medium">
-                                  Qty: {selected?.quantity || 1}
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => updateItemQuantity(item, 1)}
-                                  className="h-7 w-7 rounded border border-gray-300 text-sm"
-                                >
-                                  +
-                                </button>
-                              </div>
-                            )}
                           </div>
                         );
                       })}
