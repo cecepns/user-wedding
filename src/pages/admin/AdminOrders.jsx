@@ -19,6 +19,18 @@ const CLIENT_COLOR_POOL = [
   "bg-orange-100 text-orange-800 border border-orange-200",
   "bg-emerald-100 text-emerald-800 border border-emerald-200",
 ];
+const CLIENT_ROW_COLOR_POOL = [
+  "bg-green-50",
+  "bg-blue-50",
+  "bg-purple-50",
+  "bg-amber-50",
+  "bg-pink-50",
+  "bg-cyan-50",
+  "bg-lime-50",
+  "bg-indigo-50",
+  "bg-orange-50",
+  "bg-emerald-50",
+];
 
 const normalizePhone = (value) =>
   (value || "")
@@ -105,17 +117,33 @@ const AdminOrders = () => {
     return rankMap;
   }, [combinedOrders, duplicateKeysSet]);
 
-  const clientColorByPhone = useMemo(() => {
+  const clientColorIndexByPhone = useMemo(() => {
     const map = {};
     let colorIndex = 0;
     combinedOrders.forEach((order) => {
       const phoneKey = normalizePhone(order.phone);
       if (!phoneKey || map[phoneKey]) return;
-      map[phoneKey] = CLIENT_COLOR_POOL[colorIndex % CLIENT_COLOR_POOL.length];
+      map[phoneKey] = colorIndex % CLIENT_COLOR_POOL.length;
       colorIndex += 1;
     });
     return map;
   }, [combinedOrders]);
+
+  const getClientChipColor = (phone) => {
+    const phoneKey = normalizePhone(phone);
+    if (!phoneKey || clientColorIndexByPhone[phoneKey] == null) {
+      return "bg-gray-100 text-gray-700 border border-gray-200";
+    }
+    return CLIENT_COLOR_POOL[clientColorIndexByPhone[phoneKey]];
+  };
+
+  const getClientRowColor = (phone) => {
+    const phoneKey = normalizePhone(phone);
+    if (!phoneKey || clientColorIndexByPhone[phoneKey] == null) {
+      return "bg-gray-50";
+    }
+    return CLIENT_ROW_COLOR_POOL[clientColorIndexByPhone[phoneKey]];
+  };
 
   const uniqueCalendarClients = useMemo(() => {
     const phones = new Set();
@@ -872,20 +900,18 @@ const AdminOrders = () => {
                             setSelectedDate(key);
                             handleFilterTableBySelectedDate(key);
                           }}
-                            className={`min-h-24 border border-gray-100 p-1 text-left align-top transition ${
+                            className={`min-h-20 border border-gray-100 p-1 text-left align-top transition ${
                             hasBookings
-                              ? "bg-red-50 hover:bg-red-100"
-                              : "bg-blue-50 hover:bg-blue-100"
+                              ? "bg-blue-50 hover:bg-blue-100"
+                              : "bg-white hover:bg-gray-50"
                           } ${isSelected ? "ring-2 ring-primary-500 z-10" : ""}`}
                         >
                           <div className="text-sm text-blue-700 font-medium mb-1 text-center">
                             {d}
                           </div>
                           <div className="space-y-1">
-                            {ordersForDay.slice(0, 2).map((order) => {
-                              const colorClass =
-                                clientColorByPhone[normalizePhone(order.phone)] ||
-                                "bg-gray-100 text-gray-700 border border-gray-200";
+                            {ordersForDay.slice(0, 3).map((order) => {
+                              const colorClass = getClientChipColor(order.phone);
                               return (
                                 <span
                                   key={`${order.orderType}-${order.id}`}
@@ -895,9 +921,9 @@ const AdminOrders = () => {
                                 </span>
                               );
                             })}
-                            {ordersForDay.length > 2 && (
+                            {ordersForDay.length > 3 && (
                               <span className="block text-[10px] text-gray-600 text-center">
-                                +{ordersForDay.length - 2} client
+                                +{ordersForDay.length - 3} client
                               </span>
                             )}
                           </div>
@@ -1002,7 +1028,7 @@ const AdminOrders = () => {
                       tableOrders.map((order) => (
                         <tr
                           key={`${order.orderType}-${order.id}`}
-                          className="hover:bg-gray-50 bg-green-50"
+                          className={`${getClientRowColor(order.phone)} hover:bg-gray-100`}
                         >
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="rounded-lg px-3 py-2 inline-flex flex-col">
