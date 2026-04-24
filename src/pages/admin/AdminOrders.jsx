@@ -1144,11 +1144,11 @@ const AdminOrders = () => {
                               <span className="text-xs text-white/80 mt-1">
                                 {formatDate(order.created_at)}
                               </span>
-                              <span className={`text-[10px] mt-0.5 px-1.5 py-0.5 rounded ${order.orderType === "custom_request" ? "bg-amber-700 text-white" : "bg-blue-700 text-white"}`}>
+                              <span className="text-[10px] mt-0.5 px-1.5 py-0.5 rounded bg-white text-black border border-gray-300">
                                 {order.orderType === "custom_request" ? "Custom" : "Pesan Biasa"}
                               </span>
                               {duplicateKeysSet.has(duplicateKey(order)) && (
-                                <span className="text-[10px] mt-0.5 px-1.5 py-0.5 rounded bg-red-700 text-white" title="Email & tanggal pernikahan sama dengan pesanan lain">
+                                <span className="text-[10px] mt-0.5 px-1.5 py-0.5 rounded bg-white text-black border border-gray-300" title="Email & tanggal pernikahan sama dengan pesanan lain">
                                   Duplikat ke-
                                   {duplicateOrderRankMap[`${order.orderType}-${order.id}`]}
                                 </span>
