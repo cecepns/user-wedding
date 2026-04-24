@@ -968,7 +968,7 @@ const AdminSuratJalan = () => {
                   </div>
                 </div>
                 <p className="text-xs text-gray-500 mb-3">
-                  Total client: {totalUniqueCalendarClients} (berdasarkan nomor HP berbeda).
+                  Total client: {totalUniqueCalendarClients} 
                 </p>
 
                 <div className="border border-gray-200 rounded-xl overflow-hidden">

@@ -8,16 +8,16 @@ import jsPDF from "jspdf";
 
 const API_BASE = "https://api-inventory.isavralabel.com/user-wedding/api";
 const CLIENT_COLOR_POOL = [
-  "bg-green-100 text-green-800 border border-green-200",
-  "bg-blue-100 text-blue-800 border border-blue-200",
-  "bg-purple-100 text-purple-800 border border-purple-200",
-  "bg-amber-100 text-amber-800 border border-amber-200",
-  "bg-pink-100 text-pink-800 border border-pink-200",
-  "bg-cyan-100 text-cyan-800 border border-cyan-200",
-  "bg-lime-100 text-lime-800 border border-lime-200",
-  "bg-indigo-100 text-indigo-800 border border-indigo-200",
-  "bg-orange-100 text-orange-800 border border-orange-200",
-  "bg-emerald-100 text-emerald-800 border border-emerald-200",
+  "bg-green-600 text-white",
+  "bg-sky-600 text-white",
+  "bg-indigo-600 text-white",
+  "bg-amber-700 text-white",
+  "bg-purple-700 text-white",
+  "bg-orange-600 text-white",
+  "bg-emerald-700 text-white",
+  "bg-rose-600 text-white",
+  "bg-cyan-700 text-white",
+  "bg-blue-700 text-white",
 ];
 const CLIENT_ROW_COLOR_POOL = [
   "bg-green-50",
@@ -132,7 +132,7 @@ const AdminOrders = () => {
   const getClientChipColor = (phone) => {
     const phoneKey = normalizePhone(phone);
     if (!phoneKey || clientColorIndexByPhone[phoneKey] == null) {
-      return "bg-gray-100 text-gray-700 border border-gray-200";
+      return "bg-gray-700 text-white";
     }
     return CLIENT_COLOR_POOL[clientColorIndexByPhone[phoneKey]];
   };
@@ -846,7 +846,7 @@ const AdminOrders = () => {
                 </div>
               </div>
               <p className="text-xs text-gray-500 mb-3">
-                Total client: {uniqueCalendarClients} (berdasarkan nomor HP berbeda).
+                Total client: {uniqueCalendarClients}
               </p>
 
               <div className="border border-gray-200 rounded-xl overflow-hidden">
@@ -875,7 +875,7 @@ const AdminOrders = () => {
                         return (
                           <div
                             key={`empty-${index}`}
-                            className="h-14 border border-gray-100 bg-gray-50"
+                            className="min-h-20 border border-gray-100 bg-gray-50"
                           />
                         );
                       }
@@ -900,10 +900,10 @@ const AdminOrders = () => {
                             setSelectedDate(key);
                             handleFilterTableBySelectedDate(key);
                           }}
-                            className={`min-h-20 border border-gray-100 p-1 text-left align-top transition ${
+                            className={`min-h-20 border border-gray-100 p-1 text-left align-top ${
                             hasBookings
-                              ? "bg-blue-50 hover:bg-blue-100"
-                              : "bg-white hover:bg-gray-50"
+                              ? "bg-blue-50"
+                              : "bg-white"
                           } ${isSelected ? "ring-2 ring-primary-500 z-10" : ""}`}
                         >
                           <div className="text-sm text-blue-700 font-medium mb-1 text-center">
