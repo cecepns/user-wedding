@@ -1,0 +1,391 @@
+import { useMemo, useState } from "react";
+import { Helmet } from "react-helmet-async";
+import toast from "react-hot-toast";
+import { formatRupiah } from "../utils/formatters";
+
+const API_BASE = "https://api-inventory.isavralabel.com/user-wedding/api";
+
+const toNumber = (value) => {
+  const n = typeof value === "number" ? value : parseFloat(value);
+  return Number.isFinite(n) ? n : 0;
+};
+
+const MyOrder = () => {
+  const [invoiceId, setInvoiceId] = useState("");
+  const [lookupPhone, setLookupPhone] = useState("");
+  const [order, setOrder] = useState(null);
+  const [serviceItems, setServiceItems] = useState([]);
+  const [selectedItems, setSelectedItems] = useState([]);
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    address: "",
+    wedding_date: "",
+    notes: "",
+  });
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const totalAmount = useMemo(() => {
+    if (!order) return 0;
+    const basePrice = toNumber(order.base_price);
+    const extras = selectedItems.reduce(
+      (sum, item) => sum + toNumber(item.final_price) * (item.quantity || 1),
+      0
+    );
+    return basePrice + extras;
+  }, [order, selectedItems]);
+
+  const hydrateOrderForm = (orderData) => {
+    setOrder(orderData);
+    setFormData({
+      name: orderData?.name || "",
+      email: orderData?.email || "",
+      phone: orderData?.phone || "",
+      address: orderData?.address || "",
+      wedding_date: orderData?.wedding_date ? String(orderData.wedding_date).slice(0, 10) : "",
+      notes: orderData?.notes || "",
+    });
+    const normalizedSelected = (Array.isArray(orderData?.selected_items) ? orderData.selected_items : []).map(
+      (item) => ({
+        ...item,
+        quantity: Math.max(1, parseInt(item?.quantity, 10) || 1),
+        final_price: toNumber(item?.final_price ?? item?.item_price ?? item?.price ?? item?.custom_price ?? 0),
+      })
+    );
+    setSelectedItems(normalizedSelected);
+  };
+
+  const loadOrder = async () => {
+    const id = invoiceId.trim();
+    const phone = lookupPhone.trim();
+    if (!id || !phone) {
+      toast.error("Masukkan nomor invoice/pesanan dan nomor HP");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch(
+        `${API_BASE}/orders/public/${encodeURIComponent(id)}?phone=${encodeURIComponent(phone)}`
+      );
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.message || "Pesanan tidak ditemukan");
+      }
+
+      hydrateOrderForm(data);
+
+      if (data?.service_id) {
+        const itemsRes = await fetch(`${API_BASE}/services/${data.service_id}/items`);
+        const itemsData = await itemsRes.json();
+        setServiceItems(Array.isArray(itemsData) ? itemsData : []);
+      } else {
+        setServiceItems([]);
+      }
+    } catch (error) {
+      setOrder(null);
+      setServiceItems([]);
+      setSelectedItems([]);
+      toast.error(error.message || "Gagal memuat pesanan");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const isSelected = (serviceItem) =>
+    selectedItems.some(
+      (item) =>
+        Number(item?.id) === Number(serviceItem?.id) ||
+        Number(item?.item_id) === Number(serviceItem?.item_id)
+    );
+
+  const toggleItem = (serviceItem) => {
+    setSelectedItems((prev) => {
+      const exists = prev.some(
+        (item) =>
+          Number(item?.id) === Number(serviceItem?.id) ||
+          Number(item?.item_id) === Number(serviceItem?.item_id)
+      );
+      if (exists) {
+        return prev.filter(
+          (item) =>
+            Number(item?.id) !== Number(serviceItem?.id) &&
+            Number(item?.item_id) !== Number(serviceItem?.item_id)
+        );
+      }
+      return [
+        ...prev,
+        {
+          id: serviceItem.id,
+          item_id: serviceItem.item_id,
+          name: serviceItem.name || serviceItem.item_name,
+          item_name: serviceItem.name || serviceItem.item_name,
+          quantity: 1,
+          final_price: toNumber(serviceItem.custom_price ?? serviceItem.price ?? 0),
+        },
+      ];
+    });
+  };
+
+  const updateItemQuantity = (serviceItem, delta) => {
+    setSelectedItems((prev) =>
+      prev.map((item) => {
+        const matched =
+          Number(item?.id) === Number(serviceItem?.id) ||
+          Number(item?.item_id) === Number(serviceItem?.item_id);
+        if (!matched) return item;
+        return { ...item, quantity: Math.max(1, (item.quantity || 1) + delta) };
+      })
+    );
+  };
+
+  const handleSave = async () => {
+    if (!order) return;
+    if (!lookupPhone.trim()) {
+      toast.error("Nomor HP verifikasi wajib diisi");
+      return;
+    }
+    setSaving(true);
+    try {
+      const response = await fetch(`${API_BASE}/orders/public/${order.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...formData,
+          selected_items: selectedItems,
+          verification_phone: lookupPhone.trim(),
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.message || "Gagal menyimpan pesanan");
+      }
+
+      const refreshed = await fetch(
+        `${API_BASE}/orders/public/${order.id}?phone=${encodeURIComponent(lookupPhone.trim())}`
+      );
+      const refreshedData = await refreshed.json();
+      if (refreshed.ok) {
+        hydrateOrderForm(refreshedData);
+      }
+      toast.success("Pesanan berhasil diperbarui");
+    } catch (error) {
+      toast.error(error.message || "Gagal menyimpan perubahan");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <>
+      <Helmet>
+        <title>Pesanan Saya - User Wedding Organizer</title>
+      </Helmet>
+
+      <section className="pt-28 pb-16 bg-gray-50 min-h-screen">
+        <div className="container-custom">
+          <div className="max-w-5xl mx-auto">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Pesanan Saya</h1>
+            <p className="text-gray-600 mb-6">
+              Cek dan edit pesanan Anda dengan nomor invoice/pesanan.
+            </p>
+
+            <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6 mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Nomor Invoice / ID Pesanan
+              </label>
+              <div className="grid md:grid-cols-2 gap-2">
+                <input
+                  type="text"
+                  value={invoiceId}
+                  onChange={(e) => setInvoiceId(e.target.value)}
+                  placeholder="Contoh: 123"
+                  className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+                <input
+                  type="text"
+                  value={lookupPhone}
+                  onChange={(e) => setLookupPhone(e.target.value)}
+                  placeholder="Nomor HP sesuai pesanan"
+                  className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
+              <div className="mt-2">
+                <button
+                  type="button"
+                  onClick={loadOrder}
+                  disabled={loading}
+                  className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-60"
+                >
+                  {loading ? "Mencari..." : "Cari"}
+                </button>
+              </div>
+            </div>
+
+            {order && (
+              <div className="grid lg:grid-cols-2 gap-6">
+                <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6 space-y-4">
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    Detail Pesanan #{order.id}
+                  </h2>
+                  <div>
+                    <label className="block text-sm text-gray-600 mb-1">Nama</label>
+                    <input
+                      type="text"
+                      value={formData.name}
+                      onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-600 mb-1">Email</label>
+                    <input
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData((p) => ({ ...p, email: e.target.value }))}
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-600 mb-1">No. HP</label>
+                    <input
+                      type="text"
+                      value={formData.phone}
+                      onChange={(e) => setFormData((p) => ({ ...p, phone: e.target.value }))}
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-600 mb-1">Alamat</label>
+                    <textarea
+                      value={formData.address}
+                      onChange={(e) => setFormData((p) => ({ ...p, address: e.target.value }))}
+                      rows={3}
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-600 mb-1">Tanggal Acara</label>
+                    <input
+                      type="date"
+                      value={formData.wedding_date}
+                      onChange={(e) =>
+                        setFormData((p) => ({ ...p, wedding_date: e.target.value }))
+                      }
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-600 mb-1">Catatan</label>
+                    <textarea
+                      value={formData.notes}
+                      onChange={(e) => setFormData((p) => ({ ...p, notes: e.target.value }))}
+                      rows={3}
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
+                  <h2 className="text-lg font-semibold text-gray-900 mb-3">
+                    Item Tambahan ({order.service_name || "Layanan"})
+                  </h2>
+                  {serviceItems.length === 0 ? (
+                    <p className="text-sm text-gray-500">Item tambahan tidak tersedia.</p>
+                  ) : (
+                    <div className="space-y-2 max-h-[380px] overflow-auto pr-1">
+                      {serviceItems.map((item) => {
+                        const active = isSelected(item);
+                        const selected = selectedItems.find(
+                          (row) =>
+                            Number(row?.id) === Number(item?.id) ||
+                            Number(row?.item_id) === Number(item?.item_id)
+                        );
+                        const unitPrice = toNumber(item.custom_price ?? item.price ?? 0);
+                        return (
+                          <div
+                            key={item.id}
+                            className={`rounded-lg border p-3 ${
+                              active ? "border-primary-300 bg-primary-50" : "border-gray-200"
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="text-sm font-semibold text-gray-900">{item.name}</p>
+                                <p className="text-xs text-gray-600">{formatRupiah(unitPrice)}</p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => toggleItem(item)}
+                                className={`text-xs font-semibold px-2 py-1 rounded ${
+                                  active
+                                    ? "bg-red-100 text-red-700"
+                                    : "bg-green-100 text-green-700"
+                                }`}
+                              >
+                                {active ? "Hapus" : "Tambah"}
+                              </button>
+                            </div>
+                            {active && (
+                              <div className="mt-2 flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => updateItemQuantity(item, -1)}
+                                  className="h-7 w-7 rounded border border-gray-300 text-sm"
+                                >
+                                  -
+                                </button>
+                                <span className="text-sm font-medium">
+                                  Qty: {selected?.quantity || 1}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => updateItemQuantity(item, 1)}
+                                  className="h-7 w-7 rounded border border-gray-300 text-sm"
+                                >
+                                  +
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  <div className="mt-4 pt-4 border-t border-gray-200 space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Harga layanan</span>
+                      <span className="font-medium">{formatRupiah(toNumber(order.base_price))}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Booking</span>
+                      <span className="font-medium">{formatRupiah(toNumber(order.booking_amount))}</span>
+                    </div>
+                    <div className="flex justify-between text-base font-bold text-primary-700 pt-2">
+                      <span>Total terbaru</span>
+                      <span>{formatRupiah(totalAmount)}</span>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="mt-5 w-full rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-60"
+                  >
+                    {saving ? "Menyimpan..." : "Simpan Perubahan Pesanan"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+    </>
+  );
+};
+
+export default MyOrder;

@@ -19,6 +19,7 @@ const Navbar = () => {
     { name: 'Beranda', path: '/' },
     { name: 'Wedding Package', path: '/services' },
     { name: 'Custom Service', path: '/custom-service' },
+    { name: 'Pesanan Saya', path: '/pesanan-saya' },
     { name: 'Galeri', path: '/gallery' },
     { name: 'Tentang', path: '/about' },
     // { name: 'Artikel', path: '/articles' },

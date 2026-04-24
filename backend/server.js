@@ -738,6 +738,150 @@ app.get('/api/orders', authenticateToken, async (req, res) => {
   }
 });
 
+app.get('/api/orders/public/:id', async (req, res) => {
+  const { id } = req.params;
+  const phoneInput = String(req.query.phone || '').trim();
+  const normalizePhoneNumber = (value) => String(value || '').replace(/\D/g, '');
+  const orderId = Number(id);
+  if (!Number.isFinite(orderId) || orderId <= 0) {
+    return res.status(400).json({ message: 'ID pesanan tidak valid' });
+  }
+  if (!phoneInput) {
+    return res.status(400).json({ message: 'Nomor HP wajib diisi' });
+  }
+
+  try {
+    const [rows] = await db.execute(
+      `SELECT o.*, s.base_price
+       FROM orders o
+       LEFT JOIN services s ON o.service_id = s.id
+       WHERE o.id = ?
+       LIMIT 1`,
+      [orderId]
+    );
+    const order = rows[0];
+    if (!order) {
+      return res.status(404).json({ message: 'Pesanan tidak ditemukan' });
+    }
+    if (normalizePhoneNumber(order.phone) !== normalizePhoneNumber(phoneInput)) {
+      return res.status(403).json({ message: 'Nomor HP tidak sesuai dengan pesanan' });
+    }
+
+    order.selected_items = parseSelectedItemsArray(order.selected_items);
+    res.json(order);
+  } catch (error) {
+    console.error('Public order detail error:', error);
+    res.status(500).json({ message: 'Database error' });
+  }
+});
+
+app.put('/api/orders/public/:id', async (req, res) => {
+  const { id } = req.params;
+  const normalizePhoneNumber = (value) => String(value || '').replace(/\D/g, '');
+  const orderId = Number(id);
+  if (!Number.isFinite(orderId) || orderId <= 0) {
+    return res.status(400).json({ message: 'ID pesanan tidak valid' });
+  }
+
+  const {
+    name,
+    email,
+    phone,
+    address,
+    wedding_date,
+    notes,
+    selected_items,
+    verification_phone
+  } = req.body || {};
+
+  if (!name || !email || !wedding_date) {
+    return res.status(400).json({ message: 'Nama, email, dan tanggal acara wajib diisi' });
+  }
+  if (!verification_phone) {
+    return res.status(400).json({ message: 'Nomor HP verifikasi wajib diisi' });
+  }
+
+  try {
+    const [existingRows] = await db.execute(
+      'SELECT id, status, service_id, booking_amount, phone FROM orders WHERE id = ? LIMIT 1',
+      [orderId]
+    );
+    const existingOrder = existingRows[0];
+    if (!existingOrder) {
+      return res.status(404).json({ message: 'Pesanan tidak ditemukan' });
+    }
+    if (existingOrder.status !== 'pending') {
+      return res.status(400).json({ message: 'Pesanan hanya bisa diedit saat status masih pending' });
+    }
+    if (normalizePhoneNumber(existingOrder.phone) !== normalizePhoneNumber(verification_phone)) {
+      return res.status(403).json({ message: 'Nomor HP verifikasi tidak sesuai' });
+    }
+
+    const [serviceRows] = await db.execute(
+      'SELECT base_price FROM services WHERE id = ? LIMIT 1',
+      [existingOrder.service_id]
+    );
+    const basePrice = Number(serviceRows[0]?.base_price || 0);
+
+    const incomingItems = Array.isArray(selected_items) ? selected_items : [];
+    const normalizedItems = incomingItems
+      .map((item) => {
+        const quantity = Math.max(1, parseInt(item?.quantity, 10) || 1);
+        const parsedPrice = Number(
+          item?.final_price ?? item?.item_price ?? item?.price ?? item?.custom_price ?? 0
+        );
+        const itemPrice = Number.isFinite(parsedPrice) ? parsedPrice : 0;
+        return {
+          ...item,
+          quantity,
+          final_price: itemPrice
+        };
+      })
+      .filter((item) => {
+        const hasName = Boolean((item?.name || item?.item_name || item?.title || '').toString().trim());
+        const hasId = Number.isFinite(Number(item?.id)) || Number.isFinite(Number(item?.item_id));
+        return hasName || hasId;
+      });
+
+    const selectedItemsTotal = normalizedItems.reduce(
+      (sum, item) => sum + Number(item.final_price || 0) * Number(item.quantity || 1),
+      0
+    );
+    const totalAmount = basePrice + selectedItemsTotal;
+
+    await db.execute(
+      `UPDATE orders
+       SET name = ?, email = ?, phone = ?, address = ?, wedding_date = ?, notes = ?,
+           selected_items = ?, total_amount = ?, updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+      [
+        String(name).trim(),
+        String(email).trim(),
+        phone || '',
+        address || '',
+        wedding_date,
+        notes || '',
+        JSON.stringify(normalizedItems),
+        totalAmount,
+        orderId
+      ]
+    );
+
+    res.json({
+      message: 'Pesanan berhasil diperbarui',
+      order: {
+        id: orderId,
+        selected_items: normalizedItems,
+        total_amount: totalAmount,
+        booking_amount: existingOrder.booking_amount
+      }
+    });
+  } catch (error) {
+    console.error('Public order update error:', error);
+    res.status(500).json({ message: 'Database error' });
+  }
+});
+
 app.get('/api/vendor-calendar', authenticateToken, async (req, res) => {
   try {
     const [toppingItems] = await db.execute(
