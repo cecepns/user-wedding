@@ -20,16 +20,16 @@ const CLIENT_COLOR_POOL = [
   "bg-blue-700 text-white",
 ];
 const CLIENT_ROW_COLOR_POOL = [
-  "bg-green-700",
-  "bg-blue-700",
-  "bg-purple-700",
+  "bg-green-600",
+  "bg-sky-600",
+  "bg-indigo-600",
   "bg-amber-700",
-  "bg-pink-700",
-  "bg-cyan-700",
-  "bg-lime-700",
-  "bg-indigo-700",
-  "bg-orange-700",
+  "bg-purple-700",
+  "bg-orange-600",
   "bg-emerald-700",
+  "bg-rose-600",
+  "bg-cyan-700",
+  "bg-blue-700",
 ];
 
 const normalizePhone = (value) =>
@@ -155,7 +155,7 @@ const AdminOrders = () => {
   const getClientRowColor = (phone) => {
     const phoneKey = normalizePhone(phone);
     if (!phoneKey || clientColorIndexByPhone[phoneKey] == null) {
-      return "bg-gray-50";
+      return "bg-gray-700";
     }
     return CLIENT_ROW_COLOR_POOL[clientColorIndexByPhone[phoneKey]];
   };
@@ -1043,11 +1043,11 @@ const AdminOrders = () => {
                       tableOrders.map((order) => (
                         <tr
                           key={`${order.orderType}-${order.id}`}
-                          className={`${getClientRowColor(order.phone)} text-white hover:brightness-110`}
+                          className="bg-white hover:bg-gray-50"
                         >
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="rounded-lg px-3 py-2 inline-flex flex-col">
-                              <span className="text-xs font-semibold text-white">
+                            <div className={`rounded-lg px-3 py-2 inline-flex flex-col text-white ${getClientRowColor(order.phone)}`}>
+                              <span className="text-xs font-semibold">
                                 #{order.id}
                               </span>
                               <span className="text-xs text-white/80 mt-1">
@@ -1065,33 +1065,33 @@ const AdminOrders = () => {
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-white">
+                            <div className="text-sm font-medium text-gray-900">
                               {order.name}
                             </div>
-                            <div className="text-sm text-white/85">
+                            <div className="text-sm text-gray-500">
                               {order.email}
                             </div>
-                            <div className="text-sm text-white/85">
+                            <div className="text-sm text-gray-500">
                               {order.phone}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-white">
+                            <div className="text-sm font-medium text-gray-900">
                               {order.service_name}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-white">
+                            <div className="text-sm text-gray-900">
                               {formatDateTime(order.wedding_date)}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-bold text-white">
+                            <div className="text-sm font-bold text-primary-600">
                               {formatRupiah(order.total_amount ?? 0)}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-bold text-white">
+                            <div className="text-sm font-bold text-primary-600">
                               {formatRupiah(order.booking_amount ?? 0)}
                             </div>
                           </td>
@@ -1114,7 +1114,7 @@ const AdminOrders = () => {
                             <div className="flex space-x-3">
                               <button
                                 onClick={() => handleViewDetail(order)}
-                                className="text-white/90 hover:text-white flex items-center gap-1"
+                                className="text-blue-600 hover:text-blue-700 flex items-center gap-1"
                                 title="Lihat Detail"
                               >
                                 <Eye size={16} />
@@ -1123,7 +1123,7 @@ const AdminOrders = () => {
                                 onClick={() =>
                                   handleEditBookingAmount(order)
                                 }
-                                className="text-white/90 hover:text-white flex items-center gap-1"
+                                className="text-green-600 hover:text-green-700 flex items-center gap-1"
                                 title="Edit Booking Amount"
                               >
                                 <Edit size={16} />
@@ -1132,14 +1132,14 @@ const AdminOrders = () => {
                                 onClick={() =>
                                   handleGenerateInvoice(order)
                                 }
-                                className="text-white/90 hover:text-white flex items-center gap-1"
+                                className="text-purple-600 hover:text-purple-700 flex items-center gap-1"
                                 title="Download Invoice"
                               >
                                 <Download size={16} />
                               </button>
                               <button
                                 onClick={() => handleDeleteOrder(order)}
-                                className="text-white/90 hover:text-white flex items-center gap-1"
+                                className="text-red-600 hover:text-red-700 flex items-center gap-1"
                                 title="Hapus"
                               >
                                 <Trash2 size={16} />
