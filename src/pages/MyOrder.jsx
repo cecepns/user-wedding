@@ -378,18 +378,14 @@ const MyOrder = () => {
                   <div className="mt-4 pt-4 border-t border-gray-200 space-y-1 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-600">Harga layanan</span>
-                      <span className="font-medium">{formatRupiah(toNumber(order.base_price))}</span>
+                      <span className="font-medium">{formatRupiah(totalAmount)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Booking</span>
+                      <span className="text-gray-600">Total booking</span>
                       <span className="font-medium">{formatRupiah(toNumber(order.booking_amount))}</span>
                     </div>
-                    <div className="flex justify-between text-base font-bold text-primary-700 pt-2">
-                      <span>Total terbaru</span>
-                      <span>{formatRupiah(totalAmount)}</span>
-                    </div>
                     <div className="flex justify-between text-sm font-semibold text-[#2f4274] pt-1">
-                      <span>Sisa pelunasan terbaru</span>
+                      <span>Pelunasan</span>
                       <span>
                         {formatRupiah(
                           Math.max(0, totalAmount - toNumber(order.booking_amount))
