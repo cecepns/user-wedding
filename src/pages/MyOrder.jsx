@@ -217,7 +217,7 @@ const MyOrder = () => {
 
       <section className="pt-28 pb-16 bg-gray-50 min-h-screen">
         <div className="container-custom">
-          <div className="max-w-6xl mx-auto">
+          <div className="max-w-6xl mx-auto px-4 md:px-0">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Pesanan Saya</h1>
             <p className="text-gray-600 mb-6">
               Cek dan edit pesanan Anda dengan nomor invoice/pesanan.
