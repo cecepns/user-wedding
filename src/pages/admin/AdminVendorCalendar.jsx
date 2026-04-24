@@ -226,7 +226,7 @@ const AdminVendorCalendar = () => {
 
   const handleOpenEventDetail = (event) => {
     setSelectedEventDetail(event);
-    setVendorInputName(event?.vendor_name || "");
+    setVendorInputName("");
   };
 
   const handleApplyVendorName = () => {
@@ -243,15 +243,15 @@ const AdminVendorCalendar = () => {
 
       setEvents((prev) =>
         prev.map((event) =>
-          matcher(event) ? { ...event, vendor_name: updatedName } : event
+          matcher(event) ? { ...event, custom_vendor_name: updatedName } : event
         )
       );
       setSelectedEventDetail((prev) =>
-        prev ? { ...prev, vendor_name: updatedName } : prev
+        prev ? { ...prev, custom_vendor_name: updatedName } : prev
       );
     };
 
-    const previousName = selectedEventDetail.vendor_name || "";
+    const previousName = selectedEventDetail.custom_vendor_name || "";
     applyLocalUpdate(nextVendorName);
     setSavingVendorName(true);
 
@@ -273,6 +273,8 @@ const AdminVendorCalendar = () => {
         if (!response.ok) {
           throw new Error("Gagal menyimpan nama vendor");
         }
+        setSelectedEventDetail(null);
+        setVendorInputName("");
       })
       .catch((error) => {
         console.error("Error saving vendor name:", error);
@@ -444,9 +446,16 @@ const AdminVendorCalendar = () => {
                         title="Klik untuk lihat deskripsi vendor"
                       >
                         <td className="px-4 py-2">
-                          <span className={`inline-flex rounded px-2 py-1 text-xs font-semibold ${getVendorColorClass(event.vendor_key, event.vendor_name)}`}>
-                            {event.vendor_name}
-                          </span>
+                          <div>
+                            <span className={`inline-flex rounded px-2 py-1 text-xs font-semibold ${getVendorColorClass(event.vendor_key, event.vendor_name)}`}>
+                              {event.vendor_name}
+                            </span>
+                            {event.custom_vendor_name?.trim() && (
+                              <p className="mt-1 text-xs text-gray-600">
+                                {event.custom_vendor_name}
+                              </p>
+                            )}
+                          </div>
                         </td>
                         <td className="px-4 py-2">{event.client_name || "-"}</td>
                         <td className="px-4 py-2">
@@ -484,6 +493,11 @@ const AdminVendorCalendar = () => {
                   <span className={`inline-flex rounded px-2 py-1 text-xs font-semibold ${getVendorColorClass(selectedEventDetail.vendor_key, selectedEventDetail.vendor_name)}`}>
                     {selectedEventDetail.vendor_name}
                   </span>
+                  {selectedEventDetail.custom_vendor_name?.trim() && (
+                    <p className="mt-1 text-sm text-gray-700">
+                      {selectedEventDetail.custom_vendor_name}
+                    </p>
+                  )}
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                   <div>

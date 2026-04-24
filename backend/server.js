@@ -862,9 +862,9 @@ app.get('/api/vendor-calendar', authenticateToken, async (req, res) => {
         weddingDateKey
       ].join('|');
       const customVendorName = overrideByKey.get(overrideKey);
-      if (customVendorName && String(customVendorName).trim()) {
-        event.vendor_name = String(customVendorName).trim();
-      }
+      event.custom_vendor_name = customVendorName
+        ? String(customVendorName).trim()
+        : '';
 
       const key = [
         event.event_type,
