@@ -16,6 +16,10 @@ const normalizeName = (value) =>
     .toLowerCase()
     .replace(/\s+/g, " ")
     .trim();
+const getMasterItemId = (item) => {
+  const id = Number(item?.item_id ?? item?.id);
+  return Number.isFinite(id) && id > 0 ? id : null;
+};
 
 const MyOrder = () => {
   const [invoiceId, setInvoiceId] = useState("");
@@ -101,12 +105,9 @@ const MyOrder = () => {
   };
 
   const isSameItem = (a, b) => {
-    const idA = Number(a?.id);
-    const idB = Number(b?.id);
-    const itemIdA = Number(a?.item_id);
-    const itemIdB = Number(b?.item_id);
-    if (Number.isFinite(idA) && Number.isFinite(idB) && idA === idB) return true;
-    if (Number.isFinite(itemIdA) && Number.isFinite(itemIdB) && itemIdA === itemIdB) return true;
+    const masterIdA = getMasterItemId(a);
+    const masterIdB = getMasterItemId(b);
+    if (masterIdA && masterIdB && masterIdA === masterIdB) return true;
 
     const nameA = normalizeName(a?.name || a?.item_name || a?.title);
     const nameB = normalizeName(b?.name || b?.item_name || b?.title);
