@@ -20,6 +20,12 @@ const getMasterItemId = (item) => {
   const id = Number(item?.item_id ?? item?.id);
   return Number.isFinite(id) && id > 0 ? id : null;
 };
+const getItemIdentityKey = (item) => {
+  const masterId = getMasterItemId(item);
+  if (masterId) return `id:${masterId}`;
+  const name = normalizeName(item?.name || item?.item_name || item?.title);
+  return name ? `name:${name}` : "";
+};
 
 const MyOrder = () => {
   const [invoiceId, setInvoiceId] = useState("");
@@ -27,6 +33,7 @@ const MyOrder = () => {
   const [order, setOrder] = useState(null);
   const [serviceItems, setServiceItems] = useState([]);
   const [selectedItems, setSelectedItems] = useState([]);
+  const [lockedSelectedKeys, setLockedSelectedKeys] = useState(new Set());
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -65,6 +72,13 @@ const MyOrder = () => {
       })
     );
     setSelectedItems(normalizedSelected);
+    setLockedSelectedKeys(
+      new Set(
+        normalizedSelected
+          .map((item) => getItemIdentityKey(item))
+          .filter(Boolean)
+      )
+    );
   };
 
   const loadOrder = async () => {
@@ -116,6 +130,10 @@ const MyOrder = () => {
 
   const isSelected = (serviceItem) =>
     selectedItems.some((item) => isSameItem(item, serviceItem));
+  const isLockedSelected = (serviceItem) => {
+    const key = getItemIdentityKey(serviceItem);
+    return Boolean(key && lockedSelectedKeys.has(key));
+  };
 
   const displayItems = useMemo(() => {
     const merged = [...serviceItems];
@@ -192,16 +210,16 @@ const MyOrder = () => {
         <title>Pesanan Saya - User Wedding Organizer</title>
       </Helmet>
 
-      <section className="pt-28 pb-16 bg-gray-50 min-h-screen">
+      <section className="pt-28 pb-16 bg-[#f0f8ff] min-h-screen">
         <div className="container-custom">
           <div className="max-w-6xl mx-auto px-4 md:px-0">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Pesanan Saya</h1>
-            <p className="text-gray-600 mb-6">
+            <h1 className="text-3xl font-bold text-[#2f4274] mb-2">Pesanan Saya</h1>
+            <p className="text-[#4a5f95] mb-6">
               Cek dan edit pesanan Anda dengan nomor invoice/pesanan.
             </p>
 
-            <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6 mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            <div className="bg-white rounded-2xl border border-[#d7e3ff] shadow-lg p-4 md:p-6 mb-6">
+              <label className="block text-sm font-medium text-[#2f4274] mb-2">
                 Nomor Invoice / ID Pesanan
               </label>
               <div className="grid md:grid-cols-2 gap-2">
@@ -210,14 +228,14 @@ const MyOrder = () => {
                   value={invoiceId}
                   onChange={(e) => setInvoiceId(e.target.value)}
                   placeholder="Contoh: 123"
-                  className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="flex-1 rounded-lg border border-[#c9d7f5] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
                 <input
                   type="text"
                   value={lookupPhone}
                   onChange={(e) => setLookupPhone(e.target.value)}
                   placeholder="Nomor HP sesuai pesanan"
-                  className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="flex-1 rounded-lg border border-[#c9d7f5] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
               </div>
               <div className="mt-2">
@@ -234,69 +252,69 @@ const MyOrder = () => {
 
             {order && (
               <div className="grid lg:grid-cols-2 gap-6">
-                <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6 space-y-4">
-                  <h2 className="text-lg font-semibold text-gray-900">
+                <div className="bg-white rounded-2xl border border-[#d7e3ff] shadow-lg p-4 md:p-6 space-y-4">
+                  <h2 className="text-lg font-semibold text-[#2f4274]">
                     Detail Pesanan #{order.id}
                   </h2>
                   <div>
-                    <label className="block text-sm text-gray-600 mb-1">Nama</label>
+                    <label className="block text-sm text-[#4a5f95] mb-1">Nama</label>
                     <input
                       type="text"
                       value={formData.name}
                       onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                      className="w-full rounded-lg border border-[#c9d7f5] px-3 py-2 text-sm"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm text-gray-600 mb-1">Email</label>
+                    <label className="block text-sm text-[#4a5f95] mb-1">Email</label>
                     <input
                       type="email"
                       value={formData.email}
                       onChange={(e) => setFormData((p) => ({ ...p, email: e.target.value }))}
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                      className="w-full rounded-lg border border-[#c9d7f5] px-3 py-2 text-sm"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm text-gray-600 mb-1">No. HP</label>
+                    <label className="block text-sm text-[#4a5f95] mb-1">No. HP</label>
                     <input
                       type="text"
                       value={formData.phone}
                       onChange={(e) => setFormData((p) => ({ ...p, phone: e.target.value }))}
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                      className="w-full rounded-lg border border-[#c9d7f5] px-3 py-2 text-sm"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm text-gray-600 mb-1">Alamat</label>
+                    <label className="block text-sm text-[#4a5f95] mb-1">Alamat</label>
                     <textarea
                       value={formData.address}
                       onChange={(e) => setFormData((p) => ({ ...p, address: e.target.value }))}
                       rows={3}
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                      className="w-full rounded-lg border border-[#c9d7f5] px-3 py-2 text-sm"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm text-gray-600 mb-1">Tanggal Acara</label>
+                    <label className="block text-sm text-[#4a5f95] mb-1">Tanggal Acara</label>
                     <input
                       type="date"
                       value={formData.wedding_date}
                       onChange={(e) =>
                         setFormData((p) => ({ ...p, wedding_date: e.target.value }))
                       }
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                      className="w-full rounded-lg border border-[#c9d7f5] px-3 py-2 text-sm"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm text-gray-600 mb-1">Catatan</label>
+                    <label className="block text-sm text-[#4a5f95] mb-1">Catatan</label>
                     <textarea
                       value={formData.notes}
                       onChange={(e) => setFormData((p) => ({ ...p, notes: e.target.value }))}
                       rows={3}
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                      className="w-full rounded-lg border border-[#c9d7f5] px-3 py-2 text-sm"
                     />
                   </div>
                 </div>
 
-                <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
+                <div className="bg-white rounded-2xl border border-[#d7e3ff] shadow-lg p-4 md:p-6">
                   {order?.service_image && (
                     <div className="mb-4">
                       <img
@@ -306,7 +324,7 @@ const MyOrder = () => {
                       />
                     </div>
                   )}
-                  <h2 className="text-lg font-semibold text-gray-900 mb-3">
+                  <h2 className="text-lg font-semibold text-[#2f4274] mb-3">
                     Item Tambahan ({order.service_name || "Layanan"})
                   </h2>
                   {displayItems.length === 0 ? (
@@ -315,6 +333,7 @@ const MyOrder = () => {
                     <div className="space-y-2 max-h-[380px] overflow-auto pr-1">
                       {displayItems.map((item, index) => {
                         const active = isSelected(item);
+                        const locked = active && isLockedSelected(item);
                         const unitPrice = toNumber(
                           item.final_price ?? item.custom_price ?? item.item_price ?? item.price ?? 0
                         );
@@ -338,13 +357,16 @@ const MyOrder = () => {
                               <button
                                 type="button"
                                 onClick={() => toggleItem(item)}
+                                disabled={locked}
                                 className={`text-xs font-semibold px-2 py-1 rounded ${
-                                  active
+                                  locked
+                                    ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                                    : active
                                     ? "bg-red-100 text-red-700"
                                     : "bg-green-100 text-green-700"
                                 }`}
                               >
-                                {active ? "Batalkan" : "Tambah"}
+                                {locked ? "Sudah dipilih" : active ? "Batalkan" : "Tambah"}
                               </button>
                             </div>
                           </div>
