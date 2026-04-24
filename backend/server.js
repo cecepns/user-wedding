@@ -1164,6 +1164,76 @@ app.put('/api/orders/:id/booking-amount', authenticateToken, async (req, res) =>
   }
 });
 
+app.put('/api/orders/:id/selected-items', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  const { selected_items } = req.body || {};
+  const orderId = Number(id);
+
+  if (!Number.isFinite(orderId) || orderId <= 0) {
+    return res.status(400).json({ message: 'ID pesanan tidak valid' });
+  }
+
+  const normalizedItems = (Array.isArray(selected_items) ? selected_items : [])
+    .map((item) => {
+      const parsedPrice = Number(
+        item?.final_price ?? item?.item_price ?? item?.price ?? item?.custom_price ?? 0
+      );
+      return {
+        ...item,
+        final_price: Number.isFinite(parsedPrice) ? parsedPrice : 0
+      };
+    })
+    .filter((item) => {
+      const hasName = Boolean((item?.name || item?.item_name || item?.title || '').toString().trim());
+      const hasId = Number.isFinite(Number(item?.id)) || Number.isFinite(Number(item?.item_id));
+      return hasName || hasId;
+    });
+
+  try {
+    const [rows] = await db.execute(
+      'SELECT id, service_id, status FROM orders WHERE id = ? LIMIT 1',
+      [orderId]
+    );
+    const order = rows[0];
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+    if (order.status !== 'pending') {
+      return res.status(400).json({ message: 'Item layanan hanya bisa diubah saat status pending' });
+    }
+
+    const [serviceRows] = await db.execute(
+      'SELECT base_price FROM services WHERE id = ? LIMIT 1',
+      [order.service_id]
+    );
+    const basePrice = Number(serviceRows[0]?.base_price || 0);
+    const selectedItemsTotal = normalizedItems.reduce(
+      (sum, item) => sum + Number(item.final_price || 0),
+      0
+    );
+    const totalAmount = basePrice + selectedItemsTotal;
+
+    await db.execute(
+      `UPDATE orders
+       SET selected_items = ?, total_amount = ?, updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+      [JSON.stringify(normalizedItems), totalAmount, orderId]
+    );
+
+    res.json({
+      message: 'Item pesanan berhasil diperbarui',
+      order: {
+        id: orderId,
+        selected_items: normalizedItems,
+        total_amount: totalAmount
+      }
+    });
+  } catch (error) {
+    console.error('Update order selected items error:', error);
+    res.status(500).json({ message: 'Database error' });
+  }
+});
+
 // Custom requests routes
 app.post('/api/custom-requests', async (req, res) => {
   const { name, email, phone, wedding_date, booking_amount, services, additional_requests } = req.body;

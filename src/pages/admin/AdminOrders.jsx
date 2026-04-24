@@ -62,6 +62,8 @@ const AdminOrders = () => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [tableFilteredOrders, setTableFilteredOrders] = useState(null);
   const [showDuplicatesOnly, setShowDuplicatesOnly] = useState(false);
+  const [editableOrderItems, setEditableOrderItems] = useState([]);
+  const [savingOrderItems, setSavingOrderItems] = useState(false);
 
   // Kunci duplikat: email + wedding_date sama = kemungkinan pesanan ganda
   const duplicateKey = (order) =>
@@ -363,8 +365,97 @@ const AdminOrders = () => {
   };
 
   const handleViewDetail = (order) => {
+    if (order.orderType === "order") {
+      let parsedItems = [];
+      try {
+        const raw = JSON.parse(order.selected_items || "[]");
+        parsedItems = Array.isArray(raw) ? raw : [];
+      } catch {
+        parsedItems = [];
+      }
+      const normalizedItems = parsedItems.map((item) => ({
+        ...item,
+        final_price: Number(
+          item?.final_price ?? item?.item_price ?? item?.price ?? item?.custom_price ?? 0
+        ) || 0,
+      }));
+      setEditableOrderItems(normalizedItems);
+    } else {
+      setEditableOrderItems([]);
+    }
     setSelectedOrder(order);
     setShowDetailModal(true);
+  };
+
+  const handleRemoveEditableItem = (itemIndex) => {
+    setEditableOrderItems((prev) => prev.filter((_, index) => index !== itemIndex));
+  };
+
+  const handleSaveEditableItems = async () => {
+    if (!selectedOrder || selectedOrder.orderType !== "order") return;
+    setSavingOrderItems(true);
+    try {
+      const response = await fetch(
+        `${API_BASE}/orders/${selectedOrder.id}/selected-items`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("admin_token")}`,
+          },
+          body: JSON.stringify({
+            selected_items: editableOrderItems,
+          }),
+        }
+      );
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.message || "Gagal menyimpan item layanan");
+      }
+
+      const nextSelectedItems = JSON.stringify(data.order?.selected_items || editableOrderItems);
+      const nextTotalAmount = Number(data.order?.total_amount ?? selectedOrder.total_amount ?? 0);
+
+      setSelectedOrder((prev) =>
+        prev
+          ? {
+              ...prev,
+              selected_items: nextSelectedItems,
+              total_amount: nextTotalAmount,
+            }
+          : prev
+      );
+      setOrders((prev) =>
+        prev.map((order) =>
+          order.id === selectedOrder.id
+            ? {
+                ...order,
+                selected_items: nextSelectedItems,
+                total_amount: nextTotalAmount,
+              }
+            : order
+        )
+      );
+      setTableFilteredOrders((prev) =>
+        Array.isArray(prev)
+          ? prev.map((order) =>
+              order.orderType === "order" && order.id === selectedOrder.id
+                ? {
+                    ...order,
+                    selected_items: nextSelectedItems,
+                    total_amount: nextTotalAmount,
+                  }
+                : order
+            )
+          : prev
+      );
+      toast.success("Item layanan berhasil diperbarui");
+    } catch (error) {
+      console.error("Error saving selected items:", error);
+      toast.error(error.message || "Gagal menyimpan item layanan");
+    } finally {
+      setSavingOrderItems(false);
+    }
   };
 
   const getStatusColor = (status) => {
@@ -1367,64 +1458,62 @@ const AdminOrders = () => {
                       ) : (
                         <p className="text-gray-600 whitespace-pre-wrap">{selectedOrder.services || "-"}</p>
                       )
+                    ) : editableOrderItems.length === 0 ? (
+                      <div className="text-gray-500 text-center py-4">
+                        Tidak ada item yang dipilih
+                      </div>
                     ) : (
-                      (() => {
-                        try {
-                          const items = JSON.parse(
-                            selectedOrder.selected_items || "[]"
-                          );
-                          if (!Array.isArray(items) || items.length === 0) {
-                            return (
-                              <div className="text-gray-500 text-center py-4">
-                                Tidak ada item yang dipilih
-                              </div>
-                            );
-                          }
-                          return items.map((item, index) => {
-                            const itemName =
-                              item.name ||
-                              item.item_name ||
-                              item.title ||
-                              "Item tidak dikenal";
-                            const itemPrice =
-                              item.final_price ||
-                              item.item_price ||
-                              item.price ||
-                              item.custom_price ||
-                              0;
-                            const quantity = item.quantity || 1;
-                            const subtotal = (typeof itemPrice === "number" ? itemPrice : parseFloat(itemPrice) || 0) * quantity;
-                            return (
-                              <div
-                                key={index}
-                                className="flex justify-between items-center py-2 border-b border-gray-200 last:border-b-0"
+                      editableOrderItems.map((item, index) => {
+                        const itemName =
+                          item.name ||
+                          item.item_name ||
+                          item.title ||
+                          "Item tidak dikenal";
+                        const itemPrice =
+                          item.final_price ||
+                          item.item_price ||
+                          item.price ||
+                          item.custom_price ||
+                          0;
+                        const normalizedPrice =
+                          typeof itemPrice === "number"
+                            ? itemPrice
+                            : parseFloat(itemPrice) || 0;
+                        return (
+                          <div
+                            key={`${itemName}-${index}`}
+                            className="flex justify-between items-center py-2 border-b border-gray-200 last:border-b-0"
+                          >
+                            <span className="text-gray-900">{itemName}</span>
+                            <div className="flex items-center gap-3">
+                              <span className="font-medium text-primary-600">
+                                {formatRupiah(normalizedPrice)}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveEditableItem(index)}
+                                className="text-xs font-semibold px-2 py-1 rounded bg-red-100 text-red-700 hover:bg-red-200"
                               >
-                                <span className="text-gray-900">
-                                  {itemName} {quantity > 1 && <span className="text-gray-500">(x{quantity})</span>}
-                                </span>
-                                <div className="text-right">
-                                  {quantity > 1 && (
-                                    <div className="text-xs text-gray-500">
-                                      {formatRupiah(itemPrice)} × {quantity}
-                                    </div>
-                                  )}
-                                  <span className="font-medium text-primary-600">
-                                    {formatRupiah(subtotal)}
-                                  </span>
-                                </div>
-                              </div>
-                            );
-                          });
-                        } catch {
-                          return (
-                            <div className="text-gray-500 text-center py-4">
-                              Error memuat item yang dipilih
+                                Hapus
+                              </button>
                             </div>
-                          );
-                        }
-                      })()
+                          </div>
+                        );
+                      })
                     )}
                   </div>
+                  {selectedOrder.orderType === "order" && (
+                    <div className="mt-3 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={handleSaveEditableItems}
+                        disabled={savingOrderItems}
+                        className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-60"
+                      >
+                        {savingOrderItems ? "Menyimpan..." : "Simpan Perubahan Item"}
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex justify-end space-x-3">

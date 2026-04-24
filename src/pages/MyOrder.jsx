@@ -10,14 +10,18 @@ const toNumber = (value) => {
   const n = typeof value === "number" ? value : parseFloat(value);
   return Number.isFinite(n) ? n : 0;
 };
+const normalizeName = (value) =>
+  (value || "")
+    .toString()
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
 
 const MyOrder = () => {
   const [invoiceId, setInvoiceId] = useState("");
   const [lookupPhone, setLookupPhone] = useState("");
   const [order, setOrder] = useState(null);
   const [serviceItems, setServiceItems] = useState([]);
-  const [services, setServices] = useState([]);
-  const [selectedServiceId, setSelectedServiceId] = useState("");
   const [selectedItems, setSelectedItems] = useState([]);
   const [formData, setFormData] = useState({
     name: "",
@@ -42,7 +46,6 @@ const MyOrder = () => {
 
   const hydrateOrderForm = (orderData) => {
     setOrder(orderData);
-    setSelectedServiceId(orderData?.service_id ? String(orderData.service_id) : "");
     setFormData({
       name: orderData?.name || "",
       email: orderData?.email || "",
@@ -87,40 +90,48 @@ const MyOrder = () => {
       } else {
         setServiceItems([]);
       }
-      const servicesRes = await fetch(`${API_BASE}/services`);
-      const servicesData = await servicesRes.json();
-      setServices(Array.isArray(servicesData) ? servicesData : []);
     } catch (error) {
       setOrder(null);
       setServiceItems([]);
       setSelectedItems([]);
-      setServices([]);
       toast.error(error.message || "Gagal memuat pesanan");
     } finally {
       setLoading(false);
     }
   };
 
+  const isSameItem = (a, b) => {
+    const idA = Number(a?.id);
+    const idB = Number(b?.id);
+    const itemIdA = Number(a?.item_id);
+    const itemIdB = Number(b?.item_id);
+    if (Number.isFinite(idA) && Number.isFinite(idB) && idA === idB) return true;
+    if (Number.isFinite(itemIdA) && Number.isFinite(itemIdB) && itemIdA === itemIdB) return true;
+
+    const nameA = normalizeName(a?.name || a?.item_name || a?.title);
+    const nameB = normalizeName(b?.name || b?.item_name || b?.title);
+    return Boolean(nameA && nameB && nameA === nameB);
+  };
+
   const isSelected = (serviceItem) =>
-    selectedItems.some(
-      (item) =>
-        Number(item?.id) === Number(serviceItem?.id) ||
-        Number(item?.item_id) === Number(serviceItem?.item_id)
-    );
+    selectedItems.some((item) => isSameItem(item, serviceItem));
+
+  const displayItems = useMemo(() => {
+    const merged = [...serviceItems];
+    selectedItems.forEach((selectedItem) => {
+      const exists = merged.some((item) => isSameItem(item, selectedItem));
+      if (!exists) {
+        merged.push({ ...selectedItem, _fromSelectedOnly: true });
+      }
+    });
+    return merged;
+  }, [serviceItems, selectedItems]);
 
   const toggleItem = (serviceItem) => {
     setSelectedItems((prev) => {
-      const exists = prev.some(
-        (item) =>
-          Number(item?.id) === Number(serviceItem?.id) ||
-          Number(item?.item_id) === Number(serviceItem?.item_id)
-      );
+      const exists = prev.some((item) => isSameItem(item, serviceItem));
       if (exists) {
-        return prev.filter(
-          (item) =>
-            Number(item?.id) !== Number(serviceItem?.id) &&
-            Number(item?.item_id) !== Number(serviceItem?.item_id)
-        );
+        return prev.filter((item) => !isSameItem(item, serviceItem));
       }
       return [
         ...prev,
@@ -150,7 +161,6 @@ const MyOrder = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
-          service_id: selectedServiceId ? Number(selectedServiceId) : null,
           selected_items: selectedItems,
           verification_phone: lookupPhone.trim(),
         }),
@@ -172,40 +182,6 @@ const MyOrder = () => {
       toast.error(error.message || "Gagal menyimpan perubahan");
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleServiceChange = async (serviceIdValue) => {
-    setSelectedServiceId(serviceIdValue);
-    if (!serviceIdValue) {
-      setServiceItems([]);
-      setSelectedItems([]);
-      return;
-    }
-    try {
-      const itemsRes = await fetch(`${API_BASE}/services/${serviceIdValue}/items`);
-      const itemsData = await itemsRes.json();
-      setServiceItems(Array.isArray(itemsData) ? itemsData : []);
-      setSelectedItems([]);
-
-      const selectedService = services.find((svc) => String(svc.id) === String(serviceIdValue));
-      if (selectedService) {
-        setOrder((prev) =>
-          prev
-            ? {
-                ...prev,
-                service_id: selectedService.id,
-                service_name: selectedService.name,
-                base_price: selectedService.base_price,
-                service_image: selectedService.image || "",
-              }
-            : prev
-        );
-      }
-    } catch {
-      toast.error("Gagal memuat item layanan");
-      setServiceItems([]);
-      setSelectedItems([]);
     }
   };
 
@@ -320,21 +296,6 @@ const MyOrder = () => {
                 </div>
 
                 <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
-                  <div className="mb-4">
-                    <label className="block text-sm text-gray-600 mb-1">Layanan</label>
-                    <select
-                      value={selectedServiceId}
-                      onChange={(e) => handleServiceChange(e.target.value)}
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                    >
-                      <option value="">Pilih layanan</option>
-                      {services.map((service) => (
-                        <option key={service.id} value={service.id}>
-                          {service.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
                   {order?.service_image && (
                     <div className="mb-4">
                       <img
@@ -347,18 +308,18 @@ const MyOrder = () => {
                   <h2 className="text-lg font-semibold text-gray-900 mb-3">
                     Item Tambahan ({order.service_name || "Layanan"})
                   </h2>
-                  {serviceItems.length === 0 ? (
+                  {displayItems.length === 0 ? (
                     <p className="text-sm text-gray-500">Item tambahan tidak tersedia.</p>
                   ) : (
                     <div className="space-y-2 max-h-[380px] overflow-auto pr-1">
-                      {serviceItems.map((item) => {
+                      {displayItems.map((item, index) => {
                         const active = isSelected(item);
                         const unitPrice = toNumber(
                           item.final_price ?? item.custom_price ?? item.item_price ?? item.price ?? 0
                         );
                         return (
                           <div
-                            key={item.id}
+                            key={`${item.id ?? item.item_id ?? item.name ?? "item"}-${index}`}
                             className={`rounded-lg border p-3 ${
                               active ? "border-primary-300 bg-primary-50" : "border-gray-200"
                             }`}
@@ -367,6 +328,11 @@ const MyOrder = () => {
                               <div>
                                 <p className="text-sm font-semibold text-gray-900">{item.name}</p>
                                 <p className="text-xs text-gray-600">{formatRupiah(unitPrice)}</p>
+                                {item._fromSelectedOnly && (
+                                  <p className="text-[11px] text-amber-700 mt-1">
+                                    Item lama (tidak ada di daftar layanan saat ini)
+                                  </p>
+                                )}
                               </div>
                               <button
                                 type="button"
@@ -377,7 +343,7 @@ const MyOrder = () => {
                                     : "bg-green-100 text-green-700"
                                 }`}
                               >
-                                {active ? "Hapus" : "Tambah"}
+                                {active ? "Batalkan" : "Tambah"}
                               </button>
                             </div>
                           </div>
