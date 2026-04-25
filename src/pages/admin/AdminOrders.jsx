@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
-import { Eye, Trash2, ChevronLeft, ChevronRight, X, Edit, Download } from "lucide-react";
+import { Eye, Trash2, ChevronLeft, ChevronRight, X, Edit, Download, CheckCircle } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 import AdminLayout from "../../components/AdminLayout";
 import { formatRupiah, formatDate, formatDateTime } from "../../utils/formatters";
@@ -37,6 +37,10 @@ const normalizePhone = (value) =>
     .toString()
     .replace(/\D/g, "")
     .trim();
+const toNumber = (value) => {
+  const n = typeof value === "number" ? value : parseFloat(value);
+  return Number.isFinite(n) ? n : 0;
+};
 
 const AdminOrders = () => {
   const [orders, setOrders] = useState([]);
@@ -616,6 +620,84 @@ const AdminOrders = () => {
     } catch (error) {
       console.error("Error:", error);
       toast.error("Error memperbarui booking amount");
+    }
+  };
+
+  const calculateInvoiceTotal = (item) => {
+    if (!item) return 0;
+    if (item.orderType === "custom_request") {
+      const details = Array.isArray(item.items_details) ? item.items_details : [];
+      const detailsTotal = details.reduce((sum, row) => {
+        const p = typeof row?.price === "number" ? row.price : parseFloat(row?.price) || 0;
+        return sum + p;
+      }, 0);
+      return detailsTotal > 0 ? detailsTotal : toNumber(item.total_amount || 0);
+    }
+
+    const basePrice = toNumber(item.base_price || 0);
+    let selectedItemsTotal = 0;
+    if (item.selected_items) {
+      try {
+        const selectedItems = JSON.parse(item.selected_items);
+        if (Array.isArray(selectedItems)) {
+          selectedItemsTotal = selectedItems.reduce((sum, selectedItem) => {
+            const itemPrice =
+              selectedItem.final_price ||
+              selectedItem.item_price ||
+              selectedItem.price ||
+              selectedItem.custom_price ||
+              0;
+            const quantity = selectedItem.quantity || 1;
+            return sum + toNumber(itemPrice) * quantity;
+          }, 0);
+        }
+      } catch (error) {
+        console.error("Error parsing selected_items for pelunasan:", error);
+      }
+    }
+    const recalculated = basePrice + selectedItemsTotal;
+    return recalculated > 0 ? recalculated : toNumber(item.total_amount || 0);
+  };
+
+  const handlePelunasan = async (item) => {
+    const invoiceTotal = calculateInvoiceTotal(item);
+    const currentBooking = toNumber(item.booking_amount || 0);
+    const remaining = Math.max(0, invoiceTotal - currentBooking);
+
+    if (remaining <= 0) {
+      toast("Pesanan ini sudah lunas.");
+      return;
+    }
+
+    const isCustom = item.orderType === "custom_request";
+    const url = isCustom
+      ? `${API_BASE}/custom-requests/${item.id}/booking-amount`
+      : `${API_BASE}/orders/${item.id}/booking-amount`;
+
+    try {
+      const response = await fetch(url, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("admin_token")}`,
+        },
+        body: JSON.stringify({
+          // Set ke total tagihan agar status pembayaran lunas di invoice.
+          booking_amount: Number(invoiceTotal.toFixed(2)),
+        }),
+      });
+
+      if (response.ok) {
+        fetchOrders();
+        toast.success(
+          `Pelunasan berhasil (${formatRupiah(remaining)}). Booking menjadi ${formatRupiah(invoiceTotal)}`
+        );
+      } else {
+        toast.error("Error memproses pelunasan");
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      toast.error("Error memproses pelunasan");
     }
   };
 
@@ -1218,6 +1300,13 @@ const AdminOrders = () => {
                                 title="Edit Booking Amount"
                               >
                                 <Edit size={16} />
+                              </button>
+                              <button
+                                onClick={() => handlePelunasan(order)}
+                                className="text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
+                                title="Pelunasan"
+                              >
+                                <CheckCircle size={16} />
                               </button>
                               <button
                                 onClick={() =>
