@@ -20,6 +20,7 @@ import Select from "react-select";
 import AdminLayout from "../../components/AdminLayout";
 import { formatDate, toLocalDate, toDateOnlyString } from "../../utils/formatters";
 import jsPDF from "jspdf";
+import QRCode from "qrcode";
 
 const API_BASE = "https://api-inventory.isavralabel.com/user-wedding";
 function imageUrl(value) {
@@ -27,6 +28,44 @@ function imageUrl(value) {
   if (value.startsWith("http")) return value;
   return `${API_BASE}/uploads-weddingsapp/${value}`;
 }
+
+/** Pratinjau QR di modal detail (link sama dengan yang di-PDF) */
+// eslint-disable-next-line react/prop-types -- local helper; `url` = maps link
+const GoogleMapsVendorQr = ({ url }) => {
+  const [dataUrl, setDataUrl] = useState(null);
+  useEffect(() => {
+    const u = (url || "").trim();
+    if (!u) {
+      setDataUrl(null);
+      return;
+    }
+    let cancelled = false;
+    QRCode.toDataURL(u, { width: 200, margin: 1, errorCorrectionLevel: "M" })
+      .then((d) => {
+        if (!cancelled) setDataUrl(d);
+      })
+      .catch(() => {
+        if (!cancelled) setDataUrl(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [url]);
+  if (!(url || "").trim()) return null;
+  return (
+    <div className="mt-1">
+      {dataUrl ? (
+        <img
+          src={dataUrl}
+          alt="QR Google Maps"
+          className="w-36 h-36 border border-gray-200 rounded-lg bg-white p-1"
+        />
+      ) : (
+        <p className="text-xs text-gray-500">Memuat QR…</p>
+      )}
+    </div>
+  );
+};
 
 const AdminSuratJalan = () => {
   const [suratJalanList, setSuratJalanList] = useState([]);
@@ -77,6 +116,7 @@ const AdminSuratJalan = () => {
     piring: "",
     nama_pasangan: "",
     vendor_name: "User Wedding Organizer",
+    maps_link: "",
     notes: "",
   });
 
@@ -362,6 +402,7 @@ const AdminSuratJalan = () => {
         piring: item.piring || "",
         nama_pasangan: item.nama_pasangan || "",
         vendor_name: item.vendor_name || "User Wedding Organizer",
+        maps_link: item.maps_link || "",
         notes: item.notes || "",
       });
     } else {
@@ -383,6 +424,7 @@ const AdminSuratJalan = () => {
         piring: "",
         nama_pasangan: "",
         vendor_name: "User Wedding Organizer",
+        maps_link: "",
         notes: "",
       });
       // Load initial order options when opening modal
@@ -447,6 +489,7 @@ const AdminSuratJalan = () => {
         order_id: hasOrder ? Number(formData.order_id) : null,
         custom_request_id: hasCustom ? Number(formData.custom_request_id) : null,
         wedding_date: toDateOnlyString(formData.wedding_date) || formData.wedding_date || "",
+        maps_link: (formData.maps_link || "").trim() || null,
       };
       const response = await fetch(url, {
         method: editingItem ? "PUT" : "POST",
@@ -654,17 +697,60 @@ const AdminSuratJalan = () => {
 
       doc.text(`Tanggal Acara: ${item.wedding_date ? formatDate(item.wedding_date) : "-"}`, 20, yPos);
 
+      let yAfterTanggal = yPos + 6;
+      const mapsUrl = item.maps_link && String(item.maps_link).trim();
+      if (mapsUrl) {
+        if (yAfterTanggal > 240) {
+          doc.addPage();
+          yAfterTanggal = 20;
+        }
+        try {
+          toast.loading("Membuat QR peta...", { id: loadingToast });
+          const qrDataUrl = await QRCode.toDataURL(mapsUrl, {
+            width: 200,
+            margin: 1,
+            errorCorrectionLevel: "M",
+          });
+          doc.setFontSize(10);
+          doc.setFont("helvetica", "bold");
+          doc.text("Lokasi acara (scan QR — Google Maps, untuk vendor):", 20, yAfterTanggal);
+          yAfterTanggal += 5;
+          doc.setFont("helvetica", "normal");
+          const qrSizeMm = 40;
+          if (yAfterTanggal + qrSizeMm > 275) {
+            doc.addPage();
+            yAfterTanggal = 20;
+            doc.setFont("helvetica", "bold");
+            doc.text("Lokasi acara (scan QR — Google Maps, untuk vendor):", 20, yAfterTanggal);
+            yAfterTanggal += 5;
+            doc.setFont("helvetica", "normal");
+          }
+          doc.addImage(qrDataUrl, "PNG", 20, yAfterTanggal, qrSizeMm, qrSizeMm);
+          yAfterTanggal += qrSizeMm + 4;
+        } catch (qrErr) {
+          console.error("QR Maps error:", qrErr);
+          doc.setFont("helvetica", "normal");
+          doc.text("Link peta: (gagal membuat QR)", 20, yAfterTanggal);
+          yAfterTanggal += 6;
+        }
+      }
+
+      if (yAfterTanggal > 250) {
+        doc.addPage();
+        yAfterTanggal = 20;
+      }
+
       // Package Information
       doc.setFontSize(12);
       doc.setFont("helvetica", "bold");
-      doc.text("Paket yang Diambil:", 20, yPos + 12);
+      doc.text("Paket yang Diambil:", 20, yAfterTanggal + 4);
 
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
-      doc.text(item.package_name || "-", 20, yPos + 20);
+      doc.text(item.package_name || "-", 20, yAfterTanggal + 12);
 
       // Detail Dekorasi
-      let currentY = yPos + 32;
+      let currentY = yAfterTanggal + 24;
       doc.setFontSize(12);
       doc.setFont("helvetica", "bold");
       doc.text("Detail Dekorasi:", 20, currentY);
@@ -1475,6 +1561,23 @@ const AdminSuratJalan = () => {
 
                   <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Link Google Maps (QR di surat jalan)
+                    </label>
+                    <input
+                      type="url"
+                      name="maps_link"
+                      value={formData.maps_link}
+                      onChange={handleInputChange}
+                      placeholder="https://maps.app.goo.gl/..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Tempel link share dari Google Maps. QR tercetak otomatis di PDF untuk tim/vendor.
+                    </p>
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       Nama Vendor
                     </label>
                     <input
@@ -1589,6 +1692,20 @@ const AdminSuratJalan = () => {
                           {selectedItem.vendor_name || "User Wedding Organizer"}
                         </p>
                       </div>
+                      {selectedItem.maps_link?.trim() ? (
+                        <div>
+                          <span className="font-medium text-gray-700">Google Maps (QR surat jalan):</span>
+                          <a
+                            href={selectedItem.maps_link.trim()}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-primary-600 break-all block mt-1"
+                          >
+                            {selectedItem.maps_link.trim()}
+                          </a>
+                          <GoogleMapsVendorQr url={selectedItem.maps_link} />
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                 </div>

@@ -2235,6 +2235,7 @@ app.post('/api/surat-jalan', authenticateToken, async (req, res) => {
     piring,
     nama_pasangan,
     vendor_name,
+    maps_link,
     notes
   } = req.body;
 
@@ -2259,12 +2260,12 @@ app.post('/api/surat-jalan', authenticateToken, async (req, res) => {
       `INSERT INTO surat_jalan (
         order_id, custom_request_id, client_name, client_phone, client_address, wedding_date,
         package_name, plaminan_image, pintu_masuk_image, dekorasi_image,
-        warna_kain, ukuran_tenda, piring, nama_pasangan, vendor_name, notes
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        warna_kain, ukuran_tenda, piring, nama_pasangan, vendor_name, maps_link, notes
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         finalOrderId, finalCustomId, client_name, client_phone, client_address, wedding_date,
         package_name, plaminan_image, pintu_masuk_image, dekorasi_image,
-        warna_kain, ukuran_tenda, piring, nama_pasangan, vendor_name, notes
+        warna_kain, ukuran_tenda, piring, nama_pasangan, vendor_name, maps_link || null, notes
       ]
     );
     res.json({ id: result.insertId, message: 'Surat jalan created successfully' });
@@ -2290,6 +2291,7 @@ app.put('/api/surat-jalan/:id', authenticateToken, async (req, res) => {
     piring,
     nama_pasangan,
     vendor_name,
+    maps_link,
     notes
   } = req.body;
   
@@ -2300,12 +2302,12 @@ app.put('/api/surat-jalan/:id', authenticateToken, async (req, res) => {
       `UPDATE surat_jalan SET 
         client_name = ?, client_phone = ?, client_address = ?, wedding_date = ?,
         package_name = ?, plaminan_image = ?, pintu_masuk_image = ?, dekorasi_image = ?,
-        warna_kain = ?, ukuran_tenda = ?, piring = ?, nama_pasangan = ?, vendor_name = ?, notes = ?
+        warna_kain = ?, ukuran_tenda = ?, piring = ?, nama_pasangan = ?, vendor_name = ?, maps_link = ?, notes = ?
       WHERE id = ?`,
       [
         client_name, client_phone, client_address, wedding_date,
         package_name, plaminan_image, pintu_masuk_image, dekorasi_image,
-        warna_kain, ukuran_tenda, piring, nama_pasangan, vendor_name, notes, id
+        warna_kain, ukuran_tenda, piring, nama_pasangan, vendor_name, maps_link || null, notes, id
       ]
     );
     

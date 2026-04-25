@@ -8,3 +8,4 @@ add_piring_nama_pasangan_to_surat_jalan.sql
 add_custom_request_id_to_surat_jalan.sql
 add_images_to_items.sql
 add_vendor_calendar_overrides.sql
+add_maps_link_to_surat_jalan.sql

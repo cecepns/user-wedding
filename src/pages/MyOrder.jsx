@@ -27,6 +27,22 @@ const getItemIdentityKey = (item) => {
   return name ? `name:${name}` : "";
 };
 
+/** Untuk <input type="date">: ambil Y-M-D di zona waktu lokal, bukan prefix string ISO (UTC) yang sering mundur 1 hari. */
+const weddingDateToInputValue = (value) => {
+  if (value == null || value === "") return "";
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value.trim())) {
+    return value.trim();
+  }
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) {
+    return String(value).slice(0, 10);
+  }
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+};
+
 const MyOrder = () => {
   const [invoiceId, setInvoiceId] = useState("");
   const [lookupPhone, setLookupPhone] = useState("");
@@ -62,7 +78,9 @@ const MyOrder = () => {
       email: orderData?.email || "",
       phone: orderData?.phone || "",
       address: orderData?.address || "",
-      wedding_date: orderData?.wedding_date ? String(orderData.wedding_date).slice(0, 10) : "",
+      wedding_date: orderData?.wedding_date
+        ? weddingDateToInputValue(orderData.wedding_date)
+        : "",
       notes: orderData?.notes || "",
     });
     const normalizedSelected = (Array.isArray(orderData?.selected_items) ? orderData.selected_items : []).map(

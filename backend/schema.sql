@@ -178,6 +178,7 @@ CREATE TABLE IF NOT EXISTS surat_jalan (
   warna_kain TEXT,
   ukuran_tenda TEXT,
   vendor_name VARCHAR(255) DEFAULT 'User Wedding Organizer',
+  maps_link TEXT,
   notes TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
