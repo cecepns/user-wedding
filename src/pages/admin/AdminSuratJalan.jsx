@@ -687,23 +687,23 @@ const AdminSuratJalan = () => {
       doc.setFont("helvetica", "normal");
       doc.text(`Nama: ${item.client_name}`, 20, 68);
       doc.text(`No. Telepon: ${item.client_phone || "-"}`, 20, 74);
-      
-      if (item.client_address) {
-        const addressLines = doc.splitTextToSize(`Alamat: ${item.client_address}`, 170);
+
+      const mapsUrl = item.maps_link && String(item.maps_link).trim();
+      const hasMapsQr = Boolean(mapsUrl);
+      const leftColumnWidth = hasMapsQr ? 130 : 170;
+      const addressLines = item.client_address
+        ? doc.splitTextToSize(`Alamat: ${item.client_address}`, leftColumnWidth)
+        : [];
+
+      if (addressLines.length > 0) {
         doc.text(addressLines, 20, 80);
       }
 
-      const yPos = item.client_address ? 90 + (doc.splitTextToSize(item.client_address, 170).length * 5) : 86;
+      const yPos = addressLines.length > 0 ? 86 + addressLines.length * 5 : 86;
 
       doc.text(`Tanggal Acara: ${item.wedding_date ? formatDate(item.wedding_date) : "-"}`, 20, yPos);
 
-      let yAfterTanggal = yPos + 6;
-      const mapsUrl = item.maps_link && String(item.maps_link).trim();
-      if (mapsUrl) {
-        if (yAfterTanggal > 240) {
-          doc.addPage();
-          yAfterTanggal = 20;
-        }
+      if (hasMapsQr) {
         try {
           toast.loading("Membuat QR peta...", { id: loadingToast });
           const qrDataUrl = await QRCode.toDataURL(mapsUrl, {
@@ -711,30 +711,21 @@ const AdminSuratJalan = () => {
             margin: 1,
             errorCorrectionLevel: "M",
           });
-          doc.setFontSize(10);
+          const qrX = 150;
+          const qrTitleY = 60;
+          const qrSizeMm = 38;
+          doc.setFontSize(9);
           doc.setFont("helvetica", "bold");
-          doc.text("Lokasi acara (scan QR — Google Maps, untuk vendor):", 20, yAfterTanggal);
-          yAfterTanggal += 5;
-          doc.setFont("helvetica", "normal");
-          const qrSizeMm = 40;
-          if (yAfterTanggal + qrSizeMm > 275) {
-            doc.addPage();
-            yAfterTanggal = 20;
-            doc.setFont("helvetica", "bold");
-            doc.text("Lokasi acara (scan QR — Google Maps, untuk vendor):", 20, yAfterTanggal);
-            yAfterTanggal += 5;
-            doc.setFont("helvetica", "normal");
-          }
-          doc.addImage(qrDataUrl, "PNG", 20, yAfterTanggal, qrSizeMm, qrSizeMm);
-          yAfterTanggal += qrSizeMm + 4;
+          doc.text(["Lokasi Acara", "(Scan QR)"], qrX, qrTitleY, { align: "center" });
+          const qrTopY = qrTitleY + 6;
+          doc.addImage(qrDataUrl, "PNG", qrX - qrSizeMm / 2, qrTopY, qrSizeMm, qrSizeMm);
         } catch (qrErr) {
           console.error("QR Maps error:", qrErr);
-          doc.setFont("helvetica", "normal");
-          doc.text("Link peta: (gagal membuat QR)", 20, yAfterTanggal);
-          yAfterTanggal += 6;
         }
       }
 
+      // Alur konten kiri tidak terdorong oleh tinggi QR kanan.
+      let yAfterTanggal = yPos + 8;
       if (yAfterTanggal > 250) {
         doc.addPage();
         yAfterTanggal = 20;
