@@ -892,6 +892,120 @@ app.put('/api/orders/public/:id', async (req, res) => {
   }
 });
 
+app.get('/api/custom-requests/public/:id', async (req, res) => {
+  const { id } = req.params;
+  const phoneInput = String(req.query.phone || '').trim();
+  const normalizePhoneNumber = (value) => String(value || '').replace(/\D/g, '');
+  const requestId = Number(id);
+  if (!Number.isFinite(requestId) || requestId <= 0) {
+    return res.status(400).json({ message: 'ID pesanan custom tidak valid' });
+  }
+  if (!phoneInput) {
+    return res.status(400).json({ message: 'Nomor HP wajib diisi' });
+  }
+
+  try {
+    const [rows] = await db.execute(
+      `SELECT id, name, email, phone, wedding_date, booking_amount, services, additional_requests, status, created_at
+       FROM custom_requests
+       WHERE id = ?
+       LIMIT 1`,
+      [requestId]
+    );
+    const request = rows[0];
+    if (!request) {
+      return res.status(404).json({ message: 'Pesanan custom tidak ditemukan' });
+    }
+    if (normalizePhoneNumber(request.phone) !== normalizePhoneNumber(phoneInput)) {
+      return res.status(403).json({ message: 'Nomor HP tidak sesuai dengan pesanan' });
+    }
+
+    res.json({
+      ...request,
+      order_source: 'custom_request'
+    });
+  } catch (error) {
+    console.error('Public custom request detail error:', error);
+    res.status(500).json({ message: 'Database error' });
+  }
+});
+
+app.put('/api/custom-requests/public/:id', async (req, res) => {
+  const { id } = req.params;
+  const normalizePhoneNumber = (value) => String(value || '').replace(/\D/g, '');
+  const requestId = Number(id);
+  if (!Number.isFinite(requestId) || requestId <= 0) {
+    return res.status(400).json({ message: 'ID pesanan custom tidak valid' });
+  }
+
+  const {
+    name,
+    email,
+    phone,
+    wedding_date,
+    services,
+    additional_requests,
+    notes,
+    verification_phone
+  } = req.body || {};
+
+  if (!name || !email || !wedding_date) {
+    return res.status(400).json({ message: 'Nama, email, dan tanggal acara wajib diisi' });
+  }
+  if (!verification_phone) {
+    return res.status(400).json({ message: 'Nomor HP verifikasi wajib diisi' });
+  }
+
+  try {
+    const [existingRows] = await db.execute(
+      'SELECT id, status, phone, services, additional_requests FROM custom_requests WHERE id = ? LIMIT 1',
+      [requestId]
+    );
+    const existingRequest = existingRows[0];
+    if (!existingRequest) {
+      return res.status(404).json({ message: 'Pesanan custom tidak ditemukan' });
+    }
+    if (existingRequest.status !== 'pending') {
+      return res.status(400).json({ message: 'Pesanan custom hanya bisa diedit saat status masih pending' });
+    }
+    if (normalizePhoneNumber(existingRequest.phone) !== normalizePhoneNumber(verification_phone)) {
+      return res.status(403).json({ message: 'Nomor HP verifikasi tidak sesuai' });
+    }
+
+    const nextServices = services != null ? String(services).trim() : (existingRequest.services || '');
+    const nextAdditionalRequests = additional_requests != null
+      ? String(additional_requests).trim()
+      : (notes != null ? String(notes).trim() : (existingRequest.additional_requests || ''));
+
+    await db.execute(
+      `UPDATE custom_requests
+       SET name = ?, email = ?, phone = ?, wedding_date = ?, services = ?, additional_requests = ?
+       WHERE id = ?`,
+      [
+        String(name).trim(),
+        String(email).trim(),
+        phone || '',
+        wedding_date,
+        nextServices,
+        nextAdditionalRequests,
+        requestId
+      ]
+    );
+
+    res.json({
+      message: 'Pesanan custom berhasil diperbarui',
+      order: {
+        id: requestId,
+        services: nextServices,
+        additional_requests: nextAdditionalRequests
+      }
+    });
+  } catch (error) {
+    console.error('Public custom request update error:', error);
+    res.status(500).json({ message: 'Database error' });
+  }
+});
+
 app.get('/api/vendor-calendar', authenticateToken, async (req, res) => {
   try {
     const [toppingItems] = await db.execute(
@@ -908,7 +1022,7 @@ app.get('/api/vendor-calendar', authenticateToken, async (req, res) => {
     );
 
     const [orders] = await db.execute(
-      `SELECT id, name, phone, email, wedding_date, status, selected_items
+      `SELECT id, name, phone, email, DATE_FORMAT(wedding_date, '%Y-%m-%d') AS wedding_date, status, selected_items
        FROM orders
        WHERE wedding_date IS NOT NULL
          AND status IN ('pending', 'confirmed', 'completed')
@@ -916,7 +1030,7 @@ app.get('/api/vendor-calendar', authenticateToken, async (req, res) => {
     );
 
     const [customRequests] = await db.execute(
-      `SELECT id, name, phone, email, wedding_date, status, services
+      `SELECT id, name, phone, email, DATE_FORMAT(wedding_date, '%Y-%m-%d') AS wedding_date, status, services
        FROM custom_requests
        WHERE wedding_date IS NOT NULL
          AND status IN ('pending', 'confirmed', 'completed')
@@ -988,7 +1102,7 @@ app.get('/api/vendor-calendar', authenticateToken, async (req, res) => {
     }
 
     const [overrideRows] = await db.execute(
-      `SELECT event_type, source_id, vendor_key, wedding_date, custom_vendor_name
+      `SELECT event_type, source_id, vendor_key, DATE_FORMAT(wedding_date, '%Y-%m-%d') AS wedding_date, custom_vendor_name
        FROM vendor_calendar_overrides`
     );
     const overrideByKey = new Map(
@@ -997,7 +1111,7 @@ app.get('/api/vendor-calendar', authenticateToken, async (req, res) => {
           row.event_type,
           Number(row.source_id),
           row.vendor_key,
-          new Date(row.wedding_date).toISOString().slice(0, 10)
+          String(row.wedding_date || '').slice(0, 10)
         ].join('|'),
         row.custom_vendor_name
       ])
@@ -1007,7 +1121,7 @@ app.get('/api/vendor-calendar', authenticateToken, async (req, res) => {
     const seenKeys = new Set();
     for (const event of events) {
       const weddingDateKey = event.wedding_date
-        ? new Date(event.wedding_date).toISOString().slice(0, 10)
+        ? String(event.wedding_date).slice(0, 10)
         : '';
       const overrideKey = [
         event.event_type,
@@ -1047,7 +1161,7 @@ app.put('/api/vendor-calendar/vendor-name', authenticateToken, async (req, res) 
   const normalizedVendorKey = String(vendor_key || '').trim();
   const normalizedVendorName = String(vendor_name || '').trim();
   const parsedSourceId = Number(source_id);
-  const parsedWeddingDate = wedding_date ? new Date(wedding_date) : null;
+  const weddingDateRaw = String(wedding_date || '').trim();
 
   if (!['order', 'custom_request'].includes(normalizedEventType)) {
     return res.status(400).json({ message: 'event_type tidak valid' });
@@ -1061,11 +1175,10 @@ app.put('/api/vendor-calendar/vendor-name', authenticateToken, async (req, res) 
   if (!normalizedVendorName) {
     return res.status(400).json({ message: 'vendor_name wajib diisi' });
   }
-  if (!parsedWeddingDate || Number.isNaN(parsedWeddingDate.getTime())) {
+  const weddingDateSql = weddingDateRaw.slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(weddingDateSql)) {
     return res.status(400).json({ message: 'wedding_date tidak valid' });
   }
-
-  const weddingDateSql = parsedWeddingDate.toISOString().slice(0, 10);
 
   try {
     await db.execute(

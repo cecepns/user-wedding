@@ -47,9 +47,11 @@ const MyOrder = () => {
   const [invoiceId, setInvoiceId] = useState("");
   const [lookupPhone, setLookupPhone] = useState("");
   const [order, setOrder] = useState(null);
+  const [orderSource, setOrderSource] = useState("order");
   const [serviceItems, setServiceItems] = useState([]);
   const [selectedItems, setSelectedItems] = useState([]);
   const [lockedSelectedKeys, setLockedSelectedKeys] = useState(new Set());
+  const [customServices, setCustomServices] = useState("");
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -63,15 +65,19 @@ const MyOrder = () => {
 
   const totalAmount = useMemo(() => {
     if (!order) return 0;
+    if (orderSource === "custom_request") {
+      return toNumber(order.total_amount);
+    }
     const basePrice = toNumber(order.base_price);
     const extras = selectedItems.reduce(
       (sum, item) => sum + toNumber(item.final_price),
       0
     );
     return basePrice + extras;
-  }, [order, selectedItems]);
+  }, [order, selectedItems, orderSource]);
 
-  const hydrateOrderForm = (orderData) => {
+  const hydrateOrderForm = (orderData, source = "order") => {
+    setOrderSource(source);
     setOrder(orderData);
     setFormData({
       name: orderData?.name || "",
@@ -81,8 +87,9 @@ const MyOrder = () => {
       wedding_date: orderData?.wedding_date
         ? weddingDateToInputValue(orderData.wedding_date)
         : "",
-      notes: orderData?.notes || "",
+      notes: source === "custom_request" ? orderData?.additional_requests || "" : orderData?.notes || "",
     });
+    setCustomServices(source === "custom_request" ? orderData?.services || "" : "");
     const normalizedSelected = (Array.isArray(orderData?.selected_items) ? orderData.selected_items : []).map(
       (item) => ({
         ...item,
@@ -99,8 +106,21 @@ const MyOrder = () => {
     );
   };
 
+  const parseInvoiceInput = (value) => {
+    const raw = String(value || "").trim();
+    const normalized = raw.toLowerCase();
+    if (!raw) return { id: "", sourceHint: null };
+    if (normalized.startsWith("custom:")) {
+      return { id: raw.split(":")[1]?.trim() || "", sourceHint: "custom_request" };
+    }
+    if (/^c\d+$/i.test(raw)) {
+      return { id: raw.slice(1), sourceHint: "custom_request" };
+    }
+    return { id: raw, sourceHint: "order" };
+  };
+
   const loadOrder = async () => {
-    const id = invoiceId.trim();
+    const { id, sourceHint } = parseInvoiceInput(invoiceId);
     const phone = lookupPhone.trim();
     if (!id || !phone) {
       toast.error("Masukkan nomor invoice/pesanan dan nomor HP");
@@ -109,18 +129,42 @@ const MyOrder = () => {
 
     setLoading(true);
     try {
-      const response = await fetch(
-        `${API_BASE}/orders/public/${encodeURIComponent(id)}?phone=${encodeURIComponent(phone)}`
-      );
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data?.message || "Pesanan tidak ditemukan");
+      const tryFetchOrder = async () => {
+        const response = await fetch(
+          `${API_BASE}/orders/public/${encodeURIComponent(id)}?phone=${encodeURIComponent(phone)}`
+        );
+        const data = await response.json();
+        return { response, data, source: "order" };
+      };
+      const tryFetchCustom = async () => {
+        const response = await fetch(
+          `${API_BASE}/custom-requests/public/${encodeURIComponent(id)}?phone=${encodeURIComponent(phone)}`
+        );
+        const data = await response.json();
+        return { response, data, source: "custom_request" };
+      };
+
+      let lookupResult;
+      if (sourceHint === "custom_request") {
+        lookupResult = await tryFetchCustom();
+      } else {
+        lookupResult = await tryFetchOrder();
+        if (!lookupResult.response.ok) {
+          const fallback = await tryFetchCustom();
+          if (fallback.response.ok) {
+            lookupResult = fallback;
+          }
+        }
       }
 
-      hydrateOrderForm(data);
+      if (!lookupResult.response.ok) {
+        throw new Error(lookupResult.data?.message || "Pesanan tidak ditemukan");
+      }
 
-      if (data?.service_id) {
-        const itemsRes = await fetch(`${API_BASE}/services/${data.service_id}/items`);
+      hydrateOrderForm(lookupResult.data, lookupResult.source);
+
+      if (lookupResult.source === "order" && lookupResult.data?.service_id) {
+        const itemsRes = await fetch(`${API_BASE}/services/${lookupResult.data.service_id}/items`);
         const itemsData = await itemsRes.json();
         setServiceItems(Array.isArray(itemsData) ? itemsData : []);
       } else {
@@ -193,26 +237,45 @@ const MyOrder = () => {
     }
     setSaving(true);
     try {
-      const response = await fetch(`${API_BASE}/orders/public/${order.id}`, {
+      const isCustomOrder = orderSource === "custom_request";
+      const endpoint = isCustomOrder
+        ? `${API_BASE}/custom-requests/public/${order.id}`
+        : `${API_BASE}/orders/public/${order.id}`;
+      const payload = isCustomOrder
+        ? {
+            name: formData.name,
+            email: formData.email,
+            phone: formData.phone,
+            wedding_date: formData.wedding_date,
+            services: customServices,
+            additional_requests: formData.notes,
+            verification_phone: lookupPhone.trim(),
+          }
+        : {
+            ...formData,
+            selected_items: selectedItems,
+            verification_phone: lookupPhone.trim(),
+          };
+
+      const response = await fetch(endpoint, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...formData,
-          selected_items: selectedItems,
-          verification_phone: lookupPhone.trim(),
-        }),
+        body: JSON.stringify(payload),
       });
       const data = await response.json();
       if (!response.ok) {
         throw new Error(data?.message || "Gagal menyimpan pesanan");
       }
 
+      const refreshEndpoint = isCustomOrder
+        ? `${API_BASE}/custom-requests/public/${order.id}?phone=${encodeURIComponent(lookupPhone.trim())}`
+        : `${API_BASE}/orders/public/${order.id}?phone=${encodeURIComponent(lookupPhone.trim())}`;
       const refreshed = await fetch(
-        `${API_BASE}/orders/public/${order.id}?phone=${encodeURIComponent(lookupPhone.trim())}`
+        refreshEndpoint
       );
       const refreshedData = await refreshed.json();
       if (refreshed.ok) {
-        hydrateOrderForm(refreshedData);
+        hydrateOrderForm(refreshedData, isCustomOrder ? "custom_request" : "order");
       }
       toast.success("Pesanan berhasil diperbarui");
     } catch (error) {
@@ -343,74 +406,97 @@ const MyOrder = () => {
                     </div>
                   )}
                   <h2 className="text-lg font-semibold text-[#2f4274] mb-3">
-                    Item Tambahan ({order.service_name || "Layanan"})
+                    {orderSource === "custom_request"
+                      ? "Rincian Layanan Custom"
+                      : `Item Tambahan (${order.service_name || "Layanan"})`}
                   </h2>
-                  {displayItems.length === 0 ? (
+                  {orderSource === "custom_request" ? (
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm text-[#4a5f95] mb-1">Layanan Custom</label>
+                        <textarea
+                          value={customServices}
+                          onChange={(e) => setCustomServices(e.target.value)}
+                          rows={4}
+                          className="w-full rounded-lg border border-[#c9d7f5] px-3 py-2 text-sm"
+                          placeholder="Contoh: Dekorasi premium, Catering 500 pax, Dokumentasi"
+                        />
+                      </div>
+                      <div className="pt-4 border-t border-gray-200 space-y-1 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Total booking</span>
+                          <span className="font-medium">{formatRupiah(toNumber(order.booking_amount))}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : displayItems.length === 0 ? (
                     <p className="text-sm text-gray-500">Item tambahan tidak tersedia.</p>
                   ) : (
-                    <div className="space-y-2 max-h-[380px] overflow-auto pr-1">
-                      {displayItems.map((item, index) => {
-                        const active = isSelected(item);
-                        const locked = active && isLockedSelected(item);
-                        const unitPrice = toNumber(
-                          item.final_price ?? item.custom_price ?? item.item_price ?? item.price ?? 0
-                        );
-                        return (
-                          <div
-                            key={`${item.id ?? item.item_id ?? item.name ?? "item"}-${index}`}
-                            className={`rounded-lg border p-3 ${
-                              active ? "border-primary-300 bg-primary-50" : "border-gray-200"
-                            }`}
-                          >
-                            <div className="flex items-start justify-between gap-3">
-                              <div>
-                                <p className="text-sm font-semibold text-gray-900">{item.name}</p>
-                                <p className="text-xs text-gray-600">{formatRupiah(unitPrice)}</p>
-                                {item._fromSelectedOnly && (
-                                  <p className="text-[11px] text-amber-700 mt-1">
-                                    Item lama (tidak ada di daftar layanan saat ini)
-                                  </p>
-                                )}
+                    <>
+                      <div className="space-y-2 max-h-[380px] overflow-auto pr-1">
+                        {displayItems.map((item, index) => {
+                          const active = isSelected(item);
+                          const locked = active && isLockedSelected(item);
+                          const unitPrice = toNumber(
+                            item.final_price ?? item.custom_price ?? item.item_price ?? item.price ?? 0
+                          );
+                          return (
+                            <div
+                              key={`${item.id ?? item.item_id ?? item.name ?? "item"}-${index}`}
+                              className={`rounded-lg border p-3 ${
+                                active ? "border-primary-300 bg-primary-50" : "border-gray-200"
+                              }`}
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div>
+                                  <p className="text-sm font-semibold text-gray-900">{item.name}</p>
+                                  <p className="text-xs text-gray-600">{formatRupiah(unitPrice)}</p>
+                                  {item._fromSelectedOnly && (
+                                    <p className="text-[11px] text-amber-700 mt-1">
+                                      Item lama (tidak ada di daftar layanan saat ini)
+                                    </p>
+                                  )}
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => toggleItem(item)}
+                                  disabled={locked}
+                                  className={`text-xs font-semibold px-2 py-1 rounded ${
+                                    locked
+                                      ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                                      : active
+                                      ? "bg-red-100 text-red-700"
+                                      : "bg-green-100 text-green-700"
+                                  }`}
+                                >
+                                  {locked ? "Sudah dipilih" : active ? "Batalkan" : "Tambah"}
+                                </button>
                               </div>
-                              <button
-                                type="button"
-                                onClick={() => toggleItem(item)}
-                                disabled={locked}
-                                className={`text-xs font-semibold px-2 py-1 rounded ${
-                                  locked
-                                    ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                                    : active
-                                    ? "bg-red-100 text-red-700"
-                                    : "bg-green-100 text-green-700"
-                                }`}
-                              >
-                                {locked ? "Sudah dipilih" : active ? "Batalkan" : "Tambah"}
-                              </button>
                             </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                          );
+                        })}
+                      </div>
 
-                  <div className="mt-4 pt-4 border-t border-gray-200 space-y-1 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Harga layanan</span>
-                      <span className="font-medium">{formatRupiah(totalAmount)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Total booking</span>
-                      <span className="font-medium">{formatRupiah(toNumber(order.booking_amount))}</span>
-                    </div>
-                    <div className="flex justify-between text-sm font-semibold text-[#2f4274] pt-1">
-                      <span>Pelunasan</span>
-                      <span>
-                        {formatRupiah(
-                          Math.max(0, totalAmount - toNumber(order.booking_amount))
-                        )}
-                      </span>
-                    </div>
-                  </div>
+                      <div className="mt-4 pt-4 border-t border-gray-200 space-y-1 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Harga layanan</span>
+                          <span className="font-medium">{formatRupiah(totalAmount)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Total booking</span>
+                          <span className="font-medium">{formatRupiah(toNumber(order.booking_amount))}</span>
+                        </div>
+                        <div className="flex justify-between text-sm font-semibold text-[#2f4274] pt-1">
+                          <span>Pelunasan</span>
+                          <span>
+                            {formatRupiah(
+                              Math.max(0, totalAmount - toNumber(order.booking_amount))
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                    </>
+                  )}
 
                   <button
                     type="button"
