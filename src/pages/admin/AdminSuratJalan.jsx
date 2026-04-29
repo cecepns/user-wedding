@@ -350,6 +350,10 @@ const AdminSuratJalan = () => {
   };
 
   const handleOpenModal = async (item = null) => {
+    // Selalu refresh opsi pesanan saat modal dibuka,
+    // supaya data terbaru tetap bisa dipilih saat edit.
+    await loadOrderOptions();
+
     if (item) {
       setEditingItem(item);
       if (item.custom_request_id) {
@@ -427,8 +431,6 @@ const AdminSuratJalan = () => {
         maps_link: "",
         notes: "",
       });
-      // Load initial order options when opening modal
-      await loadOrderOptions();
     }
     setShowModal(true);
   };
@@ -1342,7 +1344,6 @@ const AdminSuratJalan = () => {
                       onInputChange={handleSearchOrders}
                       options={orderOptions}
                       isLoading={isLoadingOrders}
-                      isDisabled={!!editingItem}
                       isClearable
                       filterOption={() => true}
                       placeholder="Ketik untuk mencari pesanan..."
@@ -1360,8 +1361,7 @@ const AdminSuratJalan = () => {
                           },
                           borderRadius: '0.5rem',
                           padding: '0.125rem',
-                          backgroundColor: editingItem ? '#f3f4f6' : 'white',
-                          cursor: editingItem ? 'not-allowed' : 'default'
+                          backgroundColor: 'white'
                         }),
                         menu: (base) => ({
                           ...base,
@@ -1384,11 +1384,9 @@ const AdminSuratJalan = () => {
                         })
                       }}
                     />
-                    {editingItem && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        Tidak dapat mengubah pesanan saat mengedit. Hapus dan buat baru jika perlu mengganti pesanan.
-                      </p>
-                    )}
+                    <p className="text-xs text-gray-500 mt-1">
+                      Saat edit, pesanan tetap bisa diganti jika data pesanan lama sudah dihapus.
+                    </p>
                   </div>
 
                   {/* Client Information - Display Only */}

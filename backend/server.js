@@ -1420,32 +1420,49 @@ async function getItemsDetailsFromServices(servicesString) {
     // For each service name, try to find matching items
     for (const serviceName of serviceNames) {
       let matchedItem = null;
-      
-      // Try exact match first
-      let [exactItems] = await db.execute(
-        'SELECT id, name, price FROM items WHERE name = ? AND is_active = true',
+
+      // IMPORTANT:
+      // Bila ada nama item duplikat (contoh di kategori berbeda),
+      // selalu prioritaskan harga paling kecil agar tidak overcharge customer.
+      // Exact normalized match diprioritaskan lebih dulu.
+      let [candidates] = await db.execute(
+        `SELECT id, name, price
+         FROM items
+         WHERE is_active = true
+           AND LOWER(TRIM(name)) = LOWER(TRIM(?))
+         ORDER BY CAST(price AS DECIMAL(15,2)) ASC, id DESC`,
         [serviceName]
       );
 
-      // If no exact match, try LIKE match (case insensitive)
-      if (exactItems.length === 0) {
-        [exactItems] = await db.execute(
-          'SELECT id, name, price FROM items WHERE LOWER(name) LIKE LOWER(?) AND is_active = true LIMIT 1',
+      // If no exact match, try contains match (case insensitive)
+      if (candidates.length === 0) {
+        [candidates] = await db.execute(
+          `SELECT id, name, price
+           FROM items
+           WHERE is_active = true
+             AND LOWER(name) LIKE LOWER(?)
+           ORDER BY CAST(price AS DECIMAL(15,2)) ASC, id DESC
+           LIMIT 1`,
           [`%${serviceName}%`]
         );
       }
 
-      // If still no match, try reverse LIKE (service name contains item name)
-      if (exactItems.length === 0) {
-        [exactItems] = await db.execute(
-          'SELECT id, name, price FROM items WHERE LOWER(?) LIKE CONCAT("%", LOWER(name), "%") AND is_active = true LIMIT 1',
+      // If still no match, try reverse contains
+      if (candidates.length === 0) {
+        [candidates] = await db.execute(
+          `SELECT id, name, price
+           FROM items
+           WHERE is_active = true
+             AND LOWER(?) LIKE CONCAT("%", LOWER(name), "%")
+           ORDER BY CAST(price AS DECIMAL(15,2)) ASC, id DESC
+           LIMIT 1`,
           [serviceName]
         );
       }
 
       // If found, add to items list
-      if (exactItems.length > 0) {
-        matchedItem = exactItems[0];
+      if (candidates.length > 0) {
+        matchedItem = candidates[0];
         const price = parseFloat(matchedItem.price) || 0;
         items.push({
           name: serviceName, // Use original service name from request
