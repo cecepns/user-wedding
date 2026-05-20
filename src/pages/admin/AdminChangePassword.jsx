@@ -3,7 +3,7 @@ import { Helmet } from "react-helmet-async";
 import toast, { Toaster } from "react-hot-toast";
 import AdminLayout from "../../components/AdminLayout";
 
-const API_BASE = "https://api-inventory.isavralabel.com/user-wedding";
+const API_BASE = "https://api.kingcreativestudio.my.id/user-wedding";
 
 const AdminChangePassword = () => {
   const [form, setForm] = useState({

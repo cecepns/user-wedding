@@ -6,7 +6,7 @@ import AdminLayout from "../../components/AdminLayout";
 import { formatRupiah, formatDate, formatDateTime } from "../../utils/formatters";
 import jsPDF from "jspdf";
 
-const API_BASE = "https://api-inventory.isavralabel.com/user-wedding/api";
+const API_BASE = "https://api.kingcreativestudio.my.id/user-wedding/api";
 const CLIENT_COLOR_POOL = [
   "bg-green-600 text-white",
   "bg-sky-600 text-white",

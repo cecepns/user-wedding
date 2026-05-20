@@ -16,7 +16,7 @@ const AdminDashboard = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch('https://api-inventory.isavralabel.com/user-wedding/api/admin/stats', {
+      const response = await fetch('https://api.kingcreativestudio.my.id/user-wedding/api/admin/stats', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
         }

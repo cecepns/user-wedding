@@ -25,7 +25,7 @@ const AdminLogin = () => {
     setError('');
 
     try {
-      const response = await fetch('https://api-inventory.isavralabel.com/user-wedding/api/admin/login', {
+      const response = await fetch('https://api.kingcreativestudio.my.id/user-wedding/api/admin/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

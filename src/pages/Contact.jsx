@@ -20,7 +20,7 @@ const Contact = () => {
 
   const fetchHeroContent = async () => {
     try {
-      const response = await fetch('https://api-inventory.isavralabel.com/user-wedding/api/content-sections/contact_hero_section');
+      const response = await fetch('https://api.kingcreativestudio.my.id/user-wedding/api/content-sections/contact_hero_section');
       if (response.ok) {
         const data = await response.json();
         setHeroContent(data);
@@ -41,7 +41,7 @@ const Contact = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch('https://api-inventory.isavralabel.com/user-wedding/api/contact', {
+      const response = await fetch('https://api.kingcreativestudio.my.id/user-wedding/api/contact', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

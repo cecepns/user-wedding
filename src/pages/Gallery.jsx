@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 
-const API_BASE = 'https://api-inventory.isavralabel.com/user-wedding';
+const API_BASE = 'https://api.kingcreativestudio.my.id/user-wedding';
 function imageUrl(value) {
   if (!value) return '';
   if (value.startsWith('http')) return value;
@@ -26,12 +26,12 @@ const Gallery = () => {
       setLoading(true);
       
       // Fetch categories
-      const categoriesResponse = await fetch('https://api-inventory.isavralabel.com/user-wedding/api/gallery/categories');
+      const categoriesResponse = await fetch('https://api.kingcreativestudio.my.id/user-wedding/api/gallery/categories');
       const categoriesData = await categoriesResponse.json();
       setCategories(categoriesData);
       
       // Fetch images
-      const imagesResponse = await fetch('https://api-inventory.isavralabel.com/user-wedding/api/gallery/images');
+      const imagesResponse = await fetch('https://api.kingcreativestudio.my.id/user-wedding/api/gallery/images');
       const imagesData = await imagesResponse.json();
       setImages(imagesData);
     } catch (error) {
@@ -43,7 +43,7 @@ const Gallery = () => {
 
   const fetchHeroContent = async () => {
     try {
-      const response = await fetch('https://api-inventory.isavralabel.com/user-wedding/api/content-sections/gallery_hero_section');
+      const response = await fetch('https://api.kingcreativestudio.my.id/user-wedding/api/content-sections/gallery_hero_section');
       if (response.ok) {
         const data = await response.json();
         setHeroContent(data);

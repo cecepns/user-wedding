@@ -3,7 +3,7 @@ import { Helmet } from "react-helmet-async";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import AdminLayout from "../../components/AdminLayout";
 
-const API_BASE = "https://api-inventory.isavralabel.com/user-wedding/api";
+const API_BASE = "https://api.kingcreativestudio.my.id/user-wedding/api";
 
 const VENDOR_COLOR_POOL = [
   "bg-green-600 text-white",

@@ -1,4 +1,4 @@
-export const API_BASE = 'https://api-inventory.isavralabel.com/user-wedding';
+export const API_BASE = 'https://api.kingcreativestudio.my.id/user-wedding';
 
 export function imageUrl(value) {
   if (!value) return '';

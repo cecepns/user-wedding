@@ -15,7 +15,7 @@ const AdminArticles = () => {
 
   const fetchArticles = async () => {
     try {
-      const response = await fetch('https://api-inventory.isavralabel.com/user-wedding/api/articles');
+      const response = await fetch('https://api.kingcreativestudio.my.id/user-wedding/api/articles');
       const data = await response.json();
       setArticles(data);
     } catch (error) {
@@ -26,8 +26,8 @@ const AdminArticles = () => {
   const handleSubmit = async (articleData) => {
     try {
       const url = editingArticle 
-        ? `https://api-inventory.isavralabel.com/user-wedding/api/articles/${editingArticle.id}`
-        : 'https://api-inventory.isavralabel.com/user-wedding/api/articles';
+        ? `https://api.kingcreativestudio.my.id/user-wedding/api/articles/${editingArticle.id}`
+        : 'https://api.kingcreativestudio.my.id/user-wedding/api/articles';
       
       const method = editingArticle ? 'PUT' : 'POST';
       
@@ -89,7 +89,7 @@ const AdminArticles = () => {
     if (!confirmed) return;
 
     try {
-      const response = await fetch(`https://api-inventory.isavralabel.com/user-wedding/api/articles/${id}`, {
+      const response = await fetch(`https://api.kingcreativestudio.my.id/user-wedding/api/articles/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
