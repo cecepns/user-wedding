@@ -3,7 +3,7 @@ import { Helmet } from "react-helmet-async";
 import { Eye, Trash2, ChevronLeft, ChevronRight, X, Edit, Download, CheckCircle } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 import AdminLayout from "../../components/AdminLayout";
-import { formatRupiah, formatDate, formatDateTime } from "../../utils/formatters";
+import { formatRupiah, formatDate, formatDateTime, toLocalDate } from "../../utils/formatters";
 import jsPDF from "jspdf";
 
 const API_BASE = "https://api.kingcreativestudio.my.id/user-wedding/api";
@@ -88,14 +88,13 @@ const AdminOrders = () => {
     );
   }, [orders, customRequests]);
 
-  // Kalender: pesanan (order + custom request) untuk bulan yang dipilih
   const calendarOrders = useMemo(() => {
     const year = calendarMonth.getFullYear();
     const month = calendarMonth.getMonth();
     return combinedOrders.filter((order) => {
       const rawDate = order.wedding_date;
       if (!rawDate) return false;
-      const d = new Date(rawDate);
+      const d = toLocalDate(rawDate);
       if (isNaN(d.getTime())) return false;
       return d.getFullYear() === year && d.getMonth() === month;
     });
@@ -546,7 +545,7 @@ const AdminOrders = () => {
     const rawDate = order.wedding_date;
     if (!rawDate) return acc;
 
-    const dateObj = new Date(rawDate);
+    const dateObj = toLocalDate(rawDate);
     if (isNaN(dateObj.getTime())) return acc;
 
     const y = dateObj.getFullYear();
@@ -1132,7 +1131,7 @@ const AdminOrders = () => {
               <div className="flex items-center justify-between bg-blue-50 border border-blue-100 px-4 py-2 rounded-lg">
                 <span className="text-sm text-blue-800">
                   Menampilkan pesanan untuk tanggal{" "}
-                  {new Date(selectedDate).toLocaleDateString("id-ID", {
+                  {toLocalDate(selectedDate).toLocaleDateString("id-ID", {
                     day: "2-digit",
                     month: "long",
                     year: "numeric",
@@ -1568,15 +1567,24 @@ const AdminOrders = () => {
                           typeof itemPrice === "number"
                             ? itemPrice
                             : parseFloat(itemPrice) || 0;
+                        const quantity = item.quantity || 1;
+                        const subtotal = normalizedPrice * quantity;
                         return (
                           <div
                             key={`${itemName}-${index}`}
                             className="flex justify-between items-center py-2 border-b border-gray-200 last:border-b-0"
                           >
-                            <span className="text-gray-900">{itemName}</span>
+                            <div>
+                              <span className="text-gray-900">{itemName}</span>
+                              {quantity > 1 && (
+                                <span className="text-xs text-gray-500 block mt-0.5">
+                                  {formatRupiah(normalizedPrice)} × {quantity}
+                                </span>
+                              )}
+                            </div>
                             <div className="flex items-center gap-3">
                               <span className="font-medium text-primary-600">
-                                {formatRupiah(normalizedPrice)}
+                                {formatRupiah(subtotal)}
                               </span>
                               <button
                                 type="button"

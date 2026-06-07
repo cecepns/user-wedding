@@ -321,6 +321,8 @@ const AdminSuratJalan = () => {
             address: row.address || "",
             wedding_date: row.wedding_date,
             service_name: svc,
+            selected_items: row.selected_items || null,
+            items_details: row.items_details || null,
           },
         };
       });
@@ -368,6 +370,7 @@ const AdminSuratJalan = () => {
             address: item.client_address,
             wedding_date: toDateOnlyString(item.wedding_date) || item.wedding_date,
             service_name: item.package_name,
+            items_details: item.custom_items_details || null,
           },
         };
         setSelectedOrder(selectedOption);
@@ -383,6 +386,7 @@ const AdminSuratJalan = () => {
             address: item.client_address,
             wedding_date: toDateOnlyString(item.wedding_date) || item.wedding_date,
             service_name: item.package_name,
+            selected_items: item.order_selected_items || null,
           },
         };
         setSelectedOrder(selectedOption);
@@ -742,8 +746,79 @@ const AdminSuratJalan = () => {
       doc.setFont("helvetica", "normal");
       doc.text(item.package_name || "-", 20, yAfterTanggal + 12);
 
+      let parsedItems = [];
+      if (item.order_selected_items) {
+        try {
+          parsedItems = typeof item.order_selected_items === 'string'
+            ? JSON.parse(item.order_selected_items)
+            : item.order_selected_items;
+        } catch (e) {
+          console.error(e);
+        }
+      } else if (item.selected_items) {
+        try {
+          parsedItems = typeof item.selected_items === 'string'
+            ? JSON.parse(item.selected_items)
+            : item.selected_items;
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      let parsedCustom = [];
+      if (item.custom_items_details) {
+        try {
+          parsedCustom = typeof item.custom_items_details === 'string'
+            ? JSON.parse(item.custom_items_details)
+            : item.custom_items_details;
+        } catch (e) {
+          console.error(e);
+        }
+      } else if (item.items_details) {
+        try {
+          parsedCustom = typeof item.items_details === 'string'
+            ? JSON.parse(item.items_details)
+            : item.items_details;
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      let yAfterItems = yAfterTanggal + 20;
+
+      if ((item.order_id && parsedItems.length > 0) || (item.custom_request_id && parsedCustom.length > 0)) {
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "bold");
+        doc.text("Daftar Item / Topping:", 20, yAfterItems);
+        yAfterItems += 6;
+
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "normal");
+        
+        const itemsToLoop = item.order_id ? parsedItems : parsedCustom;
+        itemsToLoop.forEach((itm) => {
+          const name = itm.name || itm.item_name || itm.title || "Item";
+          const qty = itm.quantity || 1;
+          const category = itm.category ? ` [${itm.category}]` : '';
+          
+          if (yAfterItems > 270) {
+            doc.addPage();
+            yAfterItems = 20;
+          }
+          
+          doc.text(`- ${name}${category} (x${qty})`, 25, yAfterItems);
+          yAfterItems += 5;
+        });
+        
+        yAfterItems += 4;
+      }
+
       // Detail Dekorasi
-      let currentY = yAfterTanggal + 24;
+      let currentY = yAfterItems;
+      if (currentY > 270) {
+        doc.addPage();
+        currentY = 20;
+      }
       doc.setFontSize(12);
       doc.setFont("helvetica", "bold");
       doc.text("Detail Dekorasi:", 20, currentY);
@@ -1428,6 +1503,36 @@ const AdminSuratJalan = () => {
                               <p className="text-sm text-gray-900 mt-1">{formData.package_name || "-"}</p>
                             </div>
                           </div>
+                          
+                          {/* Display selected items inside form */}
+                          {(() => {
+                            let items = [];
+                            try {
+                              const raw = selectedOrder?.order?.selected_items || selectedOrder?.order?.items_details;
+                              items = typeof raw === 'string' ? JSON.parse(raw) : (raw || []);
+                            } catch {
+                              items = [];
+                            }
+                            if (items.length > 0) {
+                              return (
+                                <div className="mt-3 border-t border-gray-200 pt-3">
+                                  <span className="text-xs font-semibold text-gray-500 block mb-2">Item Layanan / Topping dalam Pesanan:</span>
+                                  <ul className="list-disc list-inside text-xs text-gray-700 space-y-1">
+                                    {items.map((itm, index) => {
+                                      const name = itm.name || itm.item_name || itm.title || "Item";
+                                      const qty = itm.quantity || 1;
+                                      return (
+                                        <li key={index}>
+                                          {name} <span className="font-semibold text-[#2f4274]">(x{qty})</span>
+                                        </li>
+                                      );
+                                    })}
+                                  </ul>
+                                </div>
+                              );
+                            }
+                            return null;
+                          })()}
                         </div>
                       </div>
                     </>
@@ -1698,6 +1803,43 @@ const AdminSuratJalan = () => {
                     </div>
                   </div>
                 </div>
+
+                {/* Selected Items Detail section */}
+                {(() => {
+                  let items = [];
+                  try {
+                    const raw = selectedItem.order_selected_items || selectedItem.custom_items_details || selectedItem.selected_items || selectedItem.items_details;
+                    items = typeof raw === 'string' ? JSON.parse(raw) : (raw || []);
+                  } catch {
+                    items = [];
+                  }
+                  if (items.length > 0) {
+                    return (
+                      <div className="mb-6">
+                        <h3 className="text-lg font-semibold text-gray-800 mb-3">
+                          Daftar Item / Topping
+                        </h3>
+                        <div className="bg-gray-50 rounded-lg p-4 divide-y divide-gray-200">
+                          {items.map((itm, index) => {
+                            const name = itm.name || itm.item_name || itm.title || "Item tidak dikenal";
+                            const category = itm.category || "Item";
+                            const qty = itm.quantity || 1;
+                            return (
+                              <div key={index} className="py-2 flex justify-between items-center text-sm">
+                                <div>
+                                  <span className="font-medium text-gray-900">{name}</span>
+                                  <span className="ml-2 text-xs text-gray-500 bg-gray-200 px-2 py-0.5 rounded">{category}</span>
+                                </div>
+                                <span className="text-gray-600 font-semibold">x{qty}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
 
                 <div className="mb-6">
                   <h3 className="text-lg font-semibold text-gray-800 mb-4">

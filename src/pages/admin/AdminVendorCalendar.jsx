@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import AdminLayout from "../../components/AdminLayout";
+import { toLocalDate } from "../../utils/formatters";
 
 const API_BASE = "https://api.kingcreativestudio.my.id/user-wedding/api";
 
@@ -153,7 +154,7 @@ const AdminVendorCalendar = () => {
     const year = calendarMonth.getFullYear();
     const month = calendarMonth.getMonth();
     return events.filter((event) => {
-      const d = new Date(event.wedding_date);
+      const d = toLocalDate(event.wedding_date);
       if (isNaN(d.getTime())) return false;
       return d.getFullYear() === year && d.getMonth() === month;
     });
@@ -161,7 +162,7 @@ const AdminVendorCalendar = () => {
 
   const eventsByDate = useMemo(() => {
     return monthlyEvents.reduce((acc, event) => {
-      const d = new Date(event.wedding_date);
+      const d = toLocalDate(event.wedding_date);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
         2,
         "0"
@@ -408,7 +409,7 @@ const AdminVendorCalendar = () => {
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-800">
                 Detail Vendor{" "}
-                {new Date(selectedDate).toLocaleDateString("id-ID", {
+                {toLocalDate(selectedDate).toLocaleDateString("id-ID", {
                   day: "2-digit",
                   month: "long",
                   year: "numeric",
@@ -504,7 +505,7 @@ const AdminVendorCalendar = () => {
                     <p className="text-gray-500">Tanggal Acara</p>
                     <p className="font-medium text-gray-900">
                       {selectedEventDetail.wedding_date
-                        ? new Date(selectedEventDetail.wedding_date).toLocaleDateString(
+                        ? toLocalDate(selectedEventDetail.wedding_date).toLocaleDateString(
                             "id-ID",
                             {
                               day: "2-digit",

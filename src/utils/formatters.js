@@ -30,7 +30,17 @@ export const toLocalDate = (date) => {
 
   // For full datetime strings or Date objects, rely on JS Date to
   // compute the correct local calendar day from the actual instant.
-  return new Date(date);
+  const dObj = new Date(date);
+  if (isNaN(dObj.getTime())) return dObj;
+
+  // Timezone correction: If the time is late night (22:00 - 23:59) in local time,
+  // it means timezone offset shift of 00:00:00 from another Indonesian zone.
+  // We add 2 hours to shift it to the correct local calendar day.
+  const hours = dObj.getHours();
+  if (hours >= 22) {
+    dObj.setHours(dObj.getHours() + 2);
+  }
+  return dObj;
 };
 
 // Return YYYY-MM-DD for the intended calendar day (for API payloads; avoids timezone shift on save)

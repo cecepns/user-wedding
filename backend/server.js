@@ -65,7 +65,8 @@ const dbConfig = {
   database: 'wedding_organizer',
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0
+  queueLimit: 0,
+  dateStrings: true
 };
 
 let db;
@@ -920,8 +921,12 @@ app.get('/api/custom-requests/public/:id', async (req, res) => {
       return res.status(403).json({ message: 'Nomor HP tidak sesuai dengan pesanan' });
     }
 
+    const { items, totalAmount } = await getItemsDetailsFromServices(request.services);
+
     res.json({
       ...request,
+      total_amount: totalAmount,
+      items_details: items,
       order_source: 'custom_request'
     });
   } catch (error) {
@@ -2207,7 +2212,7 @@ app.get('/api/orders/search', authenticateToken, async (req, res) => {
     const limitEach = 15;
 
     let orderSql = `
-      SELECT id, name, email, phone, address, wedding_date, service_name, total_amount, booking_amount, status, created_at
+      SELECT id, name, email, phone, address, wedding_date, service_name, total_amount, booking_amount, status, created_at, selected_items
       FROM orders
     `;
     let orderParams = [];
@@ -2251,20 +2256,26 @@ app.get('/api/orders/search', authenticateToken, async (req, res) => {
       order_source: 'order'
     }));
 
-    const normalizedCustom = (customRows || []).map((row) => ({
-      id: row.id,
-      name: row.name,
-      email: row.email,
-      phone: row.phone,
-      address: row.additional_requests || '',
-      wedding_date: row.wedding_date,
-      service_name: row.services || 'Layanan custom',
-      total_amount: row.booking_amount,
-      booking_amount: row.booking_amount,
-      status: row.status,
-      created_at: row.created_at,
-      order_source: 'custom_request'
-    }));
+    const normalizedCustom = await Promise.all(
+      (customRows || []).map(async (row) => {
+        const { items, totalAmount } = await getItemsDetailsFromServices(row.services);
+        return {
+          id: row.id,
+          name: row.name,
+          email: row.email,
+          phone: row.phone,
+          address: row.additional_requests || '',
+          wedding_date: row.wedding_date,
+          service_name: row.services || 'Layanan custom',
+          total_amount: totalAmount,
+          booking_amount: row.booking_amount,
+          status: row.status,
+          created_at: row.created_at,
+          items_details: items,
+          order_source: 'custom_request'
+        };
+      })
+    );
 
     const merged = [...normalizedOrders, ...normalizedCustom].sort(
       (a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)
@@ -2295,28 +2306,48 @@ app.get('/api/surat-jalan', authenticateToken, async (req, res) => {
     const search = (req.query.search || req.query.q || '').trim();
     
     let countSql = 'SELECT COUNT(*) as total FROM surat_jalan';
-    let listSql = 'SELECT * FROM surat_jalan';
+    let listSql = `
+      SELECT sj.*, 
+             o.selected_items AS order_selected_items,
+             cr.services AS custom_services
+      FROM surat_jalan sj
+      LEFT JOIN orders o ON sj.order_id = o.id
+      LEFT JOIN custom_requests cr ON sj.custom_request_id = cr.id
+    `;
     const countParams = [];
     const listParams = [];
     
     if (search) {
       const pattern = `%${search}%`;
-      countSql += ' WHERE client_name LIKE ?';
-      listSql += ' WHERE client_name LIKE ?';
+      countSql += ' WHERE sj.client_name LIKE ?';
+      listSql += ' WHERE sj.client_name LIKE ?';
       countParams.push(pattern);
       listParams.push(pattern);
     }
     
-    listSql += ' ORDER BY wedding_date ASC, created_at DESC LIMIT ? OFFSET ?';
+    listSql += ' ORDER BY sj.wedding_date ASC, sj.created_at DESC LIMIT ? OFFSET ?';
     listParams.push(limit, offset);
     
     const [countResult] = await db.execute(countSql, countParams);
     const total = countResult[0].total;
     
     const [suratJalan] = await db.execute(listSql, listParams);
+
+    const populatedSuratJalan = await Promise.all(
+      (suratJalan || []).map(async (item) => {
+        if (item.custom_request_id && item.custom_services) {
+          const { items } = await getItemsDetailsFromServices(item.custom_services);
+          return {
+            ...item,
+            custom_items_details: items
+          };
+        }
+        return item;
+      })
+    );
     
     res.json({
-      suratJalan,
+      suratJalan: populatedSuratJalan,
       pagination: {
         page,
         limit,
@@ -2334,11 +2365,24 @@ app.get('/api/surat-jalan/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   
   try {
-    const [rows] = await db.execute('SELECT * FROM surat_jalan WHERE id = ?', [id]);
+    const [rows] = await db.execute(`
+      SELECT sj.*, 
+             o.selected_items AS order_selected_items,
+             cr.services AS custom_services
+      FROM surat_jalan sj
+      LEFT JOIN orders o ON sj.order_id = o.id
+      LEFT JOIN custom_requests cr ON sj.custom_request_id = cr.id
+      WHERE sj.id = ?
+    `, [id]);
     const suratJalan = rows[0];
     
     if (!suratJalan) {
       return res.status(404).json({ message: 'Surat jalan not found' });
+    }
+
+    if (suratJalan.custom_request_id && suratJalan.custom_services) {
+      const { items } = await getItemsDetailsFromServices(suratJalan.custom_services);
+      suratJalan.custom_items_details = items;
     }
     
     res.json(suratJalan);
