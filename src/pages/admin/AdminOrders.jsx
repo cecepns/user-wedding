@@ -41,6 +41,19 @@ const toNumber = (value) => {
   const n = typeof value === "number" ? value : parseFloat(value);
   return Number.isFinite(n) ? n : 0;
 };
+const parseSelectedItems = (raw) => {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+};
 
 const AdminOrders = () => {
   const [orders, setOrders] = useState([]);
@@ -369,13 +382,7 @@ const AdminOrders = () => {
 
   const handleViewDetail = (order) => {
     if (order.orderType === "order") {
-      let parsedItems = [];
-      try {
-        const raw = JSON.parse(order.selected_items || "[]");
-        parsedItems = Array.isArray(raw) ? raw : [];
-      } catch {
-        parsedItems = [];
-      }
+      const parsedItems = parseSelectedItems(order.selected_items);
       const normalizedItems = parsedItems.map((item) => ({
         ...item,
         final_price: Number(
@@ -566,6 +573,7 @@ const AdminOrders = () => {
 
   const handleClearTableFilter = () => {
     setTableFilteredOrders(null);
+    setSelectedDate(null);
   };
 
   const paginatedCombined = useMemo(
@@ -635,24 +643,18 @@ const AdminOrders = () => {
 
     const basePrice = toNumber(item.base_price || 0);
     let selectedItemsTotal = 0;
-    if (item.selected_items) {
-      try {
-        const selectedItems = JSON.parse(item.selected_items);
-        if (Array.isArray(selectedItems)) {
-          selectedItemsTotal = selectedItems.reduce((sum, selectedItem) => {
-            const itemPrice =
-              selectedItem.final_price ||
-              selectedItem.item_price ||
-              selectedItem.price ||
-              selectedItem.custom_price ||
-              0;
-            const quantity = selectedItem.quantity || 1;
-            return sum + toNumber(itemPrice) * quantity;
-          }, 0);
-        }
-      } catch (error) {
-        console.error("Error parsing selected_items for pelunasan:", error);
-      }
+    const selectedItems = parseSelectedItems(item.selected_items);
+    if (selectedItems.length > 0) {
+      selectedItemsTotal = selectedItems.reduce((sum, selectedItem) => {
+        const itemPrice =
+          selectedItem.final_price ||
+          selectedItem.item_price ||
+          selectedItem.price ||
+          selectedItem.custom_price ||
+          0;
+        const quantity = selectedItem.quantity || 1;
+        return sum + toNumber(itemPrice) * quantity;
+      }, 0);
     }
     const recalculated = basePrice + selectedItemsTotal;
     return recalculated > 0 ? recalculated : toNumber(item.total_amount || 0);
@@ -836,40 +838,34 @@ const AdminOrders = () => {
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
       doc.text(itemNumber.toString(), 25, currentY);
-      doc.text(item.service_name, 40, currentY);
+      doc.text(item.service_name || "Layanan", 40, currentY);
       doc.text("1", 140, currentY);
       doc.text(formatRupiah(item.base_price || 0), 170, currentY);
 
-      if (item.selected_items) {
-        try {
-          const selectedItems = JSON.parse(item.selected_items);
-          if (Array.isArray(selectedItems) && selectedItems.length > 0) {
-            currentY += 8;
-            selectedItems.forEach((selectedItem) => {
-              const itemName =
-                selectedItem.name ||
-                selectedItem.item_name ||
-                selectedItem.title ||
-                "Item tidak dikenal";
-              const itemPrice =
-                selectedItem.final_price ||
-                selectedItem.item_price ||
-                selectedItem.price ||
-                selectedItem.custom_price ||
-                0;
-              const quantity = selectedItem.quantity || 1;
-              const subtotal = (typeof itemPrice === "number" ? itemPrice : parseFloat(itemPrice) || 0) * quantity;
-              selectedItemsTotal += subtotal;
-              doc.setFontSize(8);
-              doc.text(`  ${itemName}`, 40, currentY);
-              doc.text(quantity.toString(), 140, currentY);
-              doc.text(formatRupiah(subtotal), 170, currentY);
-              currentY += 5;
-            });
-          }
-        } catch (error) {
-          console.error("Error parsing selected items:", error);
-        }
+      const selectedItems = parseSelectedItems(item.selected_items);
+      if (selectedItems.length > 0) {
+        currentY += 8;
+        selectedItems.forEach((selectedItem) => {
+          const itemName =
+            selectedItem.name ||
+            selectedItem.item_name ||
+            selectedItem.title ||
+            "Item tidak dikenal";
+          const itemPrice =
+            selectedItem.final_price ||
+            selectedItem.item_price ||
+            selectedItem.price ||
+            selectedItem.custom_price ||
+            0;
+          const quantity = selectedItem.quantity || 1;
+          const subtotal = (typeof itemPrice === "number" ? itemPrice : parseFloat(itemPrice) || 0) * quantity;
+          selectedItemsTotal += subtotal;
+          doc.setFontSize(8);
+          doc.text(`  ${itemName}`, 40, currentY);
+          doc.text(quantity.toString(), 140, currentY);
+          doc.text(formatRupiah(subtotal), 170, currentY);
+          currentY += 5;
+        });
       }
 
       // Gunakan total hasil perhitungan item invoice agar konsisten dengan baris detail.
@@ -1125,8 +1121,7 @@ const AdminOrders = () => {
         </div>
 
         {/* Orders Table */}
-        {selectedDate && (
-          <div className="space-y-6">
+        <div className="space-y-6">
             {tableFilteredOrders && (
               <div className="flex items-center justify-between bg-blue-50 border border-blue-100 px-4 py-2 rounded-lg">
                 <span className="text-sm text-blue-800">
@@ -1416,7 +1411,6 @@ const AdminOrders = () => {
               </div>
             )}
           </div>
-        )}
 
         {/* Order Detail Modal */}
         {showDetailModal && selectedOrder && (
